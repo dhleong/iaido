@@ -40,7 +40,8 @@ pub trait Resizable {
 
 pub trait Buffer: HasId {
     fn lines_count(&self) -> usize;
-    fn append(&mut self, text: text::Text);
+    fn append(&mut self, text: text::Text<'static>);
+    fn get(&self, line_index: usize) -> &text::Spans<'static>;
 }
 
 impl fmt::Display for dyn Buffer {

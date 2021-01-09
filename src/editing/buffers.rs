@@ -1,11 +1,11 @@
-use std::{fmt, rc::Rc};
+use std::fmt;
 
-use super::{buffer::memory::MemoryBuffer, ids::Ids, Buffer, Id};
+use super::{buffer::MemoryBuffer, ids::Ids, Buffer, Id};
 
 /// Manages all buffers (Hidden or not) in an app
 pub struct Buffers {
     ids: Ids,
-    all: Vec<Rc<dyn Buffer>>,
+    all: Vec<Box<dyn Buffer>>,
 }
 
 impl Buffers {
@@ -16,18 +16,23 @@ impl Buffers {
         };
     }
 
-    pub fn by_id(&self, id: Id) -> Option<&Rc<dyn Buffer>> {
+    pub fn by_id(&self, id: Id) -> Option<&Box<dyn Buffer>> {
         self.all.iter().find(|buf| buf.id() == id)
     }
 
-    pub fn create(&mut self) -> Rc<dyn Buffer> {
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Buffer>> {
+        self.all.iter_mut().find(|buf| buf.id() == id)
+    }
+
+    pub fn create(&mut self) -> &Box<dyn Buffer> {
         let id = self.ids.next();
         let buffer = MemoryBuffer::new(id);
-        let boxed = Rc::new(buffer);
+        let boxed = Box::new(buffer);
 
-        self.all.push(boxed.clone());
+        self.all.push(boxed);
+        // self.all.push(Box::new(MemoryBuffer::new(id)));
 
-        return boxed;
+        self.all.last().unwrap()
     }
 }
 

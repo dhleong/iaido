@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::{buffers::Buffers, Buffer, HasId, Id, Resizable, Size};
 
 pub struct Window {
@@ -17,8 +15,12 @@ impl Window {
         }
     }
 
-    pub fn current_buffer<'a>(&self, buffers: &'a Buffers) -> &'a Rc<dyn Buffer> {
+    pub fn current_buffer<'a>(&self, buffers: &'a Buffers) -> &'a Box<dyn Buffer> {
         buffers.by_id(self.buffer).unwrap()
+    }
+
+    pub fn current_buffer_mut<'a>(&self, buffers: &'a mut Buffers) -> &'a mut Box<dyn Buffer> {
+        buffers.by_id_mut(self.buffer).unwrap()
     }
 }
 

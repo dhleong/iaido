@@ -1,4 +1,4 @@
-use crate::editing::{buffers::Buffers, tabpages::Tabpages, Resizable, Size};
+use crate::editing::{buffers::Buffers, tabpages::Tabpages, Buffer, Resizable, Size};
 
 pub struct App {
     pub buffers: Buffers,
@@ -16,6 +16,20 @@ impl App {
         app.tabpages.current = default_id;
 
         app
+    }
+
+    pub fn current_buffer<'a>(&'a self) -> &'a Box<dyn Buffer> {
+        self.tabpages
+            .current_tab()
+            .current_window()
+            .current_buffer(&self.buffers)
+    }
+
+    pub fn current_buffer_mut<'a>(&'a mut self) -> &'a mut Box<dyn Buffer> {
+        self.tabpages
+            .current_tab()
+            .current_window()
+            .current_buffer_mut(&mut self.buffers)
     }
 }
 

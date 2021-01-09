@@ -2,13 +2,13 @@ use tui::text;
 
 use crate::editing::{Buffer, HasId};
 
-pub struct MemoryBuffer<'a> {
+pub struct MemoryBuffer {
     id: usize,
-    content: text::Text<'a>,
+    content: text::Text<'static>,
 }
 
-impl<'a> MemoryBuffer<'a> {
-    pub fn new(id: usize) -> MemoryBuffer<'a> {
+impl MemoryBuffer {
+    pub fn new(id: usize) -> MemoryBuffer {
         MemoryBuffer {
             id,
             content: text::Text { lines: Vec::new() },
@@ -16,18 +16,22 @@ impl<'a> MemoryBuffer<'a> {
     }
 }
 
-impl<'a> HasId for MemoryBuffer<'a> {
+impl HasId for MemoryBuffer {
     fn id(&self) -> usize {
         return self.id;
     }
 }
 
-impl<'a> Buffer for MemoryBuffer<'a> {
+impl Buffer for MemoryBuffer {
     fn lines_count(&self) -> usize {
         self.content.height()
     }
 
-    fn append(&mut self, text: text::Text) {
-        let mut lines = &self.content.lines;
+    fn append(&mut self, text: text::Text<'static>) {
+        self.content.extend(text::Text::from(text));
+    }
+
+    fn get(&self, line_index: usize) -> &text::Spans<'static> {
+        &self.content.lines[line_index]
     }
 }

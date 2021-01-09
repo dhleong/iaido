@@ -21,22 +21,17 @@ fn main() {
     //     println!("Hello, world {} {} {}!", page.id, second_id, second);
     // }
 
+    let mut display = Display::new(Size { w: 40, h: 40 });
+
     {
-        let mut display = Display {
-            size: Size { w: 40, h: 40 },
-        };
         app.resize(display.size);
 
-        let buffer = app
-            .tabpages
-            .current_tab()
-            .current_window()
-            .current_buffer(&app.buffers);
-        // .current_buffer(&app.buffers);
-        //     .current_buffer_mut();
-        // buffer.append(tui::text::Text::raw("test"));
+        {
+            let buffer = app.current_buffer_mut();
+            buffer.append(tui::text::Text::raw("test"));
+        }
 
-        app.tabpages.render(&mut display);
-        println!("{} {} {}", display, buffer, app.buffers);
+        app.tabpages.render(&app, &mut display);
+        println!("{} {} {}", display, app.current_buffer(), app.buffers);
     }
 }

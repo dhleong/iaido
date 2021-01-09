@@ -2,7 +2,9 @@ use std::rc::Rc;
 
 pub mod buffer;
 pub mod buffers;
+pub mod ids;
 pub mod tabpage;
+pub mod tabpages;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Position {

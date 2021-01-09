@@ -1,4 +1,4 @@
-use crate::editing::{buffers::Buffers, tabpages::Tabpages};
+use crate::editing::{buffers::Buffers, tabpages::Tabpages, Resizable, Size};
 
 pub struct App {
     pub buffers: Buffers,
@@ -8,7 +8,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let mut buffers = Buffers::new();
-        let tabpages = Tabpages::new();
+        let tabpages = Tabpages::new(Size { w: 0, h: 0 });
         let mut app = Self {
             buffers: Buffers::new(),
             tabpages,
@@ -19,5 +19,11 @@ impl App {
         app.tabpages.current = default_id;
 
         app
+    }
+}
+
+impl Resizable for App {
+    fn resize(&mut self, new_size: Size) {
+        self.tabpages.resize(new_size)
     }
 }

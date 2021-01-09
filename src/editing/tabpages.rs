@@ -1,18 +1,20 @@
 use std::cell::{Ref, RefCell, RefMut};
 
-use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id};
+use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id, Resizable, Size};
 
 /// Manages all buffers (Hidden or not) in an app
 pub struct Tabpages {
     pub current: Id,
+    size: Size,
     ids: Ids,
     all: Vec<RefCell<Tabpage>>,
 }
 
 impl Tabpages {
-    pub fn new() -> Tabpages {
+    pub fn new(size: Size) -> Tabpages {
         return Tabpages {
             current: 0,
+            size,
             ids: Ids::new(),
             all: Vec::new(),
         };
@@ -45,11 +47,36 @@ impl Tabpages {
     }
 
     pub fn create(&mut self, buffers: &mut Buffers) -> Id {
+        let mut page_size = self.size;
+        let tabs_count = self.all.len();
+        if tabs_count > 0 {
+            page_size.h -= 1;
+
+            // resize an existing, single tab
+            if tabs_count == 1 {
+                if let Some(tab) = self.all.first_mut() {
+                    tab.borrow_mut().resize(page_size);
+                }
+            }
+        }
+
         let id = self.ids.next();
-        let tabpage = Tabpage::new(id, buffers);
+        let tabpage = Tabpage::new(id, buffers, page_size);
 
         self.all.push(RefCell::new(tabpage));
 
         id
+    }
+}
+
+impl Resizable for Tabpages {
+    fn resize(&mut self, new_size: Size) {
+        let mut actual_size = new_size;
+        if self.all.len() > 1 {
+            actual_size.h -= 1;
+        }
+        for page in &self.all {
+            page.borrow_mut().resize(actual_size);
+        }
     }
 }

@@ -30,6 +30,10 @@ pub trait HasId {
     fn id(&self) -> Id;
 }
 
+pub trait Resizable {
+    fn resize(&mut self, new_size: Size);
+}
+
 pub trait Buffer: HasId {
     fn lines_count(&self) -> usize;
 }

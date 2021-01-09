@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{Buffer, HasId, Id, Size};
+use super::{Buffer, HasId, Id, Resizable, Size};
 
 pub struct Window {
     pub id: Id,
@@ -25,6 +25,12 @@ impl Window {
 impl HasId for Window {
     fn id(&self) -> Id {
         return self.id;
+    }
+}
+
+impl Resizable for Window {
+    fn resize(&mut self, new_size: Size) {
+        self.size = new_size
     }
 }
 

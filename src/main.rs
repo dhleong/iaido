@@ -4,10 +4,10 @@ mod tui;
 
 use crate::tui::{Display, Renderable};
 use app::App;
-use editing::Size;
+use editing::{Resizable, Size};
 
 fn main() {
-    let app = App::new();
+    let mut app = App::new();
 
     // {
     //     let mut page = app.tabpages.current_tab_mut();
@@ -25,6 +25,8 @@ fn main() {
         let mut display = Display {
             size: Size { w: 40, h: 40 },
         };
+        app.resize(display.size);
         app.tabpages.render(&mut display);
+        println!("{}", display);
     }
 }

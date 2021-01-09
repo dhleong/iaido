@@ -2,16 +2,17 @@ use std::{cell::Ref, cell::RefCell};
 
 use super::buffers::Buffers;
 use super::window::Window;
-use super::Id;
+use super::{Id, Resizable, Size};
 
 pub struct Tabpage {
     pub id: Id,
     current: Id,
+    size: Size,
     windows: Vec<RefCell<Window>>,
 }
 
 impl Tabpage {
-    pub fn new(id: Id, buffers: &mut Buffers) -> Self {
+    pub fn new(id: Id, buffers: &mut Buffers, size: Size) -> Self {
         let mut windows: Vec<RefCell<Window>> = Vec::new();
 
         let initial = Window::new(0, buffers.create());
@@ -20,6 +21,7 @@ impl Tabpage {
         Self {
             id,
             current: 0,
+            size,
             windows,
         }
     }
@@ -42,5 +44,15 @@ impl Tabpage {
         self.windows.push(boxed);
 
         id
+    }
+}
+
+impl Resizable for Tabpage {
+    fn resize(&mut self, new_size: Size) {
+        self.size = new_size;
+        // TODO window layouts
+        for win in &self.windows {
+            win.borrow_mut().resize(new_size)
+        }
     }
 }

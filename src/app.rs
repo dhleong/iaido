@@ -1,31 +1,21 @@
-use crate::editing::{buffers::Buffers, tabpages::Tabpages, Window, WindowFactory};
+use crate::editing::{buffers::Buffers, tabpages::Tabpages};
 
-pub struct App<'a, F, W>
-where
-    F: WindowFactory<W>,
-    W: Window,
-{
-    pub windows: &'a F,
+pub struct App {
     pub buffers: Buffers,
-    pub tabpages: Tabpages<'a, W>,
+    pub tabpages: Tabpages,
 }
 
-impl<'a, F, W> App<'a, F, W>
-where
-    F: WindowFactory<W>,
-    W: Window,
-{
-    pub fn new(windows: &'a F) -> Self {
+impl App {
+    pub fn new() -> Self {
         let mut buffers = Buffers::new();
         let tabpages = Tabpages::new();
         let mut app = Self {
-            windows: &windows,
             buffers: Buffers::new(),
             tabpages,
         };
 
         // create the default tabpage
-        let default_id = app.tabpages.create(app.windows, &mut buffers);
+        let default_id = app.tabpages.create(&mut buffers);
         app.tabpages.current = default_id;
 
         app

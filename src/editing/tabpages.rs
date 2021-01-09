@@ -1,16 +1,16 @@
 use std::cell::{Ref, RefCell, RefMut};
 
-use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id, Window, WindowFactory};
+use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id};
 
 /// Manages all buffers (Hidden or not) in an app
-pub struct Tabpages<'a, W: Window> {
+pub struct Tabpages {
     pub current: Id,
     ids: Ids,
-    all: Vec<RefCell<Tabpage<'a, W>>>,
+    all: Vec<RefCell<Tabpage>>,
 }
 
-impl<'a, W: Window> Tabpages<'a, W> {
-    pub fn new() -> Tabpages<'a, W> {
+impl Tabpages {
+    pub fn new() -> Tabpages {
         return Tabpages {
             current: 0,
             ids: Ids::new(),
@@ -18,31 +18,35 @@ impl<'a, W: Window> Tabpages<'a, W> {
         };
     }
 
-    pub fn current_tab(&self) -> Ref<Tabpage<W>> {
+    pub fn len(&self) -> usize {
+        self.all.len()
+    }
+
+    pub fn current_tab(&self) -> Ref<Tabpage> {
         self.by_id(self.current).unwrap()
     }
 
-    pub fn current_tab_mut(&mut self) -> RefMut<'a, Tabpage<W>> {
+    pub fn current_tab_mut(&mut self) -> RefMut<Tabpage> {
         self.by_id_mut(self.current).unwrap()
     }
 
-    pub fn by_id(&self, id: Id) -> Option<Ref<Tabpage<W>>> {
+    pub fn by_id(&self, id: Id) -> Option<Ref<Tabpage>> {
         self.all
             .iter()
             .find(|tab| tab.borrow().id == id)
             .and_then(|tab| Some(tab.borrow()))
     }
 
-    pub fn by_id_mut(&mut self, id: Id) -> Option<RefMut<'a, Tabpage<W>>> {
+    pub fn by_id_mut(&mut self, id: Id) -> Option<RefMut<Tabpage>> {
         self.all
             .iter()
             .find(|tab| tab.borrow().id == id)
             .and_then(|tab| Some(tab.borrow_mut()))
     }
 
-    pub fn create(&mut self, windows: &'a dyn WindowFactory<W>, buffers: &mut Buffers) -> Id {
+    pub fn create(&mut self, buffers: &mut Buffers) -> Id {
         let id = self.ids.next();
-        let tabpage = Tabpage::new(id, windows, buffers);
+        let tabpage = Tabpage::new(id, buffers);
 
         self.all.push(RefCell::new(tabpage));
 

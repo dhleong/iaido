@@ -15,7 +15,7 @@ impl Tabpage {
     pub fn new(id: Id, buffers: &mut Buffers, size: Size) -> Self {
         let mut windows: Vec<RefCell<Window>> = Vec::new();
 
-        let initial = Window::new(0, buffers.create());
+        let initial = Window::new(id, buffers.create().id());
         windows.push(RefCell::new(initial));
 
         Self {
@@ -39,7 +39,9 @@ impl Tabpage {
 
     pub fn split(&mut self) -> Id {
         let id: Id = self.windows.len();
-        let window = Window::new(id, self.current_window().current_buffer());
+
+        let buffer = self.current_window().buffer;
+        let window = Window::new(id, buffer);
         let boxed = RefCell::new(window);
         self.windows.push(boxed);
 

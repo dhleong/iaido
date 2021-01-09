@@ -5,6 +5,10 @@ pub mod tabpage;
 pub mod tabpages;
 pub mod window;
 
+use std::fmt;
+
+use tui::text;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Position {
     pub x: u16,
@@ -36,4 +40,11 @@ pub trait Resizable {
 
 pub trait Buffer: HasId {
     fn lines_count(&self) -> usize;
+    fn append(&mut self, text: text::Text);
+}
+
+impl fmt::Display for dyn Buffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[Buffer#{}]", self.id())
+    }
 }

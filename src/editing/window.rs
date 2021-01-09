@@ -1,24 +1,24 @@
 use std::rc::Rc;
 
-use super::{Buffer, HasId, Id, Resizable, Size};
+use super::{buffers::Buffers, Buffer, HasId, Id, Resizable, Size};
 
 pub struct Window {
     pub id: Id,
-    buffer: Rc<dyn Buffer>,
+    pub buffer: Id,
     pub size: Size,
 }
 
 impl Window {
-    pub fn new(id: Id, buffer: Rc<dyn Buffer>) -> Self {
+    pub fn new(id: Id, buffer_id: Id) -> Self {
         Self {
             id,
-            buffer,
+            buffer: buffer_id,
             size: Size { w: 0, h: 0 },
         }
     }
 
-    pub fn current_buffer(&self) -> Rc<dyn Buffer> {
-        self.buffer.clone()
+    pub fn current_buffer<'a>(&self, buffers: &'a Buffers) -> &'a Rc<dyn Buffer> {
+        buffers.by_id(self.buffer).unwrap()
     }
 }
 

@@ -3,6 +3,7 @@ use crate::editing::Size;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;
+pub use tui::text;
 
 pub struct Display {
     pub size: Size,

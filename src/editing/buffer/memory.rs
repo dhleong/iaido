@@ -1,27 +1,33 @@
+use tui::text;
+
 use crate::editing::{Buffer, HasId};
 
-pub struct MemoryBuffer {
+pub struct MemoryBuffer<'a> {
     id: usize,
-    lines: Vec<String>,
+    content: text::Text<'a>,
 }
 
-impl MemoryBuffer {
-    pub fn new(id: usize) -> MemoryBuffer {
+impl<'a> MemoryBuffer<'a> {
+    pub fn new(id: usize) -> MemoryBuffer<'a> {
         MemoryBuffer {
             id,
-            lines: Vec::new(),
+            content: text::Text { lines: Vec::new() },
         }
     }
 }
 
-impl HasId for MemoryBuffer {
+impl<'a> HasId for MemoryBuffer<'a> {
     fn id(&self) -> usize {
         return self.id;
     }
 }
 
-impl Buffer for MemoryBuffer {
+impl<'a> Buffer for MemoryBuffer<'a> {
     fn lines_count(&self) -> usize {
-        return self.lines.len();
+        self.content.height()
+    }
+
+    fn append(&mut self, text: text::Text) {
+        let mut lines = &self.content.lines;
     }
 }

@@ -10,34 +10,41 @@ pub mod tabpage;
 pub mod tabpages;
 pub mod window;
 
-pub struct Display<'a> {
+pub struct Display {
     pub size: Size,
-    pub lines: Vec<text::Spans<'a>>,
+    pub buffer: tui::buffer::Buffer,
 }
 
-impl<'a> Display<'a> {
+impl Display {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            lines: Vec::new(),
+            buffer: tui::buffer::Buffer::empty(Rect::new(0, 0, size.w, size.h)),
         }
     }
 }
 
-impl<'a> std::fmt::Display for Display<'a> {
+impl tui::widgets::Widget for Display {
+    fn render(self, _area: Rect, buf: &mut tui::buffer::Buffer) {
+        buf.merge(&self.buffer);
+    }
+}
+
+impl std::fmt::Display for Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[Display({:?})", self.size)?;
 
-        for line in &self.lines {
-            write!(f, "\n  {:?}", line)?;
-        }
+        // TODO copy content
+        // for line in &self.lines {
+        //     write!(f, "\n  {:?}", line)?;
+        // }
 
         write!(f, "]")
     }
 }
 
 pub trait Renderable {
-    fn render<'a>(&self, app: &'a crate::App, display: &mut Display<'a>, area: Rect);
+    fn render(&self, app: &crate::App, display: &mut Display, area: Rect);
 }
 
 pub struct Tui {
@@ -60,9 +67,11 @@ impl Tui {
 
     fn render_display(&mut self, display: Display) -> Result<(), io::Error> {
         self.terminal.draw(|f| {
-            let p = tui::widgets::Paragraph::new(display.lines);
-            let rect = f.size();
-            f.render_widget(p, rect);
+            f.render_widget(display, f.size());
+            // buf.merge(&display.buffer);
+            // let p = tui::widgets::Paragraph::new(display.lines);
+            // let rect = f.size();
+            // f.render_widget(p, rect);
         })
     }
 }

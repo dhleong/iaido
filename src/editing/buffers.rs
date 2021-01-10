@@ -30,7 +30,6 @@ impl Buffers {
         let boxed = Box::new(buffer);
 
         self.all.push(boxed);
-        // self.all.push(Box::new(MemoryBuffer::new(id)));
 
         self.all.last().unwrap()
     }

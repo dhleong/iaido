@@ -1,6 +1,7 @@
 pub mod buffer;
 pub mod buffers;
 pub mod ids;
+pub mod layout;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;

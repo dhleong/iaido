@@ -51,6 +51,21 @@ impl Layout {
         None
     }
 
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Window>> {
+        for entry in &mut self.entries {
+            match entry {
+                LayoutEntry::Window(win) if win.id == id => return Some(win),
+                LayoutEntry::Layout(lyt) => {
+                    if let Some(win) = lyt.by_id_mut(id) {
+                        return Some(win);
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
+    }
+
     pub fn split(&mut self, win: Box<Window>) {
         self.entries.push(LayoutEntry::Window(win));
         self.resize(self.size())

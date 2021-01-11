@@ -35,6 +35,10 @@ impl Tabpage {
         self.layout.by_id(id)
     }
 
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Window>> {
+        self.layout.by_id_mut(id)
+    }
+
     pub fn hsplit(&mut self) -> Id {
         let id: Id = self.ids.next();
 

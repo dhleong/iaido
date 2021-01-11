@@ -17,8 +17,8 @@ impl Renderable for Window {
             0
         };
 
-        for i in 0..buf.lines_count() {
-            let y = area.y + y_offset + (i as u16);
+        for i in 0..buf.lines_count() - self.scrolled_lines as usize {
+            let y = area.y + self.scrolled_lines as u16 + y_offset + (i as u16);
             display.buffer.set_spans(area.x, y, buf.get(i), area.width);
         }
     }

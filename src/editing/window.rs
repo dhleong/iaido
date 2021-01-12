@@ -1,9 +1,13 @@
-use super::{buffers::Buffers, Buffer, HasId, Id, Resizable, Size};
+use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
 pub struct Window {
     pub id: Id,
     pub buffer: Id,
     pub size: Size,
+    pub focused: bool,
+    pub inserting: bool,
+
+    pub cursor: CursorPosition,
 
     /// number of lines from the bottom that we've scrolled
     pub scrolled_lines: u32,
@@ -17,6 +21,9 @@ impl Window {
             id,
             buffer: buffer_id,
             size: Size { w: 0, h: 0 },
+            focused: true,
+            inserting: false,
+            cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,
             scroll_offset: 0,
         }
@@ -28,6 +35,10 @@ impl Window {
 
     pub fn current_buffer_mut<'a>(&self, buffers: &'a mut Buffers) -> &'a mut Box<dyn Buffer> {
         buffers.by_id_mut(self.buffer).unwrap()
+    }
+
+    pub fn set_focused(&mut self, focused: bool) {
+        self.focused = focused;
     }
 
     pub fn set_scroll(&mut self, lines: u32, offset: u16) {

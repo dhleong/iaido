@@ -1,4 +1,4 @@
-use crate::editing::{Resizable, Size};
+use crate::editing::{self, Resizable, Size};
 
 use std::io;
 pub use tui::text;
@@ -13,6 +13,7 @@ pub mod window;
 pub struct Display {
     pub size: Size,
     pub buffer: tui::buffer::Buffer,
+    pub cursor: editing::Cursor,
 }
 
 impl Display {
@@ -20,7 +21,12 @@ impl Display {
         Self {
             size,
             buffer: tui::buffer::Buffer::empty(Rect::new(0, 0, size.w, size.h)),
+            cursor: editing::Cursor::None,
         }
+    }
+
+    pub fn set_cursor(&mut self, cursor: editing::Cursor) {
+        self.cursor = cursor;
     }
 }
 
@@ -67,11 +73,20 @@ impl Tui {
 
     fn render_display(&mut self, display: Display) -> Result<(), io::Error> {
         self.terminal.draw(|f| {
+            let cursor = display.cursor.clone();
+
             f.render_widget(display, f.size());
-            // buf.merge(&display.buffer);
-            // let p = tui::widgets::Paragraph::new(display.lines);
-            // let rect = f.size();
-            // f.render_widget(p, rect);
+
+            match cursor {
+                editing::Cursor::None => { /* nop */ }
+                editing::Cursor::Block(x, y) => {
+                    f.set_cursor(x, y);
+                }
+                editing::Cursor::Line(x, y) => {
+                    // TODO can we make this happen?
+                    f.set_cursor(x, y);
+                }
+            }
         })
     }
 }

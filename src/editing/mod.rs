@@ -11,22 +11,22 @@ use std::fmt;
 use tui::text;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Position {
-    pub x: u16,
-    pub y: u16,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct Size {
     pub w: u16,
     pub h: u16,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct CursorPosition {
+    pub line: u16,
+    pub col: u16,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Cursor {
     None,
-    // TODO:
-    // Block(Position),
-    // Line(Position),
+    Block(u16, u16),
+    Line(u16, u16),
 }
 
 pub type Id = usize;

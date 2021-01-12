@@ -31,6 +31,10 @@ impl Tabpage {
         self.by_id(self.current).unwrap()
     }
 
+    pub fn current_window_mut(&mut self) -> &mut Box<Window> {
+        self.by_id_mut(self.current).unwrap()
+    }
+
     pub fn by_id(&self, id: Id) -> Option<&Box<Window>> {
         self.layout.by_id(id)
     }
@@ -42,10 +46,14 @@ impl Tabpage {
     pub fn hsplit(&mut self) -> Id {
         let id: Id = self.ids.next();
 
-        let buffer = self.current_window().buffer;
+        let old = self.current_window_mut();
+        old.set_focused(false);
+
+        let buffer = old.buffer;
         let window = Window::new(id, buffer);
         let boxed = Box::new(window);
         self.layout.split(boxed);
+        self.current = id;
 
         id
     }

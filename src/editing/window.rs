@@ -4,7 +4,10 @@ pub struct Window {
     pub id: Id,
     pub buffer: Id,
     pub size: Size,
+
+    /// number of lines from the bottom that we've scrolled
     pub scrolled_lines: u32,
+    /// the visual-line offset within the current (bottom-most) line
     pub scroll_offset: u16,
 }
 

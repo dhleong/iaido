@@ -2,7 +2,7 @@ use crate::editing::{self, Resizable, Size};
 
 use std::io;
 pub use tui::text;
-use tui::Terminal;
+use tui::{backend::Backend, Terminal};
 use tui::{backend::CrosstermBackend, layout::Rect};
 
 pub mod cursor;
@@ -62,6 +62,17 @@ pub struct Tui {
 }
 
 impl Tui {
+    pub fn close(&mut self) -> Result<(), io::Error> {
+        // move the cursor to the bottom of the screen before leaving
+        // so the terminal perserves output (hopefully)
+        let size = self.terminal.size()?;
+        let backend = &mut self.terminal.backend_mut();
+        backend.set_cursor(0, size.height)?;
+
+        // restore normal cursor
+        self.cursor.reset()
+    }
+
     pub fn render(&mut self, app: &mut crate::App) -> Result<(), io::Error> {
         let size = self.terminal.size()?;
         let mut display = Display::new(Size {

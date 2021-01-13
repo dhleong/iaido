@@ -15,7 +15,7 @@ fn main() -> Result<(), io::Error> {
 
         if let Some(bottom_win) = page.by_id_mut(bottom_id) {
             bottom_win.set_scroll(1, 0);
-            // bottom_win.set_inserting(true);
+            bottom_win.set_inserting(true);
         }
     }
 
@@ -23,13 +23,13 @@ fn main() -> Result<(), io::Error> {
     buffer.append(tui::text::Text::raw("test 1"));
     buffer.append(tui::text::Text::raw("lorem ipsum dolor sit amet"));
 
-    if let Ok(mut ui) = tui::create_ui() {
-        ui.render(&mut app)?
-    }
+    let mut ui = tui::create_ui()?;
+    ui.render(&mut app)?;
 
+    // await any key
     if let Ok(_) = crossterm::event::read() {
-        return Ok(());
+        // should we handle an event read error?
     }
 
-    Ok(())
+    ui.close()
 }

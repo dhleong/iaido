@@ -15,6 +15,7 @@ fn main() -> Result<(), io::Error> {
 
         if let Some(bottom_win) = page.by_id_mut(bottom_id) {
             bottom_win.set_scroll(1, 0);
+            // bottom_win.set_inserting(true);
         }
     }
 

@@ -5,10 +5,13 @@ pub use tui::text;
 use tui::Terminal;
 use tui::{backend::CrosstermBackend, layout::Rect};
 
+pub mod cursor;
 pub mod layout;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;
+
+use cursor::CursorRenderer;
 
 pub struct Display {
     pub size: Size,
@@ -55,6 +58,7 @@ pub trait Renderable {
 
 pub struct Tui {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
+    cursor: CursorRenderer,
 }
 
 impl Tui {
@@ -72,9 +76,8 @@ impl Tui {
     }
 
     fn render_display(&mut self, display: Display) -> Result<(), io::Error> {
+        let cursor = display.cursor.clone();
         self.terminal.draw(|f| {
-            let cursor = display.cursor.clone();
-
             f.render_widget(display, f.size());
 
             match cursor {
@@ -83,20 +86,23 @@ impl Tui {
                     f.set_cursor(x, y);
                 }
                 editing::Cursor::Line(x, y) => {
-                    // TODO can we make this happen?
                     f.set_cursor(x, y);
                 }
             }
-        })
+        })?;
+
+        self.cursor.render(cursor)
     }
 }
 
 pub fn create_ui() -> Result<Tui, io::Error> {
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
+    let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
     terminal.clear()?;
 
-    Ok(Tui { terminal })
+    Ok(Tui {
+        cursor: CursorRenderer::new(),
+        terminal,
+    })
 }

@@ -15,12 +15,14 @@ impl Tabpage {
     pub fn new(id: Id, buffers: &mut Buffers, size: Size) -> Self {
         let mut layout = Layout::vertical();
 
-        let initial = Window::new(id, buffers.create().id());
+        let mut ids = Ids::new();
+        let window_id = ids.next();
+        let initial = Window::new(window_id, buffers.create().id());
         layout.split(Box::new(initial));
 
         Self {
             id,
-            ids: Ids::new(),
+            ids,
             current: 0,
             size,
             layout,

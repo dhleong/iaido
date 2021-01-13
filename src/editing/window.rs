@@ -41,6 +41,10 @@ impl Window {
         self.focused = focused;
     }
 
+    pub fn set_inserting(&mut self, inserting: bool) {
+        self.inserting = inserting;
+    }
+
     pub fn set_scroll(&mut self, lines: u32, offset: u16) {
         self.scrolled_lines = lines;
         self.scroll_offset = offset;

@@ -55,8 +55,24 @@ impl std::fmt::Display for Display {
     }
 }
 
+pub struct RenderContext<'a> {
+    app: &'a crate::app::State,
+    display: &'a mut Display,
+    area: Rect,
+}
+
+impl<'a> RenderContext<'a> {
+    pub fn with_area(&mut self, new_area: Rect) -> RenderContext {
+        RenderContext {
+            app: self.app,
+            display: self.display,
+            area: new_area,
+        }
+    }
+}
+
 pub trait Renderable {
-    fn render(&self, app: &crate::app::State, display: &mut Display, area: Rect);
+    fn render(&self, app: &mut RenderContext);
 }
 
 pub struct Tui {
@@ -84,7 +100,13 @@ impl Tui {
         });
 
         app.resize(display.size);
-        app.tabpages.render(&app, &mut display, size);
+
+        let mut context = RenderContext {
+            app: &app,
+            display: &mut display,
+            area: size,
+        };
+        app.tabpages.render(&mut context);
 
         self.render_display(display)
     }

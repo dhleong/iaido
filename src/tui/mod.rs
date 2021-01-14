@@ -10,11 +10,13 @@ use tui::{backend::CrosstermBackend, layout::Rect};
 
 pub mod cursor;
 pub mod layout;
+pub mod measure;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;
 
 use cursor::CursorRenderer;
+use measure::Measurable;
 
 pub struct Display {
     pub size: Size,
@@ -141,7 +143,7 @@ impl Drop for Tui {
 
 impl UI for Tui {
     fn measure_text_height(&self, line: editing::text::TextLine, width: u16) -> u16 {
-        todo!()
+        line.measure_height(width)
     }
 
     fn render_app(&mut self, app: &mut crate::app::State) {

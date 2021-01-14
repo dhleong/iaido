@@ -1,4 +1,7 @@
-use crate::editing::{self, Resizable, Size};
+use crate::{
+    editing::{self, Resizable, Size},
+    ui::UI,
+};
 
 use std::io;
 pub use tui::text;
@@ -53,7 +56,7 @@ impl std::fmt::Display for Display {
 }
 
 pub trait Renderable {
-    fn render(&self, app: &crate::App, display: &mut Display, area: Rect);
+    fn render(&self, app: &crate::app::State, display: &mut Display, area: Rect);
 }
 
 pub struct Tui {
@@ -73,7 +76,7 @@ impl Tui {
         self.cursor.reset()
     }
 
-    pub fn render(&mut self, app: &mut crate::App) -> Result<(), io::Error> {
+    pub fn render(&mut self, app: &mut crate::app::State) -> Result<(), io::Error> {
         let size = self.terminal.size()?;
         let mut display = Display::new(Size {
             w: size.width,
@@ -103,6 +106,27 @@ impl Tui {
         })?;
 
         self.cursor.render(cursor)
+    }
+}
+
+impl Drop for Tui {
+    fn drop(&mut self) {
+        if let Err(e) = self.close() {
+            println!("Error closing Tui: {}", e);
+        }
+    }
+}
+
+impl UI for Tui {
+    fn measure_text_height(&self, line: editing::text::TextLine, width: u16) -> u16 {
+        todo!()
+    }
+
+    fn render_app(&mut self, app: &mut crate::app::State) {
+        if let Err(e) = self.render(app) {
+            // ?
+            panic!("Error rendering app: {}", e);
+        }
     }
 }
 

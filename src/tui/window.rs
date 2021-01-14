@@ -9,7 +9,7 @@ use super::Renderable;
 use crate::editing::{self, window::Window};
 
 impl Renderable for Window {
-    fn render(&self, app: &crate::App, display: &mut super::Display, area: Rect) {
+    fn render(&self, app: &crate::app::State, display: &mut super::Display, area: Rect) {
         let buf = match app.buffers.by_id(self.buffer) {
             None => return,
             Some(buf) => buf,

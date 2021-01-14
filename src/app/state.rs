@@ -1,23 +1,11 @@
 use crate::editing::{buffers::Buffers, tabpages::Tabpages, Buffer, Resizable, Size};
 
-pub struct App {
+pub struct AppState {
     pub buffers: Buffers,
     pub tabpages: Tabpages,
 }
 
-impl App {
-    pub fn new() -> Self {
-        let buffers = Buffers::new();
-        let tabpages = Tabpages::new(Size { w: 0, h: 0 });
-        let mut app = Self { buffers, tabpages };
-
-        // create the default tabpage
-        let default_id = app.tabpages.create(&mut app.buffers);
-        app.tabpages.current = default_id;
-
-        app
-    }
-
+impl AppState {
     pub fn current_buffer<'a>(&'a self) -> &'a Box<dyn Buffer> {
         self.tabpages
             .current_tab()
@@ -33,7 +21,21 @@ impl App {
     }
 }
 
-impl Resizable for App {
+impl Default for AppState {
+    fn default() -> Self {
+        let buffers = Buffers::new();
+        let tabpages = Tabpages::new(Size { w: 0, h: 0 });
+        let mut app = Self { buffers, tabpages };
+
+        // create the default tabpage
+        let default_id = app.tabpages.create(&mut app.buffers);
+        app.tabpages.current = default_id;
+
+        app
+    }
+}
+
+impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
         self.tabpages.resize(new_size)
     }

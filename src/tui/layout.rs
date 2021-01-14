@@ -3,7 +3,7 @@ use crate::editing::layout::{Layout, LayoutDirection, LayoutEntry};
 use tui::layout::Rect;
 
 impl Renderable for Layout {
-    fn render(&self, app: &crate::App, display: &mut super::Display, area: Rect) {
+    fn render(&self, app: &crate::app::State, display: &mut super::Display, area: Rect) {
         match self.direction {
             LayoutDirection::Horizontal => todo!(), //render_horizontal(self, app, display, area),
             LayoutDirection::Vertical => render_vertical(self, app, display, area),
@@ -11,7 +11,12 @@ impl Renderable for Layout {
     }
 }
 
-fn render_vertical(layout: &Layout, app: &crate::App, display: &mut super::Display, area: Rect) {
+fn render_vertical(
+    layout: &Layout,
+    app: &crate::app::State,
+    display: &mut super::Display,
+    area: Rect,
+) {
     let mut layout_area = area;
     for entry in &layout.entries {
         match entry {

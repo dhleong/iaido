@@ -4,11 +4,12 @@ pub mod ids;
 pub mod layout;
 pub mod tabpage;
 pub mod tabpages;
+pub mod text;
 pub mod window;
 
 use std::fmt;
 
-use tui::text;
+use text::{TextLine, TextLines};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Size {
@@ -41,8 +42,8 @@ pub trait Resizable {
 
 pub trait Buffer: HasId {
     fn lines_count(&self) -> usize;
-    fn append(&mut self, text: text::Text<'static>);
-    fn get(&self, line_index: usize) -> &text::Spans<'static>;
+    fn append(&mut self, text: TextLines);
+    fn get(&self, line_index: usize) -> &TextLine;
 }
 
 impl fmt::Display for dyn Buffer {

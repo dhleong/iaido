@@ -1,17 +1,15 @@
-use tui::text;
-
-use crate::editing::{Buffer, HasId};
+use crate::editing::{text::TextLine, text::TextLines, Buffer, HasId};
 
 pub struct MemoryBuffer {
     id: usize,
-    content: text::Text<'static>,
+    content: TextLines,
 }
 
 impl MemoryBuffer {
     pub fn new(id: usize) -> MemoryBuffer {
         MemoryBuffer {
             id,
-            content: text::Text { lines: Vec::new() },
+            content: TextLines::default(),
         }
     }
 }
@@ -27,11 +25,11 @@ impl Buffer for MemoryBuffer {
         self.content.height()
     }
 
-    fn append(&mut self, text: text::Text<'static>) {
-        self.content.extend(text::Text::from(text));
+    fn append(&mut self, text: TextLines) {
+        self.content.extend(text);
     }
 
-    fn get(&self, line_index: usize) -> &text::Spans<'static> {
+    fn get(&self, line_index: usize) -> &TextLine {
         &self.content.lines[line_index]
     }
 }

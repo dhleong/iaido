@@ -1,3 +1,7 @@
+use std::cmp::{max, min};
+
+use crate::{app, tui::measure::Measurable};
+
 use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
 pub struct Window {
@@ -43,6 +47,65 @@ impl Window {
 
     pub fn set_inserting(&mut self, inserting: bool) {
         self.inserting = inserting;
+    }
+
+    /// Scroll the window "back in time" by the given number of "virtual" (visual) lines.
+    /// Pass a negative value for `virtual_lines` to scroll "forward in time" (toward the bottom of
+    /// the screen)
+    pub fn scroll_lines(&mut self, app: &app::State, virtual_lines: i32) {
+        let buffer = app
+            .buffers
+            .by_id(self.buffer)
+            .expect("Window buffer missing");
+
+        let to_scroll = virtual_lines.abs();
+        let step = virtual_lines / to_scroll;
+        if step > 0 {
+            self.scroll_up(buffer, to_scroll as usize);
+        } else {
+            self.scroll_down(buffer, to_scroll as usize);
+        }
+    }
+
+    fn scroll_up(&mut self, buffer: &Box<dyn Buffer>, virtual_lines: usize) {
+        let end = buffer.lines_count() - 1;
+        let mut to_scroll = virtual_lines;
+
+        let window_width = self.size.w;
+        for line_nr in (self.scrolled_lines as usize)..buffer.lines_count() {
+            let line = buffer.get(line_nr);
+            let consumable = line.measure_height(window_width) - self.scroll_offset;
+
+            self.scroll_offset += min(to_scroll, consumable as usize) as u16;
+            if to_scroll < consumable as usize {
+                // done!
+                break;
+            }
+
+            if self.scrolled_lines as usize >= end {
+                // start of buffer reached and still scrolling; cancel
+                break;
+            }
+
+            to_scroll -= consumable as usize;
+            self.scroll_offset = 0;
+
+            // finish scrolling past a wrapped line
+            if to_scroll == 0 {
+                break;
+            }
+        }
+
+        if self.scrolled_lines as usize == end {
+            // last buffer line; ensure we don't offset-scroll it out of visible range
+            let line = buffer.get(end);
+            let rendered = line.measure_height(window_width);
+            self.scroll_offset = min(max(self.scroll_offset, 0), rendered - 1);
+        }
+    }
+
+    fn scroll_down(&mut self, buffer: &Box<dyn Buffer>, virtual_lines: usize) {
+        todo!();
     }
 
     pub fn set_scroll(&mut self, lines: u32, offset: u16) {

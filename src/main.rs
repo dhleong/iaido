@@ -23,6 +23,7 @@ fn main() -> Result<(), io::Error> {
     let buffer = app.state.current_buffer_mut();
     buffer.append(tui::text::Text::raw("test 1"));
     buffer.append(tui::text::Text::raw("lorem ipsum dolor sit amet"));
+    buffer.append(tui::text::Text::raw("Bacon ipsum dolor amet fatback hamburger capicola, andouille kielbasa prosciutto doner pork loin turducken kevin. Pork belly chislic leberkas ground round cow meatloaf beef. Landjaeger ground round ham chislic brisket buffalo pork loin meatloaf tail drumstick tongue spare ribs."));
 
     app.render();
 

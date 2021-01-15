@@ -87,7 +87,6 @@ impl Layout {
 
 impl Resizable for Layout {
     fn resize(&mut self, new_size: super::Size) {
-        let count = self.entries.len() as u16;
         match self.direction {
             LayoutDirection::Vertical => {
                 self.primary_size = new_size.h;
@@ -99,9 +98,16 @@ impl Resizable for Layout {
             }
         };
 
-        let primary_split = self.primary_size / count;
+        let count = self.entries.len() as u16;
+        if count == 0 || self.primary_size == 0 {
+            // nop
+            return;
+        }
+
+        let borders = count - 1;
+        let primary_split = (self.primary_size - borders) / count;
         for entry in &mut self.entries {
-            // TODO
+            // TODO can/should we try to maintain current ratios?
             let available = Size {
                 h: primary_split,
                 w: self.cross_size,

@@ -28,7 +28,7 @@ impl Display {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            buffer: tui::buffer::Buffer::empty(Rect::new(0, 0, size.w, size.h)),
+            buffer: tui::buffer::Buffer::empty(size.into()),
             cursor: editing::Cursor::None,
         }
     }

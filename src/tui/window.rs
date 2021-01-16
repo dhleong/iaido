@@ -1,5 +1,3 @@
-use std::cmp;
-
 use tui::{layout::Alignment, text, widgets::Paragraph, widgets::Widget, widgets::Wrap};
 
 use super::{RenderContext, Renderable};
@@ -14,8 +12,8 @@ impl Renderable for Window {
         };
 
         let count = buf.lines_count();
-        let end = count - cmp::min(count, self.scrolled_lines as usize);
-        let start = end - cmp::min(end, self.size.h as usize);
+        let end = count.checked_sub(self.scrolled_lines as usize).unwrap_or(0);
+        let start = end.checked_sub(self.size.h as usize).unwrap_or(0);
 
         let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
         let candidate_text = text::Text::from(lines);
@@ -33,17 +31,23 @@ impl Renderable for Window {
         }
 
         if self.focused {
-            // FIXME this y_offset doesn't account for word-wrapping
-            let cursor_x = self.cursor.col % area.width;
-            let cursor_y_offset = self.cursor.col / area.width;
+            let (x, y) = if count > 0 {
+                // FIXME this y_offset doesn't account for word-wrapping
+                let cursor_x = self.cursor.col % area.width;
+                let cursor_y_offset = (self.cursor.col % area.width).checked_sub(1).unwrap_or(0);
 
-            let cursor_y_absolute = (self.cursor.line as usize) - start;
-            let cursor_y = cursor_y_absolute
-                .checked_sub(self.scroll_offset as usize)
-                .unwrap_or(0);
+                let cursor_y_absolute = (self.cursor.line as usize).checked_sub(start).unwrap_or(0);
+                let cursor_y = cursor_y_absolute
+                    .checked_sub(self.scroll_offset as usize)
+                    .unwrap_or(0);
 
-            let x = area.x + cursor_x;
-            let y = area.y + (cursor_y as u16) + cursor_y_offset;
+                let x = area.x + cursor_x;
+                let y = area.y + (cursor_y as u16) - cursor_y_offset;
+                (x, y)
+            } else {
+                // simple case
+                (area.x, area.y)
+            };
 
             if self.inserting {
                 context.display.set_cursor(editing::Cursor::Line(x, y));
@@ -58,7 +62,7 @@ impl Renderable for Window {
 
 #[cfg(test)]
 mod tests {
-    use editing::{text::TextLine, text::TextLines, Cursor, CursorPosition, Size};
+    use editing::{text::TextLine, text::TextLines, Cursor, CursorPosition, Resizable, Size};
 
     use crate::{app::State, tui::Display};
 
@@ -78,7 +82,11 @@ mod tests {
             };
 
             {
-                state.current_buffer_mut().append(self.clone());
+                state
+                    .buffers
+                    .by_id_mut(buffer_id)
+                    .unwrap()
+                    .append(self.clone());
             }
 
             let size = Size {
@@ -94,6 +102,7 @@ mod tests {
 
             {
                 let mut window = Window::new(0, buffer_id);
+                window.resize(size);
                 window.cursor = cursor;
                 window.render(&mut context);
             }
@@ -115,8 +124,15 @@ mod tests {
         #[test]
         fn single_line_at_bottom() {
             let text = TextLine::from("Take my love");
-            let display = text.render((10, 10), CursorPosition { line: 0, col: 0 });
-            assert_eq!(display.cursor, Cursor::Block(0, 10));
+            let display = text.render((12, 10), CursorPosition { line: 0, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 9));
+        }
+
+        #[test]
+        fn wrapped_line_at_bottom() {
+            let text = TextLine::from("Take my love");
+            let display = text.render((4, 10), CursorPosition { line: 0, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 7));
         }
     }
 }

@@ -5,7 +5,7 @@ mod ui;
 
 use std::io;
 
-use editing::CursorPosition;
+use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
 
 fn main() -> Result<(), io::Error> {
     let ui = tui::create_ui()?;
@@ -29,6 +29,16 @@ fn main() -> Result<(), io::Error> {
         bottom_win.scroll_lines(&app.state.buffers, 1);
         bottom_win.set_inserting(true);
         bottom_win.cursor = CursorPosition { line: 1, col: 0 }
+    }
+
+    {
+        let motion = ToLineEndMotion {};
+        let range = motion.range(&app.state);
+        app.state
+            .tabpages
+            .current_tab_mut()
+            .current_window_mut()
+            .apply_cursor(range);
     }
 
     app.render();

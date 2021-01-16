@@ -2,7 +2,9 @@ use std::cmp::{max, min};
 
 use crate::tui::measure::Measurable;
 
-use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
+use super::{
+    buffers::Buffers, motion::MotionRange, Buffer, CursorPosition, HasId, Id, Resizable, Size,
+};
 
 pub struct Window {
     pub id: Id,
@@ -31,6 +33,10 @@ impl Window {
             scrolled_lines: 0,
             scroll_offset: 0,
         }
+    }
+
+    pub fn apply_cursor(&mut self, motion: MotionRange) {
+        self.cursor = motion.1;
     }
 
     pub fn current_buffer<'a>(&self, buffers: &'a Buffers) -> &'a Box<dyn Buffer> {

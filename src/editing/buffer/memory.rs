@@ -1,4 +1,4 @@
-use crate::editing::{text::TextLine, text::TextLines, Buffer, HasId};
+use crate::editing::{motion::MotionRange, text::TextLine, text::TextLines, Buffer, HasId};
 
 pub struct MemoryBuffer {
     id: usize,
@@ -31,5 +31,9 @@ impl Buffer for MemoryBuffer {
 
     fn get(&self, line_index: usize) -> &TextLine {
         &self.content.lines[line_index]
+    }
+
+    fn delete_range(&mut self, range: MotionRange) {
+        todo!("Delete: {:?}", range);
     }
 }

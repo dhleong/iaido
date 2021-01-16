@@ -1,4 +1,6 @@
-use crate::editing::{buffers::Buffers, tabpages::Tabpages, Buffer, Resizable, Size};
+use crate::editing::{
+    buffers::Buffers, motion::MotionContext, tabpages::Tabpages, Buffer, Resizable, Size,
+};
 
 pub struct AppState {
     pub buffers: Buffers,
@@ -38,5 +40,15 @@ impl Default for AppState {
 impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
         self.tabpages.resize(new_size)
+    }
+}
+
+impl MotionContext for AppState {
+    fn buffer(&self) -> &Box<dyn Buffer> {
+        self.current_buffer()
+    }
+
+    fn cursor(&self) -> crate::editing::CursorPosition {
+        self.tabpages.current_tab().current_window().cursor
     }
 }

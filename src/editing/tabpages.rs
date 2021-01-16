@@ -1,5 +1,3 @@
-use std::cell::{Ref, RefCell, RefMut};
-
 use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id, Resizable, Size};
 
 /// Manages all buffers (Hidden or not) in an app
@@ -7,7 +5,7 @@ pub struct Tabpages {
     pub current: Id,
     size: Size,
     ids: Ids,
-    all: Vec<RefCell<Tabpage>>,
+    all: Vec<Box<Tabpage>>,
 }
 
 impl Tabpages {
@@ -24,26 +22,20 @@ impl Tabpages {
         self.all.len()
     }
 
-    pub fn current_tab(&self) -> Ref<Tabpage> {
+    pub fn current_tab(&self) -> &Box<Tabpage> {
         self.by_id(self.current).unwrap()
     }
 
-    pub fn current_tab_mut(&mut self) -> RefMut<Tabpage> {
+    pub fn current_tab_mut(&mut self) -> &mut Box<Tabpage> {
         self.by_id_mut(self.current).unwrap()
     }
 
-    pub fn by_id(&self, id: Id) -> Option<Ref<Tabpage>> {
-        self.all
-            .iter()
-            .find(|tab| tab.borrow().id == id)
-            .and_then(|tab| Some(tab.borrow()))
+    pub fn by_id(&self, id: Id) -> Option<&Box<Tabpage>> {
+        self.all.iter().find(|tab| tab.id == id)
     }
 
-    pub fn by_id_mut(&mut self, id: Id) -> Option<RefMut<Tabpage>> {
-        self.all
-            .iter()
-            .find(|tab| tab.borrow().id == id)
-            .and_then(|tab| Some(tab.borrow_mut()))
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Tabpage>> {
+        self.all.iter_mut().find(|tab| tab.id == id)
     }
 
     pub fn create(&mut self, buffers: &mut Buffers) -> Id {
@@ -55,7 +47,7 @@ impl Tabpages {
             // resize an existing, single tab
             if tabs_count == 1 {
                 if let Some(tab) = self.all.first_mut() {
-                    tab.borrow_mut().resize(page_size);
+                    tab.resize(page_size);
                 }
             }
         }
@@ -63,7 +55,7 @@ impl Tabpages {
         let id = self.ids.next();
         let tabpage = Tabpage::new(id, buffers, page_size);
 
-        self.all.push(RefCell::new(tabpage));
+        self.all.push(Box::new(tabpage));
 
         id
     }
@@ -75,8 +67,8 @@ impl Resizable for Tabpages {
         if self.all.len() > 1 {
             actual_size.h -= 1;
         }
-        for page in &self.all {
-            page.borrow_mut().resize(actual_size);
+        for page in &mut self.all {
+            page.resize(actual_size);
         }
     }
 }

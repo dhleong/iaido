@@ -19,6 +19,9 @@ impl Measurable for TextLine {
             .alignment(Alignment::Left);
 
         // TODO: this is HACKS; just do the wrapping, please
+        if width <= 0 {
+            return 0;
+        }
 
         // NOTE: in order to avoid wildly excessive allocations,
         // we use some simple heuristics to guess how much space

@@ -35,7 +35,10 @@ impl Renderable for Window {
         if self.focused {
             let cursor_x = self.cursor.col % area.width;
             let cursor_y_offset = self.cursor.col / area.width;
-            let cursor_y = (self.cursor.line as usize) - start - (self.scroll_offset as usize);
+            let cursor_y_absolute = (self.cursor.line as usize) - start;
+            let cursor_y = cursor_y_absolute
+                .checked_sub(self.scroll_offset as usize)
+                .unwrap_or(0);
 
             let x = area.x + cursor_x;
             let y = area.y + (cursor_y as u16) + cursor_y_offset;

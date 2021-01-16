@@ -13,15 +13,15 @@ pub trait Measurable {
 
 impl Measurable for TextLine {
     fn measure_height(&self, width: u16) -> u16 {
+        if width <= 0 {
+            return 0;
+        }
+
+        // TODO: this is HACKS; just do the wrapping, please
         let text = Text::from(vec![self.clone()]);
         let p = Paragraph::new(text)
             .wrap(Wrap { trim: true }) // NOTE: may become a pref?
             .alignment(Alignment::Left);
-
-        // TODO: this is HACKS; just do the wrapping, please
-        if width <= 0 {
-            return 0;
-        }
 
         // NOTE: in order to avoid wildly excessive allocations,
         // we use some simple heuristics to guess how much space

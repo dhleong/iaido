@@ -54,7 +54,7 @@ impl Window {
     /// the screen)
     pub fn scroll_lines(&mut self, buffers: &Buffers, virtual_lines: i32) {
         let buffer = buffers.by_id(self.buffer).expect("Window buffer missing");
-        if buffer.lines_count() == 0 {
+        if buffer.lines_count() == 0 || self.size.w <= 0 {
             // nop
             return;
         }
@@ -73,7 +73,7 @@ impl Window {
         let mut to_scroll = virtual_lines;
 
         let window_width = self.size.w;
-        for line_nr in (self.scrolled_lines as usize)..buffer.lines_count() {
+        for line_nr in (0..(buffer.lines_count() - self.scrolled_lines as usize)).rev() {
             let line = buffer.get(line_nr);
             let consumable = line.measure_height(window_width) - self.scroll_offset;
 

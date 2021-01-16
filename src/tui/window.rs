@@ -33,8 +33,10 @@ impl Renderable for Window {
         }
 
         if self.focused {
+            // FIXME this y_offset doesn't account for word-wrapping
             let cursor_x = self.cursor.col % area.width;
             let cursor_y_offset = self.cursor.col / area.width;
+
             let cursor_y_absolute = (self.cursor.line as usize) - start;
             let cursor_y = cursor_y_absolute
                 .checked_sub(self.scroll_offset as usize)
@@ -51,5 +53,70 @@ impl Renderable for Window {
         }
 
         paragraph.render(area, &mut context.display.buffer);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use editing::{text::TextLine, text::TextLines, Cursor, CursorPosition, Size};
+
+    use crate::{app::State, tui::Display};
+
+    use super::*;
+
+    trait Testable {
+        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display;
+    }
+
+    impl Testable for TextLines {
+        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display {
+            let mut state = State::default();
+
+            let buffer_id: usize = {
+                let buffer = state.buffers.create();
+                buffer.id()
+            };
+
+            {
+                state.current_buffer_mut().append(self.clone());
+            }
+
+            let size = Size {
+                w: size.0,
+                h: size.1,
+            };
+            let mut display = Display::new(size);
+            let mut context = RenderContext {
+                app: &state,
+                display: &mut display,
+                area: size.into(),
+            };
+
+            {
+                let mut window = Window::new(0, buffer_id);
+                window.cursor = cursor;
+                window.render(&mut context);
+            }
+
+            return display;
+        }
+    }
+
+    impl Testable for TextLine {
+        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display {
+            let lines = TextLines::from(self.clone());
+            lines.render(size, cursor)
+        }
+    }
+
+    mod cursor_rendering {
+        use super::*;
+
+        #[test]
+        fn single_line_at_bottom() {
+            let text = TextLine::from("Take my love");
+            let display = text.render((10, 10), CursorPosition { line: 0, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 10));
+        }
     }
 }

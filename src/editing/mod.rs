@@ -23,7 +23,7 @@ pub struct CursorPosition {
     pub col: u16,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Cursor {
     None,
     Block(u16, u16),

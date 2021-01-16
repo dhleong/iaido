@@ -8,10 +8,10 @@ pub struct CursorRenderer {
 }
 
 impl CursorRenderer {
-    pub fn new() -> Self {
+    pub fn nop() -> Self {
         Self {
             stdout: io::stdout(),
-            supports_line: true, // ?
+            supports_line: false,
         }
     }
 
@@ -38,5 +38,14 @@ impl CursorRenderer {
 
         self.stdout.write_all(csi)?;
         self.stdout.flush()
+    }
+}
+
+impl Default for CursorRenderer {
+    fn default() -> Self {
+        Self {
+            stdout: io::stdout(),
+            supports_line: true, // ?
+        }
     }
 }

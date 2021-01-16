@@ -5,6 +5,8 @@ mod ui;
 
 use std::io;
 
+use editing::CursorPosition;
+
 fn main() -> Result<(), io::Error> {
     let ui = tui::create_ui()?;
     let state = app::State::default();
@@ -26,6 +28,7 @@ fn main() -> Result<(), io::Error> {
     if let Some(bottom_win) = page.by_id_mut(bottom_id) {
         bottom_win.scroll_lines(&app.state.buffers, 1);
         bottom_win.set_inserting(true);
+        bottom_win.cursor = CursorPosition { line: 1, col: 0 }
     }
 
     app.render();

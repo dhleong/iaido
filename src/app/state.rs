@@ -1,5 +1,6 @@
 use crate::editing::{
-    buffers::Buffers, motion::MotionContext, tabpages::Tabpages, Buffer, Resizable, Size,
+    buffers::Buffers, motion::MotionContext, tabpages::Tabpages, window::Window, Buffer, Resizable,
+    Size,
 };
 
 pub struct AppState {
@@ -49,6 +50,14 @@ impl MotionContext for AppState {
     }
 
     fn cursor(&self) -> crate::editing::CursorPosition {
-        self.tabpages.current_tab().current_window().cursor
+        self.window().cursor
+    }
+
+    fn window(&self) -> &Box<Window> {
+        self.tabpages.current_tab().current_window()
+    }
+
+    fn window_mut(&mut self) -> &mut Box<Window> {
+        self.tabpages.current_tab_mut().current_window_mut()
     }
 }

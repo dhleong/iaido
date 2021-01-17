@@ -114,3 +114,68 @@ impl Motion for UpLineMotion {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editing::motion::tests::window;
+    use indoc::indoc;
+
+    mod down_line_motion {
+        use super::*;
+
+        #[test]
+        fn handles_empty_lines() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+
+                Take
+            "});
+
+            ctx.motion(DownLineMotion {});
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |
+                Take
+            "});
+
+            // NOTE: vim would actually end on Tak|e... should we bother?
+            ctx.motion(DownLineMotion {});
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+
+                |Take
+            "});
+        }
+
+        #[test]
+        fn hugs_columns() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+                Take
+            "});
+            ctx.motion(DownLineMotion {});
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                Tak|e
+            "});
+        }
+    }
+
+    mod up_line_motion {
+        use super::*;
+
+        #[test]
+        fn hugs_columns() {
+            let mut ctx = window(indoc! {"
+                Take
+                Take my |land
+            "});
+            ctx.motion(UpLineMotion {});
+            ctx.assert_visual_match(indoc! {"
+                Tak|e
+                Take my land
+            "});
+        }
+    }
+}

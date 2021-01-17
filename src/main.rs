@@ -37,13 +37,7 @@ fn main() -> Result<(), io::Error> {
     }
 
     {
-        let motion = ToLineEndMotion {};
-        let range = motion.range(&app.state);
-        app.state
-            .tabpages
-            .current_tab_mut()
-            .current_window_mut()
-            .apply_cursor(range);
+        ToLineEndMotion {}.apply_cursor(&mut app.state);
     }
 
     app.render();

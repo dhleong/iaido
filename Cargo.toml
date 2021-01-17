@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 crossterm = "0.18"
 tui = { version = "0.14", default-features = false, features = ['crossterm'] }
+
+# for cleaner tests:
+indoc = "1.0"

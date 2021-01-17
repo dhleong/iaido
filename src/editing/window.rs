@@ -2,9 +2,7 @@ use std::cmp::{max, min};
 
 use crate::tui::measure::Measurable;
 
-use super::{
-    buffers::Buffers, motion::MotionRange, Buffer, CursorPosition, HasId, Id, Resizable, Size,
-};
+use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
 pub struct Window {
     pub id: Id,
@@ -33,10 +31,6 @@ impl Window {
             scrolled_lines: 0,
             scroll_offset: 0,
         }
-    }
-
-    pub fn apply_cursor(&mut self, motion: MotionRange) {
-        self.cursor = motion.1;
     }
 
     pub fn current_buffer<'a>(&self, buffers: &'a Buffers) -> &'a Box<dyn Buffer> {
@@ -115,9 +109,26 @@ impl Window {
         todo!();
     }
 
-    pub fn set_scroll(&mut self, lines: u32, offset: u16) {
-        self.scrolled_lines = lines;
-        self.scroll_offset = offset;
+    /// Given a CursorPosition meant to replace the one currently set on this Window, return a new
+    /// CursorPosition that is guaranteed to be valid for this window, taking into account insert
+    /// mode, buffer line width, etc
+    pub fn clamp_cursor(&self, buffer: &Box<dyn Buffer>, cursor: CursorPosition) -> CursorPosition {
+        if let Some(width) = buffer.get_line_width(cursor.line) {
+            let max_index = if self.inserting {
+                width
+            } else if width > 0 {
+                width - 1
+            } else {
+                0
+            };
+
+            CursorPosition {
+                line: cursor.line,
+                col: min(max_index as u16, cursor.col),
+            }
+        } else {
+            CursorPosition::default()
+        }
     }
 }
 

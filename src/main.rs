@@ -19,6 +19,11 @@ fn main() -> Result<(), io::Error> {
 
     // make sure we have an initial measurement
     {
+        app.state
+            .tabpages
+            .current_tab_mut()
+            .current_window_mut()
+            .set_focused(false);
         app.render();
     }
 

@@ -34,7 +34,7 @@ impl Renderable for Window {
             let (x, y) = if count > 0 {
                 // FIXME this y_offset doesn't account for word-wrapping
                 let cursor_x = self.cursor.col % area.width;
-                let cursor_y_offset = (self.cursor.col % area.width).checked_sub(1).unwrap_or(0);
+                let cursor_y_offset = (self.cursor.col / area.width).checked_sub(1).unwrap_or(0);
 
                 let cursor_y_absolute = (self.cursor.line as usize).checked_sub(start).unwrap_or(0);
                 let cursor_y = cursor_y_absolute
@@ -154,6 +154,13 @@ mod tests {
             let text = TextLines::raw("Take my land\nTake me where");
             let display = text.render((15, 10), CursorPosition { line: 1, col: 0 });
             assert_eq!(display.cursor, Cursor::Block(0, 9));
+        }
+
+        #[test]
+        fn last_line_last_col_at_bottom() {
+            let text = TextLines::raw("Take my land\nTake me where");
+            let display = text.render((15, 10), CursorPosition { line: 1, col: 14 });
+            assert_eq!(display.cursor, Cursor::Block(14, 9));
         }
 
         #[test]

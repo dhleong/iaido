@@ -32,6 +32,13 @@ impl CursorPosition {
         }
     }
 
+    pub fn with_col<T: Into<u16>>(&self, col: T) -> CursorPosition {
+        CursorPosition {
+            line: self.line,
+            col: col.into(),
+        }
+    }
+
     pub fn end_of_line(&self, buffer: &Box<dyn Buffer>) -> CursorPosition {
         let line_width = buffer.get(self.line).width();
         CursorPosition {

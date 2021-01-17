@@ -1,3 +1,4 @@
+pub mod char;
 pub mod linewise;
 
 use super::{window::Window, Buffer, CursorPosition};
@@ -53,6 +54,10 @@ mod tests {
     impl TestWindow {
         pub fn motion<T: Motion>(&mut self, motion: T) {
             motion.apply_cursor(self);
+        }
+
+        pub fn set_inserting(&mut self, inserting: bool) {
+            self.window.set_inserting(inserting);
         }
 
         pub fn assert_visual_match(&self, s: &'static str) {

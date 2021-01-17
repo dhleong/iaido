@@ -41,6 +41,12 @@ impl CursorPosition {
     }
 }
 
+impl Default for CursorPosition {
+    fn default() -> Self {
+        Self { line: 0, col: 0 }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Cursor {
     None,

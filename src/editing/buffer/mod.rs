@@ -15,6 +15,14 @@ pub trait Buffer: HasId {
     fn get(&self, line_index: usize) -> &TextLine;
 
     fn delete_range(&mut self, range: MotionRange);
+
+    // convenience:
+    fn is_empty(&self) -> bool {
+        self.lines_count() == 0
+    }
+    fn last_index(&self) -> Option<usize> {
+        self.lines_count().checked_sub(1)
+    }
 }
 
 impl fmt::Display for dyn Buffer {

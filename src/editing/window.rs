@@ -60,7 +60,7 @@ impl Window {
     /// the screen)
     pub fn scroll_lines(&mut self, buffers: &Buffers, virtual_lines: i32) {
         let buffer = buffers.by_id(self.buffer).expect("Window buffer missing");
-        if buffer.lines_count() == 0 || self.size.w <= 0 {
+        if buffer.is_empty() || self.size.w <= 0 {
             // nop
             return;
         }
@@ -75,7 +75,7 @@ impl Window {
     }
 
     fn scroll_up(&mut self, buffer: &Box<dyn Buffer>, virtual_lines: usize) {
-        let end = buffer.lines_count() - 1;
+        let end = buffer.last_index().expect("Empty buffer somewhow?");
         let mut to_scroll = virtual_lines;
 
         let window_width = self.size.w;

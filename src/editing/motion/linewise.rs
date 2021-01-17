@@ -36,7 +36,7 @@ impl Motion for ToLastLineOfBufferMotion {
         // NOTE: technically this should be "the first non-blank char"
         // on the last line...
         CursorPosition {
-            line: context.buffer().lines_count().checked_sub(1).unwrap_or(0) as u16,
+            line: context.buffer().lines_count().checked_sub(1).unwrap_or(0),
             col: 0,
         }
     }
@@ -72,17 +72,17 @@ impl Motion for DownLineMotion {
             Some(idx) => idx,
         };
 
-        if start.line as usize == end_index && start == start.end_of_line(context.buffer()) {
+        if start.line == end_index && start == start.end_of_line(context.buffer()) {
             return start;
         }
 
         let offset_on_line = start.col;
-        let next_line_index = min(end_index, (start.line as usize) + 1);
+        let next_line_index = min(end_index, start.line + 1);
         let next_line = buffer.get(next_line_index);
         let new_col = min(next_line.width() as u16, offset_on_line);
 
         CursorPosition {
-            line: next_line_index as u16,
+            line: next_line_index,
             col: new_col,
         }
     }
@@ -104,12 +104,12 @@ impl Motion for UpLineMotion {
         let start = context.cursor();
 
         let offset_on_line = start.col;
-        let next_line_index = (start.line as usize).checked_sub(1).unwrap_or(0);
+        let next_line_index = start.line.checked_sub(1).unwrap_or(0);
         let next_line = buffer.get(next_line_index);
         let new_col = min(next_line.width() as u16, offset_on_line);
 
         CursorPosition {
-            line: next_line_index as u16,
+            line: next_line_index,
             col: new_col,
         }
     }

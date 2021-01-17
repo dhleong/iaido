@@ -36,7 +36,7 @@ impl Renderable for Window {
                 let cursor_x = self.cursor.col % area.width;
                 let cursor_y_offset = (self.cursor.col / area.width).checked_sub(1).unwrap_or(0);
 
-                let cursor_y_absolute = (self.cursor.line as usize).checked_sub(start).unwrap_or(0);
+                let cursor_y_absolute = self.cursor.line.checked_sub(start).unwrap_or(0);
                 let cursor_y = cursor_y_absolute
                     .checked_sub(self.scroll_offset as usize)
                     .unwrap_or(0);

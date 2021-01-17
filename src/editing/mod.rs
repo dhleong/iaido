@@ -18,9 +18,9 @@ pub struct Size {
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct CursorPosition {
-    // FIXME line probably needs to be usize, since this is an absolute
-    // line number and not a visual one
-    pub line: u16,
+    /// Line index within a buffer
+    pub line: usize,
+    /// Column within a line (NOT the visual column)
     pub col: u16,
 }
 
@@ -33,7 +33,7 @@ impl CursorPosition {
     }
 
     pub fn end_of_line(&self, buffer: &Box<dyn Buffer>) -> CursorPosition {
-        let line_width = buffer.get(self.line as usize).width();
+        let line_width = buffer.get(self.line).width();
         CursorPosition {
             line: self.line,
             col: (line_width - 1) as u16,

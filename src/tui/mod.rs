@@ -63,6 +63,24 @@ impl Into<Rect> for Size {
     }
 }
 
+impl From<Rect> for Size {
+    fn from(rect: Rect) -> Self {
+        Self {
+            w: rect.width,
+            h: rect.height,
+        }
+    }
+}
+
+impl From<(u16, u16)> for Size {
+    fn from(size: (u16, u16)) -> Self {
+        Self {
+            w: size.0,
+            h: size.1,
+        }
+    }
+}
+
 pub struct RenderContext<'a> {
     app: &'a crate::app::State,
     display: &'a mut Display,
@@ -170,23 +188,4 @@ pub fn create_ui() -> Result<Tui, io::Error> {
         cursor: CursorRenderer::default(),
         terminal,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io;
-
-    use super::*;
-
-    impl Tui {
-        pub fn new_test() -> Self {
-            // TODO do we need a "real" terminal here? can we use a fake?
-            let backend = CrosstermBackend::new(io::stdout());
-            let terminal = Terminal::new(backend).expect("Couldn't create terminal");
-            Self {
-                cursor: CursorRenderer::nop(),
-                terminal,
-            }
-        }
-    }
 }

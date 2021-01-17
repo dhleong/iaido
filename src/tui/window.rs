@@ -63,17 +63,23 @@ impl Renderable for Window {
 #[cfg(test)]
 mod tests {
     use editing::{text::TextLine, text::TextLines, Cursor, CursorPosition, Resizable, Size};
+    use tui::layout::Rect;
 
     use crate::{app::State, tui::Display};
 
     use super::*;
 
     trait Testable {
-        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display;
+        fn render<T>(&self, size: T, cursor: CursorPosition) -> Display
+        where
+            T: Into<Size>;
     }
 
     impl Testable for TextLines {
-        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display {
+        fn render<T>(&self, size: T, cursor: CursorPosition) -> Display
+        where
+            T: Into<Size>,
+        {
             let mut state = State::default();
 
             let buffer_id: usize = {
@@ -89,20 +95,18 @@ mod tests {
                     .append(self.clone());
             }
 
-            let size = Size {
-                w: size.0,
-                h: size.1,
-            };
-            let mut display = Display::new(size);
+            let size_struct = size.into();
+            let area: Rect = size_struct.into();
+            let mut display = Display::new(area.into());
             let mut context = RenderContext {
                 app: &state,
                 display: &mut display,
-                area: size.into(),
+                area,
             };
 
             {
                 let mut window = Window::new(0, buffer_id);
-                window.resize(size);
+                window.resize(area.into());
                 window.cursor = cursor;
                 window.render(&mut context);
             }
@@ -112,7 +116,10 @@ mod tests {
     }
 
     impl Testable for TextLine {
-        fn render(&self, size: (u16, u16), cursor: CursorPosition) -> Display {
+        fn render<T>(&self, size: T, cursor: CursorPosition) -> Display
+        where
+            T: Into<Size>,
+        {
             let lines = TextLines::from(self.clone());
             lines.render(size, cursor)
         }
@@ -133,6 +140,34 @@ mod tests {
             let text = TextLine::from("Take my love");
             let display = text.render((4, 10), CursorPosition { line: 0, col: 0 });
             assert_eq!(display.cursor, Cursor::Block(0, 7));
+        }
+
+        #[test]
+        fn first_line_of_multi_at_bottom() {
+            let text = TextLines::raw("Take my land\nTake me where");
+            let display = text.render((15, 10), CursorPosition { line: 0, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 8));
+        }
+
+        #[test]
+        fn last_line_at_bottom() {
+            let text = TextLines::raw("Take my land\nTake me where");
+            let display = text.render((15, 10), CursorPosition { line: 1, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 9));
+        }
+
+        #[test]
+        fn middle_line_at_bottom() {
+            let text = TextLines::raw("Take my love\nTake my land\nTake me where");
+            let display = text.render((15, 10), CursorPosition { line: 1, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 8));
+        }
+
+        #[test]
+        fn middle_line_of_split_at_bottom() {
+            let text = TextLines::raw("Take my love\nTake my land\nTake me where");
+            let display = text.render(Rect::new(0, 5, 15, 10), CursorPosition { line: 1, col: 0 });
+            assert_eq!(display.cursor, Cursor::Block(0, 8));
         }
     }
 }

@@ -6,7 +6,7 @@ use std::fmt;
 use super::{
     motion::MotionRange,
     text::{TextLine, TextLines},
-    HasId,
+    CursorPosition, HasId,
 };
 
 pub trait Buffer: HasId {
@@ -27,6 +27,28 @@ pub trait Buffer: HasId {
 
     fn is_empty(&self) -> bool {
         self.lines_count() == 0
+    }
+
+    fn get_char(&self, pos: CursorPosition) -> Option<&str> {
+        let line = self.get(pos.line);
+        let col_offset = pos.col as usize;
+
+        let mut current_span = 0;
+        loop {
+            if current_span >= line.0.len() {
+                // no more spans in this line
+                break;
+            }
+
+            let span = &line.0[current_span];
+            if span.width() > col_offset {
+                return Some(&span.content[col_offset..col_offset + 1]);
+            }
+
+            current_span += 1;
+        }
+
+        None
     }
 
     fn get_line_width(&self, line_index: usize) -> Option<usize> {

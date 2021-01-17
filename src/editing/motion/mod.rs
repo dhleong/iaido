@@ -1,5 +1,6 @@
 pub mod char;
 pub mod linewise;
+pub mod word;
 
 use super::{window::Window, Buffer, CursorPosition};
 
@@ -10,6 +11,30 @@ pub trait MotionContext {
     fn cursor(&self) -> CursorPosition;
     fn window(&self) -> &Box<Window>;
     fn window_mut(&mut self) -> &mut Box<Window>;
+
+    fn with_cursor(&self, cursor: CursorPosition) -> PositionedMotionContext<Self> {
+        PositionedMotionContext { base: self, cursor }
+    }
+}
+
+pub struct PositionedMotionContext<'a, T: MotionContext + ?Sized> {
+    base: &'a T,
+    cursor: CursorPosition,
+}
+
+impl<'a, T: MotionContext> MotionContext for PositionedMotionContext<'a, T> {
+    fn buffer(&self) -> &Box<dyn Buffer> {
+        self.base.buffer()
+    }
+    fn cursor(&self) -> CursorPosition {
+        self.cursor
+    }
+    fn window(&self) -> &Box<Window> {
+        self.base.window()
+    }
+    fn window_mut(&mut self) -> &mut Box<Window> {
+        panic!("PositionedMotionContext should not be used mutatively")
+    }
 }
 
 pub trait Motion {

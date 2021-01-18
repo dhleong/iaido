@@ -4,6 +4,9 @@ mod input;
 mod tui;
 mod ui;
 
+use async_std::task;
+use crossterm::event::KeyCode;
+use input::{KeySource, Key};
 use std::io;
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
@@ -43,10 +46,24 @@ fn main() -> Result<(), io::Error> {
 
     app.render();
 
-    // await any key
-    if let Ok(_) = crossterm::event::read() {
-        // should we handle an event read error?
-    }
+    let input_task = task::spawn(async {
+        let events = tui::keys::TuiKeySource::default();
+        loop {
+            let key = events.key().await;
+            match key {
+                Key { code: KeyCode::Enter, .. } => {
+                    break;
+                },
+                _ => {}
+            }
+        }
+    });
+    task::block_on(input_task);
+
+    // // await any key
+    // if let Ok(_) = crossterm::event::read() {
+    //     // should we handle an event read error?
+    // }
 
     Ok(())
 }

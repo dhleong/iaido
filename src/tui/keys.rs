@@ -18,7 +18,7 @@ impl Default for TuiKeySource {
 
 #[async_trait]
 impl KeySource for TuiKeySource {
-    async fn key(&mut self) -> Option<crate::input::Key> {
+    async fn next(&mut self) -> Option<crate::input::Key> {
         loop {
             let event = self.events.next().fuse().await;
             match event {

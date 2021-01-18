@@ -1,3 +1,4 @@
+pub mod looper;
 pub mod state;
 
 use crate::ui::UI;

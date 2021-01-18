@@ -1,5 +1,6 @@
 mod app;
 mod editing;
+mod input;
 mod tui;
 mod ui;
 
@@ -37,7 +38,7 @@ fn main() -> Result<(), io::Error> {
     }
 
     {
-        ToLineEndMotion {}.apply_cursor(&mut app.state);
+        ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
     app.render();

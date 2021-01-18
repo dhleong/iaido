@@ -5,7 +5,7 @@ use crate::editing::CursorPosition;
 use super::Motion;
 
 /// Motion that moves the cursor to the start of the current line
-pub struct ToLineStartMotion {}
+pub struct ToLineStartMotion;
 impl Motion for ToLineStartMotion {
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         context.cursor().start_of_line()
@@ -13,7 +13,7 @@ impl Motion for ToLineStartMotion {
 }
 
 /// Motion that moves the cursor to the end of the current line
-pub struct ToLineEndMotion {}
+pub struct ToLineEndMotion;
 impl Motion for ToLineEndMotion {
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         context.cursor().end_of_line(context.buffer())
@@ -21,7 +21,7 @@ impl Motion for ToLineEndMotion {
 }
 
 /// Motion that moves to the beginning of the buffer
-pub struct ToStartOfBufferMotion {}
+pub struct ToStartOfBufferMotion;
 impl Motion for ToStartOfBufferMotion {
     fn destination<T: super::MotionContext>(&self, _: &T) -> CursorPosition {
         // easy peasy
@@ -30,7 +30,7 @@ impl Motion for ToStartOfBufferMotion {
 }
 
 /// Motion that moves to the first col of the last line of the buffer
-pub struct ToLastLineOfBufferMotion {}
+pub struct ToLastLineOfBufferMotion;
 impl Motion for ToLastLineOfBufferMotion {
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         // NOTE: technically this should be "the first non-blank char"
@@ -43,7 +43,7 @@ impl Motion for ToLastLineOfBufferMotion {
 }
 
 /// Motion that selects the entire current line
-pub struct FullLineMotion {}
+pub struct FullLineMotion;
 impl Motion for FullLineMotion {
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         context.cursor().start_of_line()
@@ -58,7 +58,7 @@ impl Motion for FullLineMotion {
 }
 
 /// Motion to move down one line
-pub struct DownLineMotion {}
+pub struct DownLineMotion;
 impl Motion for DownLineMotion {
     fn is_linewise(&self) -> bool {
         true
@@ -89,7 +89,7 @@ impl Motion for DownLineMotion {
 }
 
 /// Motion to move up one line
-pub struct UpLineMotion {}
+pub struct UpLineMotion;
 impl Motion for UpLineMotion {
     fn is_linewise(&self) -> bool {
         true
@@ -132,7 +132,7 @@ mod tests {
                 Take
             "});
 
-            ctx.motion(DownLineMotion {});
+            ctx.motion(DownLineMotion);
             ctx.assert_visual_match(indoc! {"
                 Take my love
                 |
@@ -140,7 +140,7 @@ mod tests {
             "});
 
             // NOTE: vim would actually end on Tak|e... should we bother?
-            ctx.motion(DownLineMotion {});
+            ctx.motion(DownLineMotion);
             ctx.assert_visual_match(indoc! {"
                 Take my love
 
@@ -154,7 +154,7 @@ mod tests {
                 Take my |love
                 Take
             "});
-            ctx.motion(DownLineMotion {});
+            ctx.motion(DownLineMotion);
             ctx.assert_visual_match(indoc! {"
                 Take my love
                 Tak|e
@@ -171,7 +171,7 @@ mod tests {
                 Take
                 Take my |land
             "});
-            ctx.motion(UpLineMotion {});
+            ctx.motion(UpLineMotion);
             ctx.assert_visual_match(indoc! {"
                 Tak|e
                 Take my land

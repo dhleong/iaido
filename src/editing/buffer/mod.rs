@@ -9,7 +9,7 @@ use super::{
     CursorPosition, HasId,
 };
 
-pub trait Buffer: HasId {
+pub trait Buffer: HasId + Send {
     fn lines_count(&self) -> usize;
     fn append(&mut self, text: TextLines);
     fn get(&self, line_index: usize) -> &TextLine;

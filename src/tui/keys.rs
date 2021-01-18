@@ -1,30 +1,38 @@
 use async_trait::async_trait;
-use async_std::task;
-use crossterm::event::Event;
+use crossterm::event::{Event, EventStream};
+use futures::{StreamExt, FutureExt};
 
 use crate::input::KeySource;
 
-pub struct TuiKeySource {}
+pub struct TuiKeySource {
+    events: EventStream,
+}
 
 impl Default for TuiKeySource {
     fn default() -> Self {
-        Self {}
+        Self {
+            events: EventStream::new(),
+        }
     }
 }
 
 #[async_trait]
 impl KeySource for TuiKeySource {
-    async fn key(&self) -> crate::input::Key {
-        let task = task::spawn(async {
-            loop {
-                match crossterm::event::read() {
-                    Ok(Event::Key(key)) => return key,
-                    _ => {
-                        // TODO ?
-                    }
-                }
+    async fn key(&mut self) -> Option<crate::input::Key> {
+        loop {
+            let event = self.events.next().fuse().await;
+            match event {
+                Some(Ok(ev)) => match ev {
+                    Event::Key(key) => return Some(key),
+                    Event::Mouse(_) => {}
+                    Event::Resize(_, _) => {}
+                },
+                Some(Err(e)) => {
+                    // TODO log error to disk, maybe?
+                    println!("ERROR reading key: {}", e);
+                },
+                None => {}
             }
-        });
-        task.await
+        }
     }
 }

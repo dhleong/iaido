@@ -5,8 +5,8 @@ mod tui;
 mod ui;
 
 use async_std::task;
-use crossterm::event::KeyCode;
-use input::{KeySource, Key};
+use futures::{future::FutureExt, select, pin_mut};
+use input::{KeySource, Key, KeyCode};
 use std::io;
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
@@ -44,26 +44,33 @@ fn main() -> Result<(), io::Error> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    app.render();
-
-    let input_task = task::spawn(async {
-        let events = tui::keys::TuiKeySource::default();
+    let input_task = task::spawn(async move {
+        let mut keys = tui::keys::TuiKeySource::default();
+        let mut events = tui::events::TuiEvents::default();
         loop {
-            let key = events.key().await;
-            match key {
-                Key { code: KeyCode::Enter, .. } => {
-                    break;
+            app.render();
+            let mut key = keys.key().fuse();
+            let event = events.next().fuse();
+
+            pin_mut!(event);
+
+            select! {
+                key = key => match key {
+                    Some(Key { code: KeyCode::Enter, .. }) => {
+                        break;
+                    },
+                    _ => {}
                 },
-                _ => {}
-            }
+
+                _ = event => {
+                    // nop; just trigger a redraw
+                },
+
+                complete => break,
+            };
         }
     });
     task::block_on(input_task);
-
-    // // await any key
-    // if let Ok(_) = crossterm::event::read() {
-    //     // should we handle an event read error?
-    // }
 
     Ok(())
 }

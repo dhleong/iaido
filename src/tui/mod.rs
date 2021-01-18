@@ -10,6 +10,7 @@ use tui::{backend::Backend, Terminal};
 use tui::{backend::CrosstermBackend, layout::Rect};
 
 pub mod cursor;
+pub mod events;
 pub mod keys;
 pub mod layout;
 pub mod measure;
@@ -128,6 +129,8 @@ impl Tui {
     }
 
     pub fn render(&mut self, app: &mut crate::app::State) -> Result<(), io::Error> {
+        self.terminal.autoresize()?;
+
         let size = self.terminal.size()?;
         let mut display = Display::new(Size {
             w: size.width,

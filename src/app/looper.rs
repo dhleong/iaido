@@ -2,24 +2,25 @@ use async_trait::async_trait;
 use futures::{future::FutureExt, select, pin_mut};
 
 use crate::{app::{self, App}, input::KeymapContext};
-use crate::ui::UI;
+use crate::ui::{UI, UiEvent, UiEvents};
 use crate::input::{Key, Keymap, KeySource};
 
-struct AppKeySource<'a, U: UI, K: KeySource> {
+struct AppKeySource<'a, U: UI, UE: UiEvents, K: KeySource> {
     app: App<U>,
+    events: UE,
     keys: &'a mut K,
 }
 
 #[async_trait]
-impl<'a, U: UI + Send + Sync, K: KeySource + Send + Sync> KeySource for AppKeySource<'a, U, K> {
+impl<'a, U: UI + Send + Sync, UE: UiEvents + Send + Sync, K: KeySource + Send + Sync> KeySource for AppKeySource<'a, U, UE, K> {
     async fn next(&mut self) -> Option<Key> {
         loop {
             self.app.render();
 
             let mut key = self.keys.next().fuse();
-            // let event = events.next().fuse();
+            let event = self.events.next().fuse();
 
-            // pin_mut!(event);
+            pin_mut!(event);
 
             select! {
                 key = key => match key {
@@ -27,9 +28,10 @@ impl<'a, U: UI + Send + Sync, K: KeySource + Send + Sync> KeySource for AppKeySo
                     _ => {}
                 },
 
-                // _ = event => {
-                //     // nop; just trigger a redraw
-                // },
+                ev = event => match ev {
+                    Some(UiEvent::Redraw) => {}, // nop; just loop and redraw
+                    None => {}, // ?
+                },
 
                 complete => break,
             };
@@ -39,15 +41,26 @@ impl<'a, U: UI + Send + Sync, K: KeySource + Send + Sync> KeySource for AppKeySo
     }
 }
 
-impl<'a, U: UI + Send + Sync, K: KeySource + Send + Sync> KeymapContext for AppKeySource<'a, U, K> {
+impl<'a, U: UI + Send + Sync, UE: UiEvents + Send + Sync, K: KeySource + Send + Sync> KeymapContext for AppKeySource<'a, U, UE, K> {
     fn state_mut(&mut self) -> &mut app::State {
         &mut self.app.state
     }
 }
 
-pub async fn app_loop<U, KM, K>(app: App<U>, map: KM, mut keys: K) where U: UI + Send + Sync, KM: Keymap, K: KeySource + Send + Sync {
+pub async fn app_loop<U, UE, K, KM>(
+    app: App<U>,
+    events: UE,
+    mut keys: K,
+    map: KM,
+)
+    where U: UI + Send + Sync,
+          UE: UiEvents + Send + Sync,
+          K: KeySource + Send + Sync,
+          KM: Keymap,
+{
     let mut app_keys = AppKeySource {
         app,
+        events,
         keys: &mut keys,
     };
 

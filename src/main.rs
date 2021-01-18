@@ -6,8 +6,7 @@ mod ui;
 
 use app::looper::app_loop;
 use async_std::task;
-use futures::{future::FutureExt, pin_mut, select};
-use input::{maps::vim::VimKeymap, Key, KeyCode, KeySource};
+use input::maps::vim::VimKeymap;
 use std::io;
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
@@ -45,37 +44,11 @@ fn main() -> Result<(), io::Error> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    // let input_task = task::spawn(async move {
-    //     let mut keys = tui::keys::TuiKeySource::default();
-    //     let mut events = tui::events::TuiEvents::default();
-    //     loop {
-    //         app.render();
-    //         let mut key = keys.next().fuse();
-    //         let event = events.next().fuse();
-    //
-    //         pin_mut!(event);
-    //
-    //         select! {
-    //             key = key => match key {
-    //                 Some(Key { code: KeyCode::Enter, .. }) => {
-    //                     break;
-    //                 },
-    //                 _ => {}
-    //             },
-    //
-    //             _ = event => {
-    //                 // nop; just trigger a redraw
-    //             },
-    //
-    //             complete => break,
-    //         };
-    //     }
-    // });
-    // task::block_on(input_task);
     task::block_on(app_loop(
         app,
-        VimKeymap::default(),
+        tui::events::TuiEvents::default(),
         tui::keys::TuiKeySource::default(),
+        VimKeymap::default(),
     ));
 
     Ok(())

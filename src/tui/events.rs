@@ -1,10 +1,9 @@
+use async_trait::async_trait;
+
 use crossterm::event::{EventStream, Event};
 use futures::{StreamExt, FutureExt};
 
-#[derive(Debug, Clone, Copy)]
-pub enum TuiEvent {
-    Resize,
-}
+use crate::ui::{UiEvent, UiEvents};
 
 pub struct TuiEvents {
     events: EventStream,
@@ -18,12 +17,13 @@ impl Default for TuiEvents {
     }
 }
 
-impl TuiEvents {
-    pub async fn next(&mut self) -> Option<TuiEvent> {
+#[async_trait]
+impl UiEvents for TuiEvents {
+    async fn next(&mut self) -> Option<UiEvent> {
         loop {
             let event = self.events.next().fuse().await;
             match event {
-                Some(Ok(Event::Resize(_, _))) => return Some(TuiEvent::Resize),
+                Some(Ok(Event::Resize(_, _))) => return Some(UiEvent::Redraw),
                 _ => {}
             }
         }

@@ -11,7 +11,6 @@ use tui::{backend::CrosstermBackend, layout::Rect};
 
 pub mod cursor;
 pub mod events;
-pub mod keys;
 pub mod layout;
 pub mod measure;
 pub mod tabpage;

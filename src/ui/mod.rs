@@ -1,9 +1,10 @@
 use async_trait::async_trait;
 
-use crate::editing::text::TextLine;
+use crate::{editing::text::TextLine, input::Key};
 
 pub enum UiEvent {
     Redraw,
+    Key(Key),
     // UiThreadFn(Box<dyn Fn() + Send>), // ?
 }
 
@@ -19,5 +20,5 @@ pub trait UI {
 
 #[async_trait]
 pub trait UiEvents {
-    async fn next(&mut self) -> Option<UiEvent>;
+    async fn next_event(&mut self) -> Option<UiEvent>;
 }

@@ -47,7 +47,6 @@ fn main() -> Result<(), io::Error> {
     task::block_on(app_loop(
         app,
         tui::events::TuiEvents::default(),
-        tui::keys::TuiKeySource::default(),
         VimKeymap::default(),
     ));
 

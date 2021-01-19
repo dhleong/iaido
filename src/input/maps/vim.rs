@@ -14,7 +14,7 @@ impl Default for VimKeymap {
 impl Keymap for VimKeymap {
     async fn process<K: KeymapContext + Send + Sync>(&self, context: &mut K) -> Option<()> {
         loop {
-            match context.next().await {
+            match context.next_key().await {
                 Some(Key { code: KeyCode::Enter, .. }) => {
                     break;
                 },

@@ -7,7 +7,7 @@ pub type KeyCode = crossterm::event::KeyCode;
 
 #[async_trait]
 pub trait KeySource {
-    async fn next(&mut self) -> Option<Key>;
+    async fn next_key(&mut self) -> Option<Key>;
 }
 
 pub trait KeymapContext : KeySource {

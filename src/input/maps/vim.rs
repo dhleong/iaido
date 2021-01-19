@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{input::{Keymap, KeymapContext, KeyCode, Key}, editing::text::TextLines};
+use crate::{input::{KeyError, Keymap, KeymapContext, KeyCode, Key}, editing::text::TextLines};
 
 pub struct VimKeymap {}
 
@@ -12,12 +12,14 @@ impl Default for VimKeymap {
 
 #[async_trait]
 impl Keymap for VimKeymap {
-    async fn process<K: KeymapContext + Send + Sync>(&self, context: &mut K) -> Option<()> {
+    async fn process<K: KeymapContext + Send + Sync>(&self, context: &mut K) -> Result<(), KeyError> {
         loop {
-            match context.next_key().await {
+            match context.next_key().await? {
                 Some(Key { code: KeyCode::Enter, .. }) => {
-                    break;
+                    context.state_mut().running = false;
+                    return Ok(())
                 },
+
                 Some(Key { code, .. }) => {
                     let b = context.state_mut().current_buffer_mut();
                     match code {
@@ -32,6 +34,5 @@ impl Keymap for VimKeymap {
                 _ => {}
             };
         }
-        None
     }
 }

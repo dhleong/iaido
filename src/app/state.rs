@@ -4,6 +4,7 @@ use crate::editing::{
 };
 
 pub struct AppState {
+    pub running: bool,
     pub buffers: Buffers,
     pub tabpages: Tabpages,
 }
@@ -28,7 +29,11 @@ impl Default for AppState {
     fn default() -> Self {
         let buffers = Buffers::new();
         let tabpages = Tabpages::new(Size { w: 0, h: 0 });
-        let mut app = Self { buffers, tabpages };
+        let mut app = Self {
+            running: true,
+            buffers,
+            tabpages,
+        };
 
         // create the default tabpage
         let default_id = app.tabpages.create(&mut app.buffers);

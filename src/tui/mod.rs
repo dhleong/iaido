@@ -3,12 +3,14 @@ use crate::{
     ui::UI,
 };
 
+use crossterm::terminal;
 use std::io;
 pub use tui::text;
 use tui::{backend::Backend, Terminal};
 use tui::{backend::CrosstermBackend, layout::Rect};
 
 pub mod cursor;
+pub mod events;
 pub mod layout;
 pub mod measure;
 pub mod tabpage;
@@ -114,11 +116,20 @@ impl Tui {
         let backend = &mut self.terminal.backend_mut();
         backend.set_cursor(0, size.height)?;
 
+        if let Err(e) = terminal::disable_raw_mode() {
+            return Err(io::Error::new(io::ErrorKind::Other, e));
+        }
+
         // restore normal cursor
-        self.cursor.reset()
+        self.cursor.reset()?;
+
+        // ensure raw mode gets cleanly reset
+        backend.flush()
     }
 
     pub fn render(&mut self, app: &mut crate::app::State) -> Result<(), io::Error> {
+        self.terminal.autoresize()?;
+
         let size = self.terminal.size()?;
         let mut display = Display::new(Size {
             w: size.width,
@@ -183,6 +194,10 @@ pub fn create_ui() -> Result<Tui, io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     terminal.clear()?;
+
+    if let Err(e) = terminal::enable_raw_mode() {
+        return Err(io::Error::new(io::ErrorKind::Other, e));
+    }
 
     Ok(Tui {
         cursor: CursorRenderer::default(),

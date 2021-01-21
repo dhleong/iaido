@@ -6,6 +6,7 @@ use async_trait::async_trait;
 
 pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
+pub type KeyModifiers = crossterm::event::KeyModifiers;
 
 #[derive(Debug)]
 pub enum KeyError {

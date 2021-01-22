@@ -50,7 +50,7 @@ impl<U: UI, UE: UiEvents> KeymapContext for AppKeySource<U, UE> {
     }
 }
 
-pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, map: KM)
+pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM)
 where
     U: UI,
     UE: UiEvents,

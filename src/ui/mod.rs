@@ -1,9 +1,8 @@
-use std::io;
-
-use async_trait::async_trait;
+use std::{io, time::Duration};
 
 use crate::{editing::text::TextLine, input::Key};
 
+#[derive(Clone, Copy)]
 pub enum UiEvent {
     Redraw,
     Key(Key),
@@ -20,7 +19,7 @@ pub trait UI {
         Self: Sized;
 }
 
-#[async_trait]
 pub trait UiEvents {
-    async fn next_event(&mut self) -> Result<UiEvent, io::Error>;
+    fn poll_event(&mut self, timeout: Duration) -> io::Result<Option<UiEvent>>;
+    fn next_event(&mut self) -> io::Result<UiEvent>;
 }

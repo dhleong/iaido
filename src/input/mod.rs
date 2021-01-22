@@ -1,8 +1,6 @@
 pub mod maps;
 
-use std::io;
-
-use async_trait::async_trait;
+use std::{io, time::Duration};
 
 pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
@@ -12,16 +10,21 @@ pub enum KeyError {
     IO(io::Error),
 }
 
-#[async_trait]
-pub trait KeySource {
-    async fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+impl Into<KeyError> for io::Error {
+    fn into(self) -> KeyError {
+        KeyError::IO(self)
+    }
 }
 
-pub trait KeymapContext : KeySource {
+pub trait KeySource {
+    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError>;
+    fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+}
+
+pub trait KeymapContext: KeySource {
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
 
-#[async_trait]
 pub trait Keymap {
     /// A Keymap processes some number of keys and updates app state in response to user input.
     /// When the Keymap feels it has finished a unit of work (for example, it has submitted a
@@ -29,5 +32,5 @@ pub trait Keymap {
     /// (or to a parent Keymap) by returning `Ok(())`
     /// Errors received by context.next_key() may simply be propagated upward, where they will be
     /// printed into the active buffer by the main loop
-    async fn process<K: KeymapContext + Send + Sync>(&self, context: &mut K) -> Result<(), KeyError>;
+    fn process<K: KeymapContext>(&self, context: &mut K) -> Result<(), KeyError>;
 }

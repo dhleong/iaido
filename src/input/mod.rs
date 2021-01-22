@@ -1,6 +1,6 @@
 pub mod maps;
 
-use std::io;
+use std::{io, time::Duration};
 
 pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
@@ -17,6 +17,7 @@ impl Into<KeyError> for io::Error {
 }
 
 pub trait KeySource {
+    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError>;
     fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
 }
 

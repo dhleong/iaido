@@ -14,13 +14,21 @@ struct AppKeySource<U: UI, UE: UiEvents> {
 }
 
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
+    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
+        match self.events.poll_event(duration) {
+            Ok(Some(UiEvent::Key(_))) => Ok(true),
+            Ok(_) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
+    }
+
     fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
         loop {
             self.app.render();
 
             loop {
                 match self.events.poll_event(Duration::from_millis(100)) {
-                    Ok(result) if result => break,
+                    Ok(Some(UiEvent::Key(_))) => break,
                     Err(e) => return Err(e.into()),
                     _ => {}
                 }

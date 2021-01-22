@@ -5,7 +5,6 @@ mod tui;
 mod ui;
 
 use app::looper::app_loop;
-use async_std::task;
 use input::maps::vim::VimKeymap;
 use std::io;
 
@@ -44,11 +43,7 @@ fn main() -> Result<(), io::Error> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    task::block_on(app_loop(
-        app,
-        tui::events::TuiEvents::default(),
-        VimKeymap::default(),
-    ));
+    app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
 
     Ok(())
 }

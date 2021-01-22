@@ -4,6 +4,7 @@ use std::{io, time::Duration};
 
 pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
+pub type KeyModifiers = crossterm::event::KeyModifiers;
 
 #[derive(Debug)]
 pub enum KeyError {
@@ -17,7 +18,7 @@ impl Into<KeyError> for io::Error {
 }
 
 pub trait KeySource {
-    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError>;
+    fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
     fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
 }
 
@@ -32,5 +33,5 @@ pub trait Keymap {
     /// (or to a parent Keymap) by returning `Ok(())`
     /// Errors received by context.next_key() may simply be propagated upward, where they will be
     /// printed into the active buffer by the main loop
-    fn process<K: KeymapContext>(&self, context: &mut K) -> Result<(), KeyError>;
+    fn process<K: KeymapContext>(&mut self, context: &mut K) -> Result<(), KeyError>;
 }

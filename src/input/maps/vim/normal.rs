@@ -1,5 +1,5 @@
 use crate::{
-    input::{Key, KeyCode, KeyModifiers, KeymapContext},
+    input::{keys::KeysParsable, KeymapContext},
     key_handler,
 };
 
@@ -15,7 +15,7 @@ pub fn vim_normal_mode<'a>() -> KeyTreeNode<'a> {
     let mut root = KeyTreeNode::root();
 
     root.insert(
-        &[Key::new(KeyCode::Enter, KeyModifiers::NONE)],
+        &"<cr>".into_keys(),
         vim_handler!(|ctx| {
             ctx.state_mut().running = false;
             Ok(())
@@ -23,10 +23,9 @@ pub fn vim_normal_mode<'a>() -> KeyTreeNode<'a> {
     );
 
     root.insert(
-        &[Key::new(KeyCode::Char('d'), KeyModifiers::NONE)],
+        &"d".into_keys(),
         vim_handler!(|ctx| {
-            ctx.state.pending_motion_action_key =
-                Some(Key::new(KeyCode::Char('d'), KeyModifiers::NONE));
+            ctx.state.pending_motion_action_key = Some('d'.into());
             Ok(())
         }),
     );

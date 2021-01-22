@@ -53,7 +53,7 @@ impl UiEvents for TuiEvents {
         loop {
             match crossterm::event::read() {
                 Ok(Event::Resize(_, _)) => return Ok(UiEvent::Redraw),
-                Ok(Event::Key(key)) => return Ok(UiEvent::Key(key)),
+                Ok(Event::Key(key)) => return Ok(UiEvent::Key(key.into())),
                 Err(e) => return Err(wrap_as_io(e)),
                 _ => {}
             }

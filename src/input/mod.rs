@@ -1,10 +1,33 @@
+pub mod keys;
 pub mod maps;
 
 use std::{io, time::Duration};
 
-pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
+
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct Key {
+    pub code: KeyCode,
+    pub modifiers: KeyModifiers,
+}
+impl Key {
+    fn new(code: KeyCode, modifiers: KeyModifiers) -> Self {
+        Self { code, modifiers }
+    }
+}
+
+impl From<KeyCode> for Key {
+    fn from(code: KeyCode) -> Self {
+        Key::new(code, KeyModifiers::NONE)
+    }
+}
+
+impl From<crossterm::event::KeyEvent> for Key {
+    fn from(ev: crossterm::event::KeyEvent) -> Self {
+        Key::new(ev.code, ev.modifiers)
+    }
+}
 
 #[derive(Debug)]
 pub enum KeyError {

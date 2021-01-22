@@ -36,6 +36,9 @@ impl<U: UI + Send + Sync, UE: UiEvents + Send + Sync> KeySource for AppKeySource
 }
 
 impl<U: UI + Send + Sync, UE: UiEvents + Send + Sync> KeymapContext for AppKeySource<U, UE> {
+    fn state(&self) -> &app::State {
+        &self.app.state
+    }
     fn state_mut(&mut self) -> &mut app::State {
         &mut self.app.state
     }

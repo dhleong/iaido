@@ -8,9 +8,12 @@ pub type Key = crossterm::event::KeyEvent;
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
 
+pub type DynamicAsyncError = Box<dyn std::error::Error + Send + Sync>;
+
 #[derive(Debug)]
 pub enum KeyError {
     IO(io::Error),
+    Other(DynamicAsyncError),
 }
 
 #[async_trait]
@@ -19,6 +22,7 @@ pub trait KeySource {
 }
 
 pub trait KeymapContext : KeySource {
+    fn state(&self) -> &crate::app::State;
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
 
@@ -30,5 +34,5 @@ pub trait Keymap {
     /// (or to a parent Keymap) by returning `Ok(())`
     /// Errors received by context.next_key() may simply be propagated upward, where they will be
     /// printed into the active buffer by the main loop
-    async fn process<K: KeymapContext + Send + Sync>(&self, context: &mut K) -> Result<(), KeyError>;
+    async fn process<K: KeymapContext + Send + Sync + 'static>(&self, context: &'static mut K) -> Result<(), KeyError>;
 }

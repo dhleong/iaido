@@ -1,6 +1,6 @@
 use crate::editing::{
-    buffers::Buffers, motion::MotionContext, tabpages::Tabpages, window::Window, Buffer, Resizable,
-    Size,
+    buffers::Buffers, motion::MotionContext, tabpage::Tabpage, tabpages::Tabpages, window::Window,
+    Buffer, Resizable, Size,
 };
 
 pub struct AppState {
@@ -11,17 +11,19 @@ pub struct AppState {
 
 impl AppState {
     pub fn current_buffer<'a>(&'a self) -> &'a Box<dyn Buffer> {
-        self.tabpages
-            .current_tab()
-            .current_window()
-            .current_buffer(&self.buffers)
+        self.current_window().current_buffer(&self.buffers)
     }
 
     pub fn current_buffer_mut<'a>(&'a mut self) -> &'a mut Box<dyn Buffer> {
-        self.tabpages
-            .current_tab()
-            .current_window()
-            .current_buffer_mut(&mut self.buffers)
+        self.current_window().current_buffer_mut(&mut self.buffers)
+    }
+
+    pub fn current_tab<'a>(&'a self) -> &'a Box<Tabpage> {
+        self.current_tab()
+    }
+
+    pub fn current_window<'a>(&'a self) -> &'a Box<Window> {
+        self.current_tab().current_window()
     }
 }
 

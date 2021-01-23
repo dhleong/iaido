@@ -54,6 +54,10 @@ impl MotionContext for AppState {
         self.current_buffer()
     }
 
+    fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
+        self.current_buffer_mut()
+    }
+
     fn cursor(&self) -> crate::editing::CursorPosition {
         self.window().cursor
     }

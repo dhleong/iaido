@@ -6,10 +6,13 @@ pub mod vim;
 
 pub struct KeyHandlerContext<'a, T> {
     context: Box<&'a mut dyn KeymapContext>,
-    state: &'a mut T,
+    keymap: &'a mut T,
 }
 
 impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {
+    fn state(&self) -> &crate::app::State {
+        self.context.state()
+    }
     fn state_mut(&mut self) -> &mut crate::app::State {
         self.context.state_mut()
     }

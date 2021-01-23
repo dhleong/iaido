@@ -25,8 +25,8 @@ pub fn vim_normal_mode<'a>() -> KeyTreeNode<'a> {
             Ok(())
          },
 
-        "d" => |ctx| {
-            ctx.state.pending_motion_action_key = Some('d'.into());
+        "d" => operator |ctx, motion| {
+            ctx.state_mut().current_buffer_mut().delete_range(motion);
             Ok(())
         },
 

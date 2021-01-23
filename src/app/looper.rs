@@ -45,6 +45,9 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
 }
 
 impl<U: UI, UE: UiEvents> KeymapContext for AppKeySource<U, UE> {
+    fn state(&self) -> &app::State {
+        &self.app.state
+    }
     fn state_mut(&mut self) -> &mut app::State {
         &mut self.app.state
     }

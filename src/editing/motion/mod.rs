@@ -8,6 +8,7 @@ pub type MotionRange = (CursorPosition, CursorPosition);
 
 pub trait MotionContext {
     fn buffer(&self) -> &Box<dyn Buffer>;
+    fn buffer_mut(&mut self) -> &mut Box<dyn Buffer>;
     fn cursor(&self) -> CursorPosition;
     fn window(&self) -> &Box<Window>;
     fn window_mut(&mut self) -> &mut Box<Window>;
@@ -25,6 +26,9 @@ pub struct PositionedMotionContext<'a, T: MotionContext + ?Sized> {
 impl<'a, T: MotionContext> MotionContext for PositionedMotionContext<'a, T> {
     fn buffer(&self) -> &Box<dyn Buffer> {
         self.base.buffer()
+    }
+    fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
+        panic!("PositionedMotionContext should not be used mutatively")
     }
     fn cursor(&self) -> CursorPosition {
         self.cursor
@@ -63,6 +67,11 @@ pub trait Motion {
         let new_cursor = context.window().clamp_cursor(context.buffer(), new_cursor);
         context.window_mut().cursor = new_cursor;
     }
+
+    fn delete_range<T: MotionContext>(&self, context: &mut T) {
+        let range = self.range(context);
+        context.buffer_mut().delete_range(range)
+    }
 }
 
 #[cfg(test)]
@@ -94,6 +103,10 @@ mod tests {
     impl MotionContext for TestWindow {
         fn buffer(&self) -> &Box<dyn Buffer> {
             &self.buffer
+        }
+
+        fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
+            &mut self.buffer
         }
 
         fn cursor(&self) -> crate::editing::CursorPosition {

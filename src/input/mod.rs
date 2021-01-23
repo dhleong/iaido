@@ -46,6 +46,7 @@ pub trait KeySource {
 }
 
 pub trait KeymapContext: KeySource {
+    fn state(&self) -> &crate::app::State;
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
 

@@ -91,3 +91,31 @@ impl Keymap for VimKeymap {
         }
     }
 }
+
+// ======= Tree-building macros ===========================
+
+#[macro_export]
+macro_rules! vim_branches {
+    ($root:ident -> $keys:literal => |$ctx_name:ident| $body:expr) => {
+        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |$ctx_name| $body));
+    };
+
+    ($root:ident -> $keys:literal => |$ctx_name:ident| $body:expr, $($keysn:literal => |$ctx_namen:ident| $bodyn:expr),+) => {{
+        vim_branches! { $root -> $keys => |$ctx_name| $body }
+        vim_branches! { $root -> $($keysn => |$ctx_namen| $bodyn),+ }
+    }};
+}
+
+#[macro_export]
+macro_rules! vim_tree {
+    ( $( $SPEC:tt )* ) => {{
+        use crate::key_handler;
+        use crate::vim_branches;
+
+        let mut root = KeyTreeNode::root();
+
+        vim_branches! { root -> $($SPEC)* }
+
+        root
+    }};
+}

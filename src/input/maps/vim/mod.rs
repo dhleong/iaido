@@ -96,14 +96,22 @@ impl Keymap for VimKeymap {
 
 #[macro_export]
 macro_rules! vim_branches {
-    ($root:ident -> $keys:literal => |$ctx_name:ident| $body:expr) => {
+    ($root:ident ->) => {}; // base case
+
+    ($root:ident -> $keys:literal => |$ctx_name:ident| $body:expr, $($tail:tt)*) => {
         $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |$ctx_name| $body));
+        vim_branches! { $root -> $($tail)* }
     };
 
-    ($root:ident -> $keys:literal => |$ctx_name:ident| $body:expr, $($keysn:literal => |$ctx_namen:ident| $bodyn:expr),+) => {{
-        vim_branches! { $root -> $keys => |$ctx_name| $body }
-        vim_branches! { $root -> $($keysn => |$ctx_namen| $bodyn),+ }
-    }};
+    ($root:ident -> $keys:literal => motion $factory:expr, $($tail:tt)*) => {
+        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |ctx| {
+            use crate::editing::motion::Motion;
+            let motion = $factory;
+            motion.apply_cursor(ctx.state_mut());
+            Ok(())
+        }));
+        vim_branches! { $root -> $($tail)* }
+    };
 }
 
 #[macro_export]
@@ -118,4 +126,11 @@ macro_rules! vim_tree {
 
         root
     }};
+}
+
+#[macro_export]
+macro_rules! vim_motion {
+    ($struct:expr) => {
+        |ctx| {}
+    };
 }

@@ -22,7 +22,7 @@ impl<T> WordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
-    pub fn backward_until(predicate: impl Fn(&str) -> bool) -> WordMotion<impl Fn(&str) -> bool> {
+    pub fn backward_until(predicate: T) -> Self {
         WordMotion {
             step: CharMotion::Backward(1),
             is_word_boundary: predicate,

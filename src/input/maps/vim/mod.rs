@@ -57,6 +57,13 @@ impl Default for VimKeymapState {
     }
 }
 
+impl VimKeymapState {
+    fn reset(&mut self) {
+        self.pending_linewise_operator_key = None;
+        self.operator_fn = None;
+    }
+}
+
 // ======= Keymap =========================================
 
 pub struct VimKeymap {
@@ -159,7 +166,10 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |ctx| {
             use crate::editing::motion::Motion;
             let motion = $factory;
-            if let Some(op) = ctx.keymap.operator_fn.take() {
+            let operator_fn = ctx.keymap.operator_fn.take();
+            ctx.keymap.reset(); // always clear
+
+            if let Some(op) = operator_fn {
                 // execute pending operator fn
                 let range = motion.range(ctx.state());
                 let subcontext = crate::input::maps::KeyHandlerContext {

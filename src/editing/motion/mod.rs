@@ -75,7 +75,7 @@ pub trait Motion {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::editing::{buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId};
 
     use super::*;

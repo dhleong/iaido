@@ -23,7 +23,7 @@ impl EditableLine for TextLine {
         for span in &self.0 {
             let width = span.width();
             if start < offset + width && end > offset {
-                let from = start - offset;
+                let from = start.checked_sub(offset).unwrap_or(0);
                 let to = min(end - offset, width);
                 let content = &span.content[from..to];
                 let s = String::from(content);
@@ -71,6 +71,26 @@ mod tests {
             assert_eq!(span.subs(5, 7).to_string(), "my");
         }
 
-        // TODO test crossing span boundaries, etc.
+        #[test]
+        fn overlapping_span() {
+            let mut part1: TextLine = "Take ".into();
+            let mut part2: TextLine = "my love".into();
+            let mut span = TextLine::default();
+            span.append(&mut part1);
+            span.append(&mut part2);
+            assert_eq!(span.subs(3, 8).to_string(), "e my ");
+        }
+
+        #[test]
+        fn multiple_span_overlap() {
+            let mut part1: TextLine = "Take ".into();
+            let mut part2: TextLine = "my ".into();
+            let mut part3: TextLine = "love".into();
+            let mut span = TextLine::default();
+            span.append(&mut part1);
+            span.append(&mut part2);
+            span.append(&mut part3);
+            assert_eq!(span.subs(3, 10).to_string(), "e my lo");
+        }
     }
 }

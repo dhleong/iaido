@@ -51,6 +51,7 @@ impl Buffer for MemoryBuffer {
         let line = &self.content.lines[first_line];
         if first_line == last_line && first_col == 0 && last_col as usize >= line.width() - 1 {
             // delete the whole line
+            self.content.lines.remove(first_line);
             return;
         }
 
@@ -76,6 +77,16 @@ mod tests {
         let actual_lines: Vec<&TextLine> = (0..buf.lines_count()).map(|i| buf.get(i)).collect();
         let expected_lines: TextLines = s.into();
 
+        // special case:
+        if expected_lines.lines.is_empty() {
+            let mut s = String::default();
+            for i in 0..buf.lines_count() {
+                s.push_str(actual_lines[i].to_string().as_str());
+                s.push_str("\n");
+            }
+            assert_eq!(s, "")
+        }
+
         for i in 0..buf.lines_count() {
             let actual = actual_lines[i].to_string();
             let expected = expected_lines.lines[i].to_string();
@@ -93,6 +104,14 @@ mod tests {
             buf.append("Take my land".into());
             buf.delete_range(((0, 0).into(), (0, 4).into()));
             assert_visual_match(buf, " my land");
+        }
+
+        #[test]
+        fn full_line() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my land".into());
+            buf.delete_range(((0, 0).into(), (0, 12).into()));
+            assert_visual_match(buf, "");
         }
     }
 }

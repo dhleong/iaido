@@ -54,6 +54,12 @@ impl Default for CursorPosition {
     }
 }
 
+impl From<(usize, u16)> for CursorPosition {
+    fn from((line, col): (usize, u16)) -> Self {
+        Self { line, col }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Cursor {
     None,

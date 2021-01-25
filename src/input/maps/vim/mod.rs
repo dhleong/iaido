@@ -1,7 +1,9 @@
+mod insert;
 mod normal;
 
 use std::collections::HashMap;
 
+use insert::vim_insert_mode;
 use normal::vim_normal_mode;
 
 use crate::{
@@ -13,6 +15,13 @@ use super::{KeyHandlerContext, KeyResult};
 
 type KeyHandler<'a> = super::KeyHandler<'a, VimKeymapState>;
 type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> KeyResult;
+
+// ======= modes ==========================================
+
+pub struct VimMode<'a> {
+    pub mappings: KeyTreeNode<'a>,
+    pub default_handler: Option<Box<KeyHandler<'a>>>,
+}
 
 pub struct KeyTreeNode<'a> {
     children: HashMap<Key, KeyTreeNode<'a>>,
@@ -80,8 +89,13 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
-        let tree = vim_normal_mode();
-        let mut current = &tree;
+        let mode = if context.state().current_window().inserting {
+            vim_insert_mode()
+        } else {
+            vim_normal_mode()
+        };
+        let mut current = &mode.mappings;
+        let mut at_root = true;
 
         loop {
             if let Some(key) = context.next_key()? {
@@ -91,10 +105,21 @@ impl Keymap for VimKeymap {
                         return handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,
+                            key,
                         });
                     } else {
                         // deeper into the tree
                         current = next;
+                        at_root = false;
+                    }
+                } else if at_root {
+                    // use the default mapping, if any
+                    if let Some(handler) = mode.default_handler {
+                        return handler(KeyHandlerContext {
+                            context: Box::new(context),
+                            keymap: &mut self.keymap,
+                            key,
+                        });
                     }
                 }
             } else {
@@ -175,6 +200,7 @@ macro_rules! vim_branches {
                 let subcontext = crate::input::maps::KeyHandlerContext {
                     context: ctx.context,
                     keymap: ctx.keymap,
+                    key: ctx.key,
                 };
                 op(subcontext, range)
             } else {
@@ -192,6 +218,8 @@ macro_rules! vim_tree {
     ( $( $SPEC:tt )* ) => {{
         use crate::key_handler;
         use crate::vim_branches;
+        use crate::input::maps::vim::KeyTreeNode;
+        use crate::input::keys::KeysParsable;
 
         let mut root = KeyTreeNode::root();
 

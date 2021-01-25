@@ -15,6 +15,7 @@ pub trait Buffer: HasId + Send + Sync {
     fn get(&self, line_index: usize) -> &TextLine;
 
     fn delete_range(&mut self, range: MotionRange);
+    fn insert(&mut self, cursor: CursorPosition, text: TextLine);
 
     // convenience:
     fn checked_get(&self, line_index: usize) -> Option<&TextLine> {

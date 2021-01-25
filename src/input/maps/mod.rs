@@ -7,6 +7,7 @@ pub mod vim;
 pub struct KeyHandlerContext<'a, T> {
     context: Box<&'a mut dyn KeymapContext>,
     keymap: &'a mut T,
+    key: Key,
 }
 
 impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {

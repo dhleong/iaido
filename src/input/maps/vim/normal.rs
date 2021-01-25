@@ -6,15 +6,12 @@ use crate::{
     editing::motion::word::{is_big_word_boundary, is_small_word_boundary, WordMotion},
     key_handler,
 };
-use crate::{
-    editing::text::TextLines,
-    input::{keys::KeysParsable, KeymapContext},
-};
+use crate::{editing::text::TextLines, input::KeymapContext};
 
-use super::{KeyTreeNode, VimKeymapState};
+use super::{VimKeymapState, VimMode};
 
-pub fn vim_normal_mode<'a>() -> KeyTreeNode<'a> {
-    vim_tree! {
+pub fn vim_normal_mode<'a>() -> VimMode<'a> {
+    let mappings = vim_tree! {
         "<cr>" => |ctx| {
             ctx.state_mut().running = false;
             Ok(())
@@ -41,5 +38,10 @@ pub fn vim_normal_mode<'a>() -> KeyTreeNode<'a> {
 
         "0" => motion { ToLineStartMotion },
         "$" => motion { ToLineEndMotion },
+    };
+
+    VimMode {
+        mappings,
+        default_handler: None,
     }
 }

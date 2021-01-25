@@ -64,9 +64,12 @@ impl Tabpages {
 impl Resizable for Tabpages {
     fn resize(&mut self, new_size: Size) {
         let mut actual_size = new_size;
+        actual_size.h -= 1; // leave room for status line
+
         if self.all.len() > 1 {
             actual_size.h -= 1;
         }
+
         for page in &mut self.all {
             page.resize(actual_size);
         }

@@ -106,10 +106,12 @@ impl Resizable for Layout {
 
         let borders = count - 1;
         let primary_split = (self.primary_size - borders) / count;
-        for entry in &mut self.entries {
+        let extra = self.primary_size - borders - (primary_split * count);
+        for (i, entry) in &mut self.entries.iter_mut().enumerate() {
             // TODO can/should we try to maintain current ratios?
+            let my_extra = if i == 0 { extra } else { 0 };
             let available = Size {
-                h: primary_split,
+                h: primary_split + my_extra,
                 w: self.cross_size,
             };
             match entry {

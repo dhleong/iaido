@@ -102,6 +102,19 @@ impl Buffer for MemoryBuffer {
             self.content.lines.remove(first_line + 1);
         }
     }
+
+    fn insert(&mut self, cursor: CursorPosition, mut text: TextLine) {
+        let original = &self.content.lines[cursor.line];
+        let mut before = original.subs(0, cursor.col as usize);
+        let mut after = original.subs(cursor.col as usize, original.width());
+
+        let mut new = TextLine::default();
+        new.append(&mut before);
+        new.append(&mut text);
+        new.append(&mut after);
+
+        self.content.lines[cursor.line] = new;
+    }
 }
 
 impl ToString for MemoryBuffer {
@@ -178,6 +191,35 @@ mod tests {
             );
             buf.delete_range(((0, 4).into(), (2, 4).into()));
             assert_visual_match(buf, "Take me where");
+        }
+    }
+
+    #[cfg(test)]
+    mod insert {
+        use super::*;
+
+        #[test]
+        fn at_beginning() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("my love".into());
+            buf.insert((0, 0).into(), "Take ".into());
+            assert_visual_match(buf, "Take my love");
+        }
+
+        #[test]
+        fn in_middle() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take love".into());
+            buf.insert((0, 4).into(), " my".into());
+            assert_visual_match(buf, "Take my love");
+        }
+
+        #[test]
+        fn at_end() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my".into());
+            buf.insert((0, 7).into(), " love".into());
+            assert_visual_match(buf, "Take my love");
         }
     }
 }

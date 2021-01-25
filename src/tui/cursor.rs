@@ -8,13 +8,6 @@ pub struct CursorRenderer {
 }
 
 impl CursorRenderer {
-    pub fn nop() -> Self {
-        Self {
-            stdout: io::stdout(),
-            supports_line: false,
-        }
-    }
-
     /// Call before quitting
     pub fn reset(&mut self) -> Result<(), io::Error> {
         if !self.supports_line {

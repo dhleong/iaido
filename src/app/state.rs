@@ -1,6 +1,6 @@
 use crate::editing::{
-    buffers::Buffers, motion::MotionContext, tabpage::Tabpage, tabpages::Tabpages, text::TextLine,
-    window::Window, Buffer, Resizable, Size,
+    buffers::Buffers, motion::char::CharMotion, motion::Motion, motion::MotionContext,
+    tabpage::Tabpage, tabpages::Tabpages, text::TextLine, window::Window, Buffer, Resizable, Size,
 };
 
 pub struct AppState {
@@ -35,6 +35,14 @@ impl AppState {
 
     pub fn current_tab_mut<'a>(&'a mut self) -> &'a mut Box<Tabpage> {
         self.tabpages.current_tab_mut()
+    }
+
+    // ======= keymap conveniences ============================
+
+    pub fn backspace(&mut self) {
+        let motion = CharMotion::Backward(1);
+        motion.delete_range(self);
+        motion.apply_cursor(self);
     }
 
     pub fn insert_at_cursor(&mut self, text: TextLine) {

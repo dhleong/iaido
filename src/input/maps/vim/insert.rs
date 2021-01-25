@@ -14,7 +14,7 @@ pub fn vim_insert_mode<'a>() -> VimMode<'a> {
         //     Ok(())
         // },
         "<bs>" => |ctx| {
-            ctx.state_mut(); // TODO
+            ctx.state_mut().backspace();
             Ok(())
         },
     };

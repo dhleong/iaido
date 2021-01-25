@@ -106,7 +106,36 @@ impl Window {
     }
 
     fn scroll_down(&mut self, buffer: &Box<dyn Buffer>, virtual_lines: usize) {
-        todo!();
+        let end = buffer.lines_count();
+        let mut to_scroll = virtual_lines;
+
+        let window_width = self.size.w;
+        for _ in (end - self.scrolled_lines as usize)..end {
+            // NOTE: there's always at least one:
+            let consumable = self.scroll_offset as usize + 1;
+            self.scroll_offset = (self.scroll_offset as usize)
+                .checked_sub(to_scroll)
+                .unwrap_or(0) as u16;
+            if to_scroll < consumable {
+                // done!
+                break;
+            }
+
+            if self.scrolled_lines == 0 {
+                // no further to go
+                break;
+            }
+
+            to_scroll = to_scroll - consumable;
+            self.scrolled_lines -= 1;
+
+            let line = buffer.get(end - self.scrolled_lines as usize);
+            self.scroll_offset = line.measure_height(window_width) - 1;
+
+            if to_scroll == 0 {
+                break;
+            }
+        }
     }
 
     /// Given a CursorPosition meant to replace the one currently set on this Window, return a new

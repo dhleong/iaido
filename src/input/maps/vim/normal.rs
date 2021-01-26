@@ -4,12 +4,14 @@ use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
-    editing::motion::word::{is_big_word_boundary, is_small_word_boundary, WordMotion},
     editing::motion::Motion,
     key_handler,
 };
 
-use super::{VimKeymapState, VimMode};
+use super::{
+    motions::{vim_linewise_motions, vim_standard_motions},
+    VimKeymapState, VimMode,
+};
 
 pub fn vim_normal_mode<'a>() -> VimMode<'a> {
     let mappings = vim_tree! {
@@ -44,18 +46,8 @@ pub fn vim_normal_mode<'a>() -> VimMode<'a> {
             Ok(())
         },
 
-        // NOTE: should we define motions separately and combine?
-        "b" => motion { WordMotion::backward_until(is_small_word_boundary) },
-        "B" => motion { WordMotion::backward_until(is_big_word_boundary) },
-        "w" => motion { WordMotion::forward_until(is_small_word_boundary) },
-        "W" => motion { WordMotion::forward_until(is_big_word_boundary) },
-
-        "h" => motion { CharMotion::Backward(1) },
-        "l" => motion { CharMotion::Forward(1) },
-
-        "0" => motion { ToLineStartMotion },
-        "$" => motion { ToLineEndMotion },
-    };
+    } + vim_standard_motions()
+        + vim_linewise_motions();
 
     VimMode {
         mappings,

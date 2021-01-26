@@ -1,0 +1,76 @@
+use std::{collections::HashMap, ops};
+
+use crate::input::Key;
+
+use super::KeyHandler;
+
+pub struct KeyTreeNode<'a> {
+    pub children: HashMap<Key, KeyTreeNode<'a>>,
+    handler: Option<Box<KeyHandler<'a>>>,
+    handler_override: Option<Box<KeyHandler<'a>>>,
+}
+
+impl<'a> KeyTreeNode<'a> {
+    pub fn root() -> Self {
+        Self {
+            children: HashMap::new(),
+            handler: None,
+            handler_override: None,
+        }
+    }
+
+    pub fn get_handler(&self) -> Option<&Box<KeyHandler<'a>>> {
+        if let Some(overridden) = &self.handler_override {
+            Some(overridden)
+        } else if let Some(handler) = &self.handler {
+            Some(handler)
+        } else {
+            None
+        }
+    }
+
+    pub fn insert(&mut self, keys: &[Key], handler: Box<KeyHandler<'a>>) {
+        if keys.is_empty() {
+            self.handler = Some(handler);
+        } else {
+            let first_key = keys[0];
+            let node = self
+                .children
+                .entry(first_key)
+                .or_insert(KeyTreeNode::root());
+            node.insert(&keys[1..], handler);
+        }
+    }
+}
+
+impl<'a> ops::Add<KeyTreeNode<'a>> for KeyTreeNode<'a> {
+    type Output = KeyTreeNode<'a>;
+
+    fn add(self, mut rhs: KeyTreeNode<'a>) -> Self::Output {
+        let mut result = KeyTreeNode::root();
+
+        if let Some(rhs_handler) = rhs.handler {
+            result.handler = Some(rhs_handler);
+        } else {
+            result.handler = self.handler;
+        }
+
+        // combine shared child nodes and insert our unmatched nodes
+        for (key, child) in self.children {
+            if let Some(rhs_child) = rhs.children.remove(&key) {
+                result.children.insert(key, child + rhs_child);
+            } else {
+                result.children.insert(key, child);
+            }
+        }
+
+        // insert their unmatched nodes
+        for (key, child) in rhs.children {
+            if !result.children.contains_key(&key) {
+                result.children.insert(key, child);
+            }
+        }
+
+        result
+    }
+}

@@ -1,10 +1,11 @@
 mod insert;
+mod motions;
 mod normal;
-
-use std::collections::HashMap;
+mod tree;
 
 use insert::vim_insert_mode;
 use normal::vim_normal_mode;
+use tree::KeyTreeNode;
 
 use crate::{
     editing::motion::MotionRange,
@@ -21,33 +22,6 @@ type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> 
 pub struct VimMode<'a> {
     pub mappings: KeyTreeNode<'a>,
     pub default_handler: Option<Box<KeyHandler<'a>>>,
-}
-
-pub struct KeyTreeNode<'a> {
-    children: HashMap<Key, KeyTreeNode<'a>>,
-    handler: Option<Box<KeyHandler<'a>>>,
-}
-
-impl<'a> KeyTreeNode<'a> {
-    pub fn root() -> Self {
-        Self {
-            children: HashMap::new(),
-            handler: None,
-        }
-    }
-
-    pub fn insert(&mut self, keys: &[Key], handler: Box<KeyHandler<'a>>) {
-        if keys.is_empty() {
-            self.handler = Some(handler);
-        } else {
-            let first_key = keys[0];
-            let node = self
-                .children
-                .entry(first_key)
-                .or_insert(KeyTreeNode::root());
-            node.insert(&keys[1..], handler);
-        }
-    }
 }
 
 // ======= Keymap state ===================================
@@ -101,7 +75,7 @@ impl Keymap for VimKeymap {
             if let Some(key) = context.next_key()? {
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
-                    if let Some(handler) = &next.handler {
+                    if let Some(handler) = next.get_handler() {
                         return handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,

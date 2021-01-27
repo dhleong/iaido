@@ -61,13 +61,14 @@ where
 
         let origin = context.cursor();
         let original_line = context.buffer().get(origin.line);
-        let was_on_boundary =
+        let mut was_on_boundary =
             origin.col as usize == original_line.width() || self.is_on_boundary(context, origin);
         let mut cursor = self.step.destination(context);
 
         if cursor < origin {
             // special case: skip past any whitespace
             cursor = find(context, cursor, &self.step, is_not_whitespace);
+            was_on_boundary = self.is_on_boundary(context, cursor);
         }
 
         let now_on_boundary = self.is_on_boundary(context, cursor);
@@ -79,11 +80,8 @@ where
         if cursor > origin {
             // special case: skip until the first non-whitespace
             cursor = find(context, cursor, &self.step, is_not_whitespace);
-        } else {
-            // next, skip until the first non-boundary
-            cursor = find(context, cursor, &self.step, |ch| {
-                !(self.is_word_boundary)(ch)
-            });
+        } else if !was_on_boundary && self.is_on_boundary(context, cursor) {
+            cursor = CharMotion::Forward(1).destination(&context.with_cursor(cursor));
         }
 
         cursor
@@ -170,6 +168,39 @@ mod tests {
             ctx.motion(WordMotion::backward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 |Take my land
+            "});
+        }
+
+        #[test]
+        fn backward_past_whitespace2() {
+            let mut ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |my land
+            "});
+        }
+
+        #[test]
+        fn backward_to_start() {
+            let mut ctx = window(indoc! {"
+                Take my lan|d
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
+            "});
+        }
+
+        #[test]
+        fn backward_from_end() {
+            let mut ctx = window(indoc! {"
+                Take my land|
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
             "});
         }
     }

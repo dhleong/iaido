@@ -73,7 +73,8 @@ impl Keymap for VimKeymap {
 
         loop {
             if let Some(key) = context.next_key()? {
-                context.state_mut().echo(format!("{:?}", key).into());
+                // useful for testing:
+                // context.state_mut().echo(format!("{:?}", key).into());
 
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers

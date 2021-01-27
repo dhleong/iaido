@@ -41,12 +41,11 @@ where
     }
 
     fn is_on_boundary<C: super::MotionContext>(&self, context: &C, cursor: CursorPosition) -> bool {
-        (self.is_word_boundary)(
-            context
-                .buffer()
-                .get_char(cursor)
-                .expect("Invalid cursor position"),
-        )
+        if let Some(ch) = context.buffer().get_char(cursor) {
+            (self.is_word_boundary)(ch)
+        } else {
+            false
+        }
     }
 }
 

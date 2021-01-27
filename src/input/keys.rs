@@ -1,4 +1,4 @@
-use super::{Key, KeyCode};
+use super::{Key, KeyCode, KeyModifiers};
 
 // ======= Single-key parsing =============================
 
@@ -10,30 +10,7 @@ impl From<char> for Key {
 
 impl From<&str> for Key {
     fn from(s: &str) -> Self {
-        if s.len() == 1 {
-            s.chars().next().unwrap().into()
-        } else {
-            // TODO modifiers
-            match s {
-                " " | "20" | "space" => KeyCode::Char(' ').into(),
-                "bs" | "backspace" => KeyCode::Backspace.into(),
-                "backslash" => KeyCode::Char('\\').into(),
-                "cr" | "enter" => KeyCode::Enter.into(),
-                "esc" => KeyCode::Esc.into(),
-                "tab" => KeyCode::Tab.into(),
-                "s+tab" => KeyCode::BackTab.into(),
-
-                "left" => KeyCode::Left.into(),
-                "up" => KeyCode::Up.into(),
-                "down" => KeyCode::Down.into(),
-                "right" => KeyCode::Right.into(),
-
-                "pagedown" => KeyCode::PageDown.into(),
-                "pageup" => KeyCode::PageUp.into(),
-
-                _ => todo!("parse: {}", s),
-            }
-        }
+        parse_key(s).ok().unwrap()
     }
 }
 
@@ -50,6 +27,55 @@ impl From<&String> for Key {
 }
 
 // ======= Main string -> keys parsing ====================
+
+enum KeyParseError {
+    InvalidModifier(String),
+    InvalidKey(String),
+}
+
+fn parse_key(s: &str) -> Result<Key, KeyParseError> {
+    if s.len() == 1 {
+        // easy case:
+        return Ok(s.chars().next().unwrap().into());
+    }
+
+    let mut modifiers = KeyModifiers::empty();
+    let mut code = KeyCode::Char('\0');
+
+    let parts = s.split("-").count();
+    for (i, part) in s.split("-").enumerate() {
+        if i < parts - 1 {
+            modifiers |= match part {
+                "a" | "alt" => KeyModifiers::ALT,
+                "c" | "ctrl" => KeyModifiers::CONTROL,
+                "s" | "shift" => KeyModifiers::SHIFT,
+                _ => return Err(KeyParseError::InvalidModifier(part.to_string())),
+            };
+        } else {
+            code = match part {
+                " " | "20" | "space" => KeyCode::Char(' '),
+                "bs" | "backspace" => KeyCode::Backspace,
+                "backslash" => KeyCode::Char('\\'),
+                "cr" | "enter" => KeyCode::Enter,
+                "esc" => KeyCode::Esc,
+                "tab" => KeyCode::Tab,
+                "s+tab" => KeyCode::BackTab,
+
+                "left" => KeyCode::Left,
+                "up" => KeyCode::Up,
+                "down" => KeyCode::Down,
+                "right" => KeyCode::Right,
+
+                "pagedown" => KeyCode::PageDown,
+                "pageup" => KeyCode::PageUp,
+
+                _ => return Err(KeyParseError::InvalidKey(part.to_string())),
+            };
+        }
+    }
+
+    Ok(Key { code, modifiers })
+}
 
 fn parse_keys(s: &String) -> Vec<Key> {
     let mut v: Vec<Key> = Vec::new();
@@ -148,5 +174,11 @@ mod tests {
     fn parse_single_special() {
         let keys: Vec<Key> = "<Cr>".into_keys();
         assert_eq!(keys, vec![KeyCode::Enter.into(),]);
+    }
+
+    #[test]
+    fn parse_modifiers() {
+        let keys: Vec<Key> = "<aLt-Cr>".into_keys();
+        assert_eq!(keys, vec![Key::new(KeyCode::Enter, KeyModifiers::ALT),]);
     }
 }

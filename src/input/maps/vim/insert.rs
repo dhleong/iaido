@@ -1,5 +1,9 @@
 use super::{VimKeymapState, VimMode};
-use crate::editing::motion::{char::CharMotion, Motion};
+use crate::editing::motion::{
+    char::CharMotion,
+    word::{is_small_word_boundary, WordMotion},
+    Motion,
+};
 use crate::input::{KeyCode, KeymapContext};
 use crate::{key_handler, vim_tree};
 
@@ -12,10 +16,14 @@ pub fn vim_insert_mode<'a>() -> VimMode<'a> {
             Ok(())
          },
 
-        // "<a-bs>" => |ctx| {
-        //     ctx.state_mut(); // TODO
-        //     Ok(())
-        // },
+        "<a-bs>" => |ctx| {
+            let state = ctx.state_mut();
+            let motion = WordMotion::backward_until(is_small_word_boundary);
+            let end_cursor = motion.destination(state);
+            motion.delete_range(state);
+            state.current_window_mut().cursor = end_cursor;
+            Ok(())
+        },
         "<bs>" => |ctx| {
             ctx.state_mut().backspace();
             Ok(())

@@ -12,7 +12,7 @@ pub struct Key {
     pub modifiers: KeyModifiers,
 }
 impl Key {
-    fn new(code: KeyCode, modifiers: KeyModifiers) -> Self {
+    pub fn new(code: KeyCode, modifiers: KeyModifiers) -> Self {
         Self { code, modifiers }
     }
 }
@@ -20,12 +20,6 @@ impl Key {
 impl From<KeyCode> for Key {
     fn from(code: KeyCode) -> Self {
         Key::new(code, KeyModifiers::NONE)
-    }
-}
-
-impl From<crossterm::event::KeyEvent> for Key {
-    fn from(ev: crossterm::event::KeyEvent) -> Self {
-        Key::new(ev.code, ev.modifiers)
     }
 }
 

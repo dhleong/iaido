@@ -1,11 +1,45 @@
 use std::{io, time::Duration};
 
-use crossterm::{event::Event, ErrorKind};
+use crossterm::{event::Event, event::KeyCode, event::KeyModifiers, ErrorKind};
 
 use crate::{
     input::{Key, KeyError, KeySource},
     ui::{UiEvent, UiEvents},
 };
+
+// ======= Conversions ====================================
+
+impl From<crossterm::event::KeyEvent> for Key {
+    fn from(ev: crossterm::event::KeyEvent) -> Self {
+        match ev.code {
+            KeyCode::Char(ch) => {
+                // NOTE: capital ascii letters from crossterm include the SHIFT modifier, but
+                // symbols like ! do not. For consistency, let's remove SHIFT from letters, too:
+                if ch.is_alphabetic() && ch == ch.to_ascii_uppercase() {
+                    return Key::new(ev.code, ev.modifiers - KeyModifiers::SHIFT);
+                }
+
+                // some special cases by experimentation:
+                match ch {
+                    '\u{7f}' if !ev.modifiers.is_empty() => {
+                        return Key::new(KeyCode::Backspace, ev.modifiers);
+                    }
+                    '\r' if !ev.modifiers.is_empty() => {
+                        return Key::new(KeyCode::Enter, ev.modifiers);
+                    }
+
+                    _ => {} // fall through...
+                };
+            }
+
+            _ => {} // fall through for default:
+        }
+
+        Key::new(ev.code, ev.modifiers)
+    }
+}
+
+// ======= TuiEvents ======================================
 
 pub struct TuiEvents {
     pending_event: Option<UiEvent>,

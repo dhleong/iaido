@@ -10,6 +10,10 @@ pub fn is_small_word_boundary(ch: &str) -> bool {
     ch.find(char::is_alphanumeric).is_none()
 }
 
+pub fn is_not_whitespace(ch: &str) -> bool {
+    ch.find(char::is_whitespace).is_none()
+}
+
 pub struct WordMotion<T>
 where
     T: Fn(&str) -> bool,
@@ -35,6 +39,15 @@ where
             is_word_boundary: predicate,
         }
     }
+
+    fn is_on_boundary<C: super::MotionContext>(&self, context: &C, cursor: CursorPosition) -> bool {
+        (self.is_word_boundary)(
+            context
+                .buffer()
+                .get_char(cursor)
+                .expect("Invalid cursor position"),
+        )
+    }
 }
 
 impl<T> Motion for WordMotion<T>
@@ -42,15 +55,34 @@ where
     T: Fn(&str) -> bool,
 {
     fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
-        let mut cursor = context.cursor().clone();
+        if context.buffer().lines_count() == 0 {
+            return context.cursor();
+        }
 
-        // first, find the first boundary
-        cursor = find(context, cursor, &self.step, &self.is_word_boundary);
+        let origin = context.cursor();
+        let original_line = context.buffer().get(origin.line);
+        let mut was_on_boundary =
+            origin.col as usize == original_line.width() || self.is_on_boundary(context, origin);
+        let mut cursor = self.step.destination(context);
 
-        // next, skip until the first non-boundary
-        cursor = find(context, cursor, &self.step, |ch| {
-            !(self.is_word_boundary)(ch)
-        });
+        if cursor < origin {
+            // special case: skip past any whitespace
+            cursor = find(context, cursor, &self.step, is_not_whitespace);
+            was_on_boundary = self.is_on_boundary(context, cursor);
+        }
+
+        let now_on_boundary = self.is_on_boundary(context, cursor);
+        if !was_on_boundary || now_on_boundary {
+            // find the next boundary
+            cursor = find(context, cursor, &self.step, &self.is_word_boundary);
+        }
+
+        if cursor > origin {
+            // special case: skip until the first non-whitespace
+            cursor = find(context, cursor, &self.step, is_not_whitespace);
+        } else if !was_on_boundary && self.is_on_boundary(context, cursor) {
+            cursor = CharMotion::Forward(1).destination(&context.with_cursor(cursor));
+        }
 
         cursor
     }
@@ -117,17 +149,60 @@ mod tests {
             "});
         }
 
-        // // ?
-        // #[test]
-        // fn forward_until_symbol() {
-        //     let mut ctx = window(indoc! {"
-        //         |Take 'my' land
-        //     "});
-        //     ctx.motion(WordMotion::forward_until(is_small_word_boundary));
-        //     ctx.assert_visual_match(indoc! {"
-        //         Take |'my' land
-        //     "});
-        // }
+        #[test]
+        fn forward_until_symbol() {
+            let mut ctx = window(indoc! {"
+                |Take 'my' land
+            "});
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |'my' land
+            "});
+        }
+
+        #[test]
+        fn backward_past_whitespace() {
+            let mut ctx = window(indoc! {"
+                Take |my land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn backward_past_whitespace2() {
+            let mut ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |my land
+            "});
+        }
+
+        #[test]
+        fn backward_to_start() {
+            let mut ctx = window(indoc! {"
+                Take my lan|d
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
+            "});
+        }
+
+        #[test]
+        fn backward_from_end() {
+            let mut ctx = window(indoc! {"
+                Take my land|
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
+            "});
+        }
     }
 
     mod big_word {
@@ -141,6 +216,28 @@ mod tests {
             ctx.motion(WordMotion::forward_until(is_big_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 'Take' |my land
+            "});
+        }
+
+        #[test]
+        fn backward_past_symbols() {
+            let mut ctx = window(indoc! {"
+                Take 'my|' land
+            "});
+            ctx.motion(WordMotion::backward_until(is_big_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |'my' land
+            "});
+        }
+
+        #[test]
+        fn backward_past_symbols_and_space() {
+            let mut ctx = window(indoc! {"
+                Take 'my' |land
+            "});
+            ctx.motion(WordMotion::backward_until(is_big_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |'my' land
             "});
         }
     }

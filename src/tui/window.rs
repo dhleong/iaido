@@ -6,9 +6,13 @@ use crate::tui::Measurable;
 
 impl Renderable for Window {
     fn render(&self, context: &mut RenderContext) {
-        let buf = match context.app.buffers.by_id(self.buffer) {
-            None => return,
-            Some(buf) => buf,
+        let buf = if let Some(overridden) = context.buffer_override {
+            overridden
+        } else {
+            match context.app.buffers.by_id(self.buffer) {
+                None => return,
+                Some(buf) => buf,
+            }
         };
 
         let count = buf.lines_count();
@@ -102,6 +106,7 @@ mod tests {
                 app: &state,
                 display: &mut display,
                 area,
+                buffer_override: None,
             };
 
             {

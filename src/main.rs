@@ -30,6 +30,8 @@ fn main() -> Result<(), io::Error> {
         app.render();
     }
 
+    app.state.echo("Test".into());
+
     let page = app.state.tabpages.current_tab_mut();
     let bottom_id = page.hsplit();
 

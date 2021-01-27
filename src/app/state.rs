@@ -1,12 +1,20 @@
 use crate::editing::{
-    buffers::Buffers, motion::char::CharMotion, motion::Motion, motion::MotionContext,
-    tabpage::Tabpage, tabpages::Tabpages, text::TextLine, window::Window, Buffer, Resizable, Size,
+    buffer::MemoryBuffer,
+    buffers::Buffers,
+    motion::char::CharMotion,
+    motion::{Motion, MotionContext},
+    tabpage::Tabpage,
+    tabpages::Tabpages,
+    text::{TextLine, TextLines},
+    window::Window,
+    Buffer, Resizable, Size,
 };
 
 pub struct AppState {
     pub running: bool,
     pub buffers: Buffers,
     pub tabpages: Tabpages,
+    pub echo_buffer: Box<dyn Buffer>,
 }
 
 impl AppState {
@@ -37,6 +45,16 @@ impl AppState {
         self.tabpages.current_tab_mut()
     }
 
+    // ======= echo ===========================================
+
+    pub fn clear_echo(&mut self) {
+        self.echo_buffer.clear();
+    }
+
+    pub fn echo(&mut self, text: TextLines) {
+        self.echo_buffer.append(text);
+    }
+
     // ======= keymap conveniences ============================
 
     pub fn backspace(&mut self) {
@@ -65,6 +83,7 @@ impl Default for AppState {
             running: true,
             buffers,
             tabpages,
+            echo_buffer: Box::new(MemoryBuffer::new(0)),
         };
 
         // create the default tabpage

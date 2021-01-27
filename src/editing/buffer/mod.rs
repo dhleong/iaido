@@ -12,6 +12,7 @@ use super::{
 pub trait Buffer: HasId + Send + Sync {
     fn lines_count(&self) -> usize;
     fn append(&mut self, text: TextLines);
+    fn clear(&mut self);
     fn get(&self, line_index: usize) -> &TextLine;
 
     fn delete_range(&mut self, range: MotionRange);

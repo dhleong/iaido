@@ -6,6 +6,7 @@ use crate::{key_handler, vim_tree};
 pub fn vim_insert_mode<'a>() -> VimMode<'a> {
     let mappings = vim_tree! {
         "<esc>" => |ctx| {
+            ctx.state_mut().clear_echo();
             ctx.state_mut().current_window_mut().set_inserting(false);
             CharMotion::Backward(1).apply_cursor(ctx.state_mut());
             Ok(())

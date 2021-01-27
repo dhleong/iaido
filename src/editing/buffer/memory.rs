@@ -34,6 +34,10 @@ impl Buffer for MemoryBuffer {
         self.content.extend(text);
     }
 
+    fn clear(&mut self) {
+        self.content.lines.clear();
+    }
+
     fn get(&self, line_index: usize) -> &TextLine {
         &self.content.lines[line_index]
     }

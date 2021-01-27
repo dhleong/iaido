@@ -4,6 +4,7 @@ use crate::{
 };
 
 use crossterm::terminal;
+use editing::{window::Window, Buffer};
 use std::io;
 pub use tui::text;
 use tui::{backend::Backend, Terminal};
@@ -87,6 +88,7 @@ pub struct RenderContext<'a> {
     app: &'a crate::app::State,
     display: &'a mut Display,
     area: Rect,
+    buffer_override: Option<&'a Box<dyn Buffer>>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -95,6 +97,7 @@ impl<'a> RenderContext<'a> {
             app: self.app,
             display: self.display,
             area: new_area,
+            buffer_override: self.buffer_override,
         }
     }
 }
@@ -138,14 +141,47 @@ impl Tui {
 
         app.resize(display.size);
 
+        // echo line:
+        self.render_echo(app, &mut display);
+
+        // main UI:
         let mut context = RenderContext {
             app: &app,
             display: &mut display,
             area: size,
+            buffer_override: None,
         };
         app.tabpages.render(&mut context);
 
         self.render_display(display)
+    }
+
+    fn render_echo(&mut self, app: &mut crate::app::State, display: &mut Display) {
+        // NOTE: doesn't allow for word wrapping:
+        let echo_height = app.echo_buffer.lines_count() as u16;
+        if echo_height == 0 {
+            return;
+        }
+
+        let area = Rect {
+            x: 0,
+            y: display.size.h - echo_height,
+            width: display.size.w,
+            height: echo_height,
+        };
+        let mut context = RenderContext {
+            app: &app,
+            display,
+            area,
+            buffer_override: Some(&app.echo_buffer),
+        };
+        let mut win = Window::new(0, app.echo_buffer.id());
+        win.set_focused(false);
+        win.resize(Size {
+            w: area.width,
+            h: echo_height,
+        });
+        win.render(&mut context);
     }
 
     fn render_display(&mut self, display: Display) -> Result<(), io::Error> {

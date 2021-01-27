@@ -218,5 +218,27 @@ mod tests {
                 'Take' |my land
             "});
         }
+
+        #[test]
+        fn backward_past_symbols() {
+            let mut ctx = window(indoc! {"
+                Take 'my|' land
+            "});
+            ctx.motion(WordMotion::backward_until(is_big_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |'my' land
+            "});
+        }
+
+        #[test]
+        fn backward_past_symbols_and_space() {
+            let mut ctx = window(indoc! {"
+                Take 'my' |land
+            "});
+            ctx.motion(WordMotion::backward_until(is_big_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |'my' land
+            "});
+        }
     }
 }

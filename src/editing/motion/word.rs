@@ -1,6 +1,6 @@
 use crate::editing::CursorPosition;
 
-use super::{char::CharMotion, Motion};
+use super::{char::CharMotion, linewise::LineCrossing, Motion};
 
 pub fn is_big_word_boundary(ch: &str) -> bool {
     ch == " "
@@ -18,7 +18,7 @@ pub struct WordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
-    step: CharMotion,
+    step: LineCrossing<CharMotion>,
     is_word_boundary: T,
 }
 
@@ -28,14 +28,14 @@ where
 {
     pub fn backward_until(predicate: T) -> Self {
         WordMotion {
-            step: CharMotion::Backward(1),
+            step: LineCrossing::new(CharMotion::Backward(1)),
             is_word_boundary: predicate,
         }
     }
 
     pub fn forward_until(predicate: T) -> Self {
         Self {
-            step: CharMotion::Forward(1),
+            step: LineCrossing::new(CharMotion::Forward(1)),
             is_word_boundary: predicate,
         }
     }
@@ -80,7 +80,8 @@ where
             // special case: skip until the first non-whitespace
             cursor = find(context, cursor, &self.step, is_not_whitespace);
         } else if !was_on_boundary && self.is_on_boundary(context, cursor) {
-            cursor = CharMotion::Forward(1).destination(&context.with_cursor(cursor));
+            cursor =
+                LineCrossing::new(CharMotion::Forward(1)).destination(&context.with_cursor(cursor));
         }
 
         cursor
@@ -95,7 +96,6 @@ fn find<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
 ) -> CursorPosition {
     let mut cursor = start;
 
-    // TODO continue across lines
     loop {
         if let Some(ch) = context.buffer().get_char(cursor) {
             if pred(ch) {
@@ -202,6 +202,32 @@ mod tests {
                 Take my |land
             "});
         }
+
+        #[test]
+        fn backward_to_start_of_second_line() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                Take |my land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn backward_to_start_of_first_line() {
+            let mut ctx = window(indoc! {"
+                Take |my love
+                Take my land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
+                Take my land
+            "});
+        }
     }
 
     mod big_word {
@@ -237,6 +263,36 @@ mod tests {
             ctx.motion(WordMotion::backward_until(is_big_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take |'my' land
+            "});
+        }
+    }
+
+    mod across_lines {
+        use super::*;
+
+        #[test]
+        fn direct_backwards_test() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my |love
+                Take my land
+            "});
+        }
+
+        #[test]
+        fn direct_forward_test() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+                Take my land
+            "});
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
             "});
         }
     }

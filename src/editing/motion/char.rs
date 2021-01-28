@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use crate::editing::CursorPosition;
 
 use super::Motion;
@@ -12,11 +14,16 @@ impl Motion for CharMotion {
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         let from = context.cursor();
         match self {
-            &CharMotion::Forward(step) => from.with_col(
-                from.col
-                    .checked_add(step)
-                    .unwrap_or(from.end_of_line(context.buffer()).col),
-            ),
+            &CharMotion::Forward(step) => {
+                let end = context
+                    .buffer()
+                    .get_line_width(from.line)
+                    .expect("Invalid line");
+                from.with_col(min(
+                    end as u16,
+                    from.col.checked_add(step).unwrap_or(end as u16),
+                ))
+            }
 
             &CharMotion::Backward(step) => from.with_col(from.col.checked_sub(step).unwrap_or(0)),
         }
@@ -35,6 +42,15 @@ mod tests {
 
         ctx.motion(CharMotion::Forward(1));
         ctx.assert_visual_match("Take my lov|e");
+    }
+
+    #[test]
+    fn forward_is_clamped_after_end() {
+        let ctx = window("Take my love|");
+        let origin = ctx.window.cursor;
+
+        let destination = CharMotion::Forward(1).destination(&ctx);
+        assert_eq!(origin, destination);
     }
 
     #[test]

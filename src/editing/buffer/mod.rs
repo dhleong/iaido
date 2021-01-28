@@ -35,6 +35,7 @@ pub trait Buffer: HasId + Send + Sync {
         let line = self.get(pos.line);
         let col_offset = pos.col as usize;
 
+        let mut seen_width = 0;
         let mut current_span = 0;
         loop {
             if current_span >= line.0.len() {
@@ -43,11 +44,17 @@ pub trait Buffer: HasId + Send + Sync {
             }
 
             let span = &line.0[current_span];
-            if span.width() > col_offset {
+            let w = span.width();
+            if w > col_offset {
                 return Some(&span.content[col_offset..col_offset + 1]);
             }
 
             current_span += 1;
+            seen_width += w;
+        }
+
+        if seen_width == col_offset {
+            return Some("\n");
         }
 
         None

@@ -1,11 +1,11 @@
 use crate::input::KeymapContext;
-use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{DownLineMotion, ToLineEndMotion, ToLineStartMotion, UpLineMotion},
     editing::motion::word::{is_big_word_boundary, is_small_word_boundary, WordMotion},
     key_handler,
 };
+use crate::{vim_branches, vim_tree};
 
 use super::tree::KeyTreeNode;
 use super::VimKeymapState;

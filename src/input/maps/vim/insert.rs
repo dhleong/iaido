@@ -5,7 +5,7 @@ use crate::editing::motion::{
     Motion,
 };
 use crate::input::{KeyCode, KeymapContext};
-use crate::{key_handler, vim_tree};
+use crate::{key_handler, vim_branches, vim_tree};
 
 pub fn vim_insert_mode<'a>() -> VimMode<'a> {
     let mappings = vim_tree! {

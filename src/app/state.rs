@@ -10,11 +10,14 @@ use crate::editing::{
     Buffer, Resizable, Size,
 };
 
+use super::prompt::Prompt;
+
 pub struct AppState {
     pub running: bool,
     pub buffers: Buffers,
     pub tabpages: Tabpages,
     pub echo_buffer: Box<dyn Buffer>,
+    pub prompt: Prompt,
 }
 
 impl AppState {
@@ -84,6 +87,7 @@ impl Default for AppState {
             buffers,
             tabpages,
             echo_buffer: Box::new(MemoryBuffer::new(0)),
+            prompt: Prompt::default(),
         };
 
         // create the default tabpage

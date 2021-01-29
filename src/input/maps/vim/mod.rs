@@ -29,6 +29,7 @@ pub struct VimMode<'a> {
 pub struct VimKeymapState {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
+    mode_stack: Vec<VimMode<'static>>,
 }
 
 impl Default for VimKeymapState {
@@ -36,11 +37,16 @@ impl Default for VimKeymapState {
         Self {
             pending_linewise_operator_key: None,
             operator_fn: None,
+            mode_stack: Vec::default(),
         }
     }
 }
 
 impl VimKeymapState {
+    pub fn push_mode(&mut self) {
+        // TODO
+    }
+
     fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
@@ -122,6 +128,17 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |$ctx_name| $body));
+        vim_branches! { $root -> $($tail)* }
+    };
+
+    // immutable normal keymap (for completeness):
+    (
+        $root:ident ->
+        $keys:literal =>
+            |?mut $ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |?mut $ctx_name| $body));
         vim_branches! { $root -> $($tail)* }
     };
 

@@ -60,6 +60,12 @@ impl Measurable for TextLines {
     }
 }
 
+impl Measurable for Vec<&TextLine> {
+    fn measure_height(&self, width: u16) -> u16 {
+        self.iter().map(|line| line.measure_height(width)).sum()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

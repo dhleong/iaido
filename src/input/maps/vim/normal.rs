@@ -10,8 +10,22 @@ use crate::{
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
+    tree::KeyTreeNode,
     VimKeymapState, VimMode,
 };
+
+fn cmd_mode_access<'a>() -> KeyTreeNode<'a> {
+    vim_tree! {
+        ":" => |ctx| {
+            let prompt = &mut ctx.state_mut().prompt;
+            prompt.buffer.append(":".into());
+            prompt.handle_content_change();
+
+            ctx.keymap.push_mode(); // TODO
+            Ok(())
+         },
+    }
+}
 
 pub fn vim_normal_mode<'a>() -> VimMode<'a> {
     let mappings = vim_tree! {
@@ -46,7 +60,8 @@ pub fn vim_normal_mode<'a>() -> VimMode<'a> {
             Ok(())
         },
 
-    } + vim_standard_motions()
+    } + cmd_mode_access()
+        + vim_standard_motions()
         + vim_linewise_motions();
 
     VimMode {

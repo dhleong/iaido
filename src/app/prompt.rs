@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use crate::{
-    editing::{buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, Resizable, Size},
+    editing::{buffer::MemoryBuffer, window::Window, Buffer, Resizable, Size},
     tui::measure::Measurable,
 };
 

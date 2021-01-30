@@ -18,6 +18,13 @@ impl Display {
     }
 
     pub fn merge_at_y(&mut self, y: u16, other: Display) {
+        if other.size != self.size {
+            panic!(
+                "other.size({:?}) does not match self.size({:?})",
+                other.size, self.size
+            );
+        }
+
         let to_merge_height = self.size.h - y;
         let cells_start = (y * self.size.w) as usize;
         let cells_count = (to_merge_height * self.size.w) as usize;
@@ -88,7 +95,7 @@ mod tests {
 
     impl TestableDisplay for Display {
         fn of_string(s: &'static str) -> Display {
-            let width = s.find('\n').unwrap_or(s.len());
+            let width = s.split('\n').map(|l| l.len()).max().unwrap_or(s.len());
             let height = s.chars().filter(|ch| *ch == '\n').count();
 
             let mut display = Display::new(Size {
@@ -165,6 +172,25 @@ mod tests {
         display.assert_visual_match(indoc! {"
             Take my land
 
+        "});
+    }
+
+    #[test]
+    fn merge_at_y_works() {
+        let mut display = Display::of_string(indoc! {"
+            Take my love
+
+        "});
+
+        let to_merge = Display::of_string(indoc! {"
+            _
+            Take my land
+        "});
+        display.merge_at_y(1, to_merge);
+
+        display.assert_visual_match(indoc! {"
+            Take my love
+            Take my land
         "});
     }
 }

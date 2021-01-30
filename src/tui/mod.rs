@@ -109,10 +109,6 @@ impl Tui {
     }
 
     fn render_prompt(&mut self, app: &mut crate::app::State, display: &mut Display) {
-        let mut prompt_display = Display::new(display.size);
-        app.prompt.window.render(
-            &mut RenderContext::new(app, &mut prompt_display).with_buffer(&app.prompt.buffer),
-        );
         let prompt_height = min(
             display.size.h,
             app.prompt.buffer.measure_height(display.size.w),
@@ -122,7 +118,12 @@ impl Tui {
             return;
         }
 
-        display.shift_up(prompt_height.checked_sub(1).unwrap_or(0));
+        let mut prompt_display = Display::new(display.size);
+        app.prompt.window.render(
+            &mut RenderContext::new(app, &mut prompt_display).with_buffer(&app.prompt.buffer),
+        );
+
+        display.shift_up(prompt_height - 1);
         display.merge_at_y(display.size.h - prompt_height, prompt_display);
     }
 

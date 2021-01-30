@@ -33,10 +33,7 @@ impl Prompt {
 
 impl Resizable for Prompt {
     fn resize(&mut self, new_size: crate::editing::Size) {
-        let lines: Vec<&TextLine> = (0..self.buffer.lines_count())
-            .map(|i| self.buffer.get(i))
-            .collect();
-        let height = lines.measure_height(new_size.w);
+        let height = self.buffer.measure_height(new_size.w);
         self.max_height = new_size.h;
         self.window.resize(Size {
             w: new_size.w,

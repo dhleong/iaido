@@ -18,6 +18,7 @@ fn cmd_mode_access<'a>() -> KeyTreeNode<'a> {
     vim_tree! {
         ":" => |ctx| {
             let prompt = &mut ctx.state_mut().prompt;
+            prompt.clear();
             prompt.buffer.append(":".into());
             prompt.handle_content_change();
 

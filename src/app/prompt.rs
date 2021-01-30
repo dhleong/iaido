@@ -23,6 +23,10 @@ impl Default for Prompt {
 }
 
 impl Prompt {
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+    }
+
     pub fn handle_content_change(&mut self) {
         self.resize(Size {
             w: self.window.size.w,

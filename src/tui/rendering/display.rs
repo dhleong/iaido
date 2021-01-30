@@ -71,3 +71,100 @@ impl std::fmt::Display for Display {
         write!(f, "]")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::editing::{motion::tests::window, Resizable};
+    use indoc::indoc;
+
+    use super::*;
+
+    trait TestableDisplay {
+        fn of_string(s: &'static str) -> Display;
+        fn cursor_coords(&self) -> Option<(u16, u16)>;
+        fn to_visual_string(&self) -> String;
+        fn assert_visual_match(&self, s: &'static str);
+    }
+
+    impl TestableDisplay for Display {
+        fn of_string(s: &'static str) -> Display {
+            let width = s.find('\n').unwrap_or(s.len());
+            let height = s.chars().filter(|ch| *ch == '\n').count();
+
+            let mut display = Display::new(Size {
+                w: width as u16,
+                h: height as u16,
+            });
+            let mut win = window(s);
+            win.window.resize(display.size);
+            win.render(&mut display);
+
+            display
+        }
+
+        fn cursor_coords(&self) -> Option<(u16, u16)> {
+            match self.cursor {
+                editing::Cursor::Block(x, y) => Some((x, y)),
+                editing::Cursor::Line(x, y) => Some((x, y)),
+                editing::Cursor::None => None,
+            }
+        }
+
+        fn to_visual_string(&self) -> String {
+            let mut s = String::default();
+
+            for y in 0..self.size.h {
+                s.push_str("\n");
+
+                for x in 0..self.size.w {
+                    if let Some(cursor) = self.cursor_coords() {
+                        if (x, y) == cursor {
+                            s.push_str("|");
+                        }
+                    }
+
+                    let content = &self.buffer.get(x, y).symbol;
+                    if content.is_empty() {
+                        s.push_str("_");
+                    } else {
+                        s.push(content.chars().next().unwrap());
+                    }
+                }
+            }
+
+            s
+        }
+
+        fn assert_visual_match(&self, s: &'static str) {
+            let expected_display = Display::of_string(s);
+            assert_eq!(self.to_visual_string(), expected_display.to_visual_string());
+        }
+    }
+
+    #[test]
+    fn visual_match_test() {
+        let display = Display::of_string(indoc! {"
+            Take my love
+            Take my land
+        "});
+
+        display.assert_visual_match(indoc! {"
+            Take my love
+            Take my land
+        "});
+    }
+
+    #[test]
+    fn shift_up_test() {
+        let mut display = Display::of_string(indoc! {"
+            Take my love
+            Take my land
+        "});
+        display.shift_up(1);
+
+        display.assert_visual_match(indoc! {"
+            Take my land
+
+        "});
+    }
+}

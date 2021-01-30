@@ -100,7 +100,8 @@ impl Default for AppState {
 
 impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
-        self.tabpages.resize(new_size)
+        self.tabpages.resize(new_size);
+        self.prompt.resize(new_size);
     }
 }
 

@@ -1,4 +1,5 @@
 use crate::{
+    editing::text::EditableLine,
     input::{KeyCode, KeymapContext},
     key_handler, vim_tree,
 };
@@ -27,21 +28,30 @@ fn mappings(prompt: String) -> KeyTreeNode {
 }
 
 pub fn vim_prompt_mode(prompt: String) -> VimMode {
-    // TODO an "after" handler to ensure we don't delete or move onto the prompt
-    VimMode {
-        id: format!("prompt:{}", prompt),
-        mappings: vim_insert_mappings() + mappings(prompt),
-        default_handler: Some(key_handler!(
-            VimKeymapState | ctx | {
-                match ctx.key.code {
-                    KeyCode::Char(c) => {
-                        ctx.state_mut().type_at_cursor(c);
-                    }
-                    _ => {} // ignore
-                };
+    VimMode::new(
+        format!("prompt:{}", prompt),
+        vim_insert_mappings() + mappings(prompt.clone()),
+    )
+    .on_default(key_handler!(
+        VimKeymapState | ctx | {
+            match ctx.key.code {
+                KeyCode::Char(c) => {
+                    ctx.state_mut().type_at_cursor(c);
+                }
+                _ => {} // ignore
+            };
 
-                Ok(())
+            Ok(())
+        }
+    ))
+    .on_after(key_handler!(
+        VimKeymapState move | ctx | {
+            let b = &ctx.state().prompt.buffer;
+            if b.is_empty() || !b.get(0).starts_with(&prompt) {
+                ctx.state_mut().prompt.buffer.insert((0, 0).into(), prompt.clone().into());
             }
-        )),
-    }
+
+            Ok(())
+        }
+    ))
 }

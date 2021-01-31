@@ -34,19 +34,15 @@ pub fn vim_insert_mode() -> VimMode {
          },
     } + vim_insert_mappings();
 
-    VimMode {
-        id: "i".to_string(),
-        mappings,
-        default_handler: Some(key_handler!(
-            VimKeymapState | ctx | {
-                match ctx.key.code {
-                    KeyCode::Char(c) => {
-                        ctx.state_mut().type_at_cursor(c);
-                    }
-                    _ => {} // ignore
-                };
-                Ok(())
-            }
-        )),
-    }
+    VimMode::new("i", mappings).on_default(key_handler!(
+        VimKeymapState | ctx | {
+            match ctx.key.code {
+                KeyCode::Char(c) => {
+                    ctx.state_mut().type_at_cursor(c);
+                }
+                _ => {} // ignore
+            };
+            Ok(())
+        }
+    ))
 }

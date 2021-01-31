@@ -61,9 +61,5 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_standard_motions()
         + vim_linewise_motions();
 
-    VimMode {
-        id: "n".to_string(),
-        mappings,
-        default_handler: None,
-    }
+    VimMode::new("n", mappings)
 }

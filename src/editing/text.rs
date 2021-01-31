@@ -8,12 +8,26 @@ pub type TextLines = Text<'static>;
 pub trait EditableLine {
     fn append(&mut self, other: &mut TextLine);
     fn subs(&self, start: usize, end: usize) -> Self;
+    fn starts_with(&self, s: &String) -> bool;
     fn to_string(&self) -> String;
 }
 
 impl EditableLine for TextLine {
     fn append(&mut self, other: &mut TextLine) {
         self.0.append(&mut other.0);
+    }
+
+    fn starts_with(&self, s: &String) -> bool {
+        let mut index = 0;
+        for span in &self.0 {
+            if span.content != s[index..] {
+                return false;
+            }
+
+            index += span.content.len();
+        }
+
+        return true;
     }
 
     fn subs(&self, start: usize, end: usize) -> TextLine {

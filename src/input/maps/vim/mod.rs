@@ -27,6 +27,28 @@ pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
     pub default_handler: Option<Box<KeyHandler>>,
+    pub after_handler: Option<Box<KeyHandler>>,
+}
+
+impl VimMode {
+    pub fn new<Id: Into<String>>(id: Id, mappings: KeyTreeNode) -> Self {
+        Self {
+            id: id.into(),
+            mappings,
+            default_handler: None,
+            after_handler: None,
+        }
+    }
+
+    pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
+        self.after_handler = Some(handler);
+        self
+    }
+
+    pub fn on_default(mut self, handler: Box<KeyHandler>) -> Self {
+        self.default_handler = Some(handler);
+        self
+    }
 }
 
 impl std::fmt::Debug for VimMode {
@@ -126,6 +148,14 @@ impl Keymap for VimKeymap {
                 // no key read:
                 break;
             }
+        }
+
+        if let Some(handler) = &mode.after_handler {
+            handler(KeyHandlerContext {
+                context: Box::new(context),
+                keymap: &mut self.keymap,
+                key: '\0'.into(),
+            })?;
         }
 
         if mode_from_stack {

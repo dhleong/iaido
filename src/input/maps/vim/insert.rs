@@ -1,21 +1,14 @@
-use super::{VimKeymapState, VimMode};
+use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
 use crate::editing::motion::{
     char::CharMotion,
     word::{is_small_word_boundary, WordMotion},
     Motion,
 };
 use crate::input::{KeyCode, KeymapContext};
-use crate::{key_handler, vim_branches, vim_tree};
+use crate::{key_handler, vim_tree};
 
-pub fn vim_insert_mode<'a>() -> VimMode<'a> {
-    let mappings = vim_tree! {
-        "<esc>" => |ctx| {
-            ctx.state_mut().clear_echo();
-            ctx.state_mut().current_window_mut().set_inserting(false);
-            CharMotion::Backward(1).apply_cursor(ctx.state_mut());
-            Ok(())
-         },
-
+pub fn vim_insert_mappings<'a>() -> KeyTreeNode<'a> {
+    vim_tree! {
         "<a-bs>" => |ctx| {
             let state = ctx.state_mut();
             let motion = WordMotion::backward_until(is_small_word_boundary);
@@ -28,7 +21,18 @@ pub fn vim_insert_mode<'a>() -> VimMode<'a> {
             ctx.state_mut().backspace();
             Ok(())
         },
-    };
+    }
+}
+
+pub fn vim_insert_mode<'a>() -> VimMode<'a> {
+    let mappings = vim_tree! {
+        "<esc>" => |ctx| {
+            ctx.state_mut().clear_echo();
+            ctx.state_mut().current_window_mut().set_inserting(false);
+            CharMotion::Backward(1).apply_cursor(ctx.state_mut());
+            Ok(())
+         },
+    } + vim_insert_mappings();
 
     VimMode {
         mappings,

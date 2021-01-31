@@ -43,6 +43,15 @@ macro_rules! key_handler {
         )
     }};
 
+    ($state_type:ident move |$ctx_name:ident| $body:expr) => {{
+        Box::new(
+            move |mut $ctx_name: crate::input::maps::KeyHandlerContext<$state_type>| {
+                let result: crate::input::maps::KeyResult = $body;
+                result
+            },
+        )
+    }};
+
     ($state_type:ident |?mut $ctx_name:ident| $body:expr) => {{
         Box::new(
             |$ctx_name: crate::input::maps::KeyHandlerContext<$state_type>| {

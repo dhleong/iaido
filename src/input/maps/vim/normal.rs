@@ -1,15 +1,14 @@
 use crate::input::KeymapContext;
-use crate::vim_branches;
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::Motion,
-    key_handler,
 };
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
+    prompt::vim_prompt_mode,
     tree::KeyTreeNode,
     VimKeymapState, VimMode,
 };
@@ -17,12 +16,9 @@ use super::{
 fn cmd_mode_access<'a>() -> KeyTreeNode<'a> {
     vim_tree! {
         ":" => |ctx| {
-            let prompt = &mut ctx.state_mut().prompt;
-            prompt.clear();
-            prompt.buffer.append(":".into());
-            prompt.handle_content_change();
-
-            ctx.keymap.push_mode(); // TODO
+            // TODO cmd handler
+            ctx.state_mut().prompt.activate(":".into());
+            ctx.keymap.push_mode(vim_prompt_mode(":".into()));
             Ok(())
          },
     }

@@ -1,30 +1,41 @@
 use std::cmp::min;
 
 use crate::{
-    editing::{buffer::MemoryBuffer, window::Window, Buffer, Resizable, Size},
+    editing::{buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, Resizable, Size},
     tui::measure::Measurable,
 };
 
 /// The Prompt is used to render prompts, cmdline mode, search modes, etc
 pub struct Prompt {
     pub buffer: Box<dyn Buffer>,
-    pub window: Window,
+    pub window: Box<Window>,
     max_height: u16,
 }
 
 impl Default for Prompt {
     fn default() -> Self {
+        let mut window = Window::new(0, 0);
+        window.focused = false;
+
         Self {
             buffer: Box::new(MemoryBuffer::new(0)),
-            window: Window::new(0, 0),
+            window: Box::new(window),
             max_height: 10,
         }
     }
 }
 
 impl Prompt {
+    pub fn activate(&mut self, prompt: TextLine) {
+        self.clear();
+        self.window.focused = true;
+        self.buffer.append(prompt.into());
+        self.handle_content_change();
+    }
+
     pub fn clear(&mut self) {
         self.buffer.clear();
+        self.window.focused = false;
     }
 
     pub fn handle_content_change(&mut self) {

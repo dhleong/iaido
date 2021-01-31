@@ -22,10 +22,20 @@ pub struct AppState {
 
 impl AppState {
     pub fn current_buffer<'a>(&'a self) -> &'a Box<dyn Buffer> {
+        if self.prompt.window.focused {
+            return &self.prompt.buffer;
+        }
+
         self.current_window().current_buffer(&self.buffers)
     }
 
     pub fn current_buffer_mut<'a>(&'a mut self) -> &'a mut Box<dyn Buffer> {
+        if self.prompt.window.focused {
+            return &mut self.prompt.buffer;
+        }
+
+        // NOTE: if we just use self.current_window(), rust complains that we've already immutably
+        // borrowed self.buffers, so we go the long way:
         self.tabpages
             .current_tab()
             .current_window()
@@ -33,10 +43,16 @@ impl AppState {
     }
 
     pub fn current_window<'a>(&'a self) -> &'a Box<Window> {
+        if self.prompt.window.focused {
+            return &self.prompt.window;
+        }
         self.current_tab().current_window()
     }
 
     pub fn current_window_mut<'a>(&'a mut self) -> &'a mut Box<Window> {
+        if self.prompt.window.focused {
+            return &mut self.prompt.window;
+        }
         self.current_tab_mut().current_window_mut()
     }
 

@@ -7,7 +7,7 @@ use crate::editing::motion::{
 use crate::input::{KeyCode, KeymapContext};
 use crate::{key_handler, vim_tree};
 
-pub fn vim_insert_mappings<'a>() -> KeyTreeNode<'a> {
+pub fn vim_insert_mappings() -> KeyTreeNode {
     vim_tree! {
         "<a-bs>" => |ctx| {
             let state = ctx.state_mut();
@@ -24,7 +24,7 @@ pub fn vim_insert_mappings<'a>() -> KeyTreeNode<'a> {
     }
 }
 
-pub fn vim_insert_mode<'a>() -> VimMode<'a> {
+pub fn vim_insert_mode() -> VimMode {
     let mappings = vim_tree! {
         "<esc>" => |ctx| {
             ctx.state_mut().clear_echo();

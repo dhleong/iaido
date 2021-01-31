@@ -15,17 +15,17 @@ use crate::{
 
 use super::{KeyHandlerContext, KeyResult};
 
-type KeyHandler<'a> = super::KeyHandler<'a, VimKeymapState>;
+type KeyHandler = super::KeyHandler<VimKeymapState>;
 type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> KeyResult;
 
 // ======= modes ==========================================
 
-pub struct VimMode<'a> {
-    pub mappings: KeyTreeNode<'a>,
-    pub default_handler: Option<Box<KeyHandler<'a>>>,
+pub struct VimMode {
+    pub mappings: KeyTreeNode,
+    pub default_handler: Option<Box<KeyHandler>>,
 }
 
-impl<'a> std::fmt::Debug for VimMode<'a> {
+impl std::fmt::Debug for VimMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[VimMode]")
     }
@@ -36,7 +36,7 @@ impl<'a> std::fmt::Debug for VimMode<'a> {
 pub struct VimKeymapState {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
-    mode_stack: Vec<VimMode<'static>>,
+    mode_stack: Vec<VimMode>,
 }
 
 impl Default for VimKeymapState {
@@ -50,8 +50,8 @@ impl Default for VimKeymapState {
 }
 
 impl VimKeymapState {
-    pub fn push_mode<'a>(&mut self, mode: VimMode<'a>) {
-        println!("TODO: push: {:?}", mode);
+    pub fn push_mode(&mut self, mode: VimMode) {
+        self.mode_stack.push(mode);
     }
 
     fn reset(&mut self) {
@@ -76,13 +76,17 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
-        let mode = if context.state().current_window().inserting {
-            vim_insert_mode()
+        let (mode, index_on_stack) = if let Some(mode) = self.keymap.mode_stack.pop() {
+            (mode, Some(self.keymap.mode_stack.len()))
+        } else if context.state().current_window().inserting {
+            (vim_insert_mode(), None)
         } else {
-            vim_normal_mode()
+            (vim_normal_mode(), None)
         };
+
         let mut current = &mode.mappings;
         let mut at_root = true;
+        let mut result = Ok(());
 
         loop {
             if let Some(key) = context.next_key()? {
@@ -92,11 +96,12 @@ impl Keymap for VimKeymap {
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
                     if let Some(handler) = next.get_handler() {
-                        return handler(KeyHandlerContext {
+                        result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,
                             key,
                         });
+                        break;
                     } else {
                         // deeper into the tree
                         current = next;
@@ -104,19 +109,36 @@ impl Keymap for VimKeymap {
                     }
                 } else if at_root {
                     // use the default mapping, if any
-                    if let Some(handler) = mode.default_handler {
-                        return handler(KeyHandlerContext {
+                    if let Some(handler) = &mode.default_handler {
+                        result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,
                             key,
                         });
+                        break;
                     }
                 }
             } else {
                 // no key read:
-                return Ok(());
+                break;
             }
         }
+
+        if let Some(index) = index_on_stack {
+            // return the moved mode value back to the stack...
+            // this is a terrible idea, but is a crappy, temporary workaround to immutably
+            // borrowing .keymap when if we peek at the stack, then later passing a mutable
+            // reference to a handler. In particular, there's no way to pop the mode off the stack
+            // from a handler... because it's not on there!
+            if index == self.keymap.mode_stack.len() {
+                // no mode has been pushed
+                self.keymap.mode_stack.push(mode);
+            } else {
+                self.keymap.mode_stack.insert(index, mode);
+            }
+        }
+
+        result
     }
 }
 

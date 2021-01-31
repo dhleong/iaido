@@ -4,13 +4,13 @@ use crate::input::Key;
 
 use super::KeyHandler;
 
-pub struct KeyTreeNode<'a> {
-    pub children: HashMap<Key, KeyTreeNode<'a>>,
-    handler: Option<Box<KeyHandler<'a>>>,
-    handler_override: Option<Box<KeyHandler<'a>>>,
+pub struct KeyTreeNode {
+    pub children: HashMap<Key, KeyTreeNode>,
+    handler: Option<Box<KeyHandler>>,
+    handler_override: Option<Box<KeyHandler>>,
 }
 
-impl<'a> KeyTreeNode<'a> {
+impl KeyTreeNode {
     pub fn root() -> Self {
         Self {
             children: HashMap::new(),
@@ -19,7 +19,7 @@ impl<'a> KeyTreeNode<'a> {
         }
     }
 
-    pub fn get_handler(&self) -> Option<&Box<KeyHandler<'a>>> {
+    pub fn get_handler(&self) -> Option<&Box<KeyHandler>> {
         if let Some(overridden) = &self.handler_override {
             Some(overridden)
         } else if let Some(handler) = &self.handler {
@@ -29,7 +29,7 @@ impl<'a> KeyTreeNode<'a> {
         }
     }
 
-    pub fn insert(&mut self, keys: &[Key], handler: Box<KeyHandler<'a>>) {
+    pub fn insert(&mut self, keys: &[Key], handler: Box<KeyHandler>) {
         if keys.is_empty() {
             self.handler = Some(handler);
         } else {
@@ -43,10 +43,10 @@ impl<'a> KeyTreeNode<'a> {
     }
 }
 
-impl<'a> ops::Add<KeyTreeNode<'a>> for KeyTreeNode<'a> {
-    type Output = KeyTreeNode<'a>;
+impl ops::Add<KeyTreeNode> for KeyTreeNode {
+    type Output = KeyTreeNode;
 
-    fn add(self, mut rhs: KeyTreeNode<'a>) -> Self::Output {
+    fn add(self, mut rhs: KeyTreeNode) -> Self::Output {
         let mut result = KeyTreeNode::root();
 
         if let Some(rhs_handler) = rhs.handler {

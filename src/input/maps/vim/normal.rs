@@ -13,7 +13,7 @@ use super::{
     VimKeymapState, VimMode,
 };
 
-fn cmd_mode_access<'a>() -> KeyTreeNode<'a> {
+fn cmd_mode_access() -> KeyTreeNode {
     vim_tree! {
         ":" => |ctx| {
             // TODO cmd handler
@@ -24,7 +24,7 @@ fn cmd_mode_access<'a>() -> KeyTreeNode<'a> {
     }
 }
 
-pub fn vim_normal_mode<'a>() -> VimMode<'a> {
+pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
         "<cr>" => |ctx| {
             ctx.state_mut().running = false;

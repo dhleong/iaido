@@ -1,7 +1,10 @@
 use std::cmp::min;
 
 use crate::{
-    editing::{buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, Resizable, Size},
+    editing::{
+        buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, CursorPosition, Resizable,
+        Size,
+    },
     tui::measure::Measurable,
 };
 
@@ -29,6 +32,11 @@ impl Prompt {
     pub fn activate(&mut self, prompt: TextLine) {
         self.clear();
         self.window.focused = true;
+        self.window.inserting = true;
+        self.window.cursor = CursorPosition {
+            line: 0,
+            col: prompt.width() as u16,
+        };
         self.buffer.append(prompt.into());
         self.handle_content_change();
     }

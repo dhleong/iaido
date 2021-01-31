@@ -9,7 +9,7 @@ use crate::{
 use super::tree::KeyTreeNode;
 
 /// Motions shared across all types of vim navigation
-pub fn vim_standard_motions<'a>() -> KeyTreeNode<'a> {
+pub fn vim_standard_motions() -> KeyTreeNode {
     vim_tree! {
         "b" => motion { WordMotion::backward_until(is_small_word_boundary) },
         "B" => motion { WordMotion::backward_until(is_big_word_boundary) },
@@ -25,7 +25,7 @@ pub fn vim_standard_motions<'a>() -> KeyTreeNode<'a> {
 }
 
 /// Motions that should only be used for linewise vim (IE: not input mode)
-pub fn vim_linewise_motions<'a>() -> KeyTreeNode<'a> {
+pub fn vim_linewise_motions() -> KeyTreeNode {
     vim_tree! {
         "j" => motion { DownLineMotion },
         "k" => motion { UpLineMotion },

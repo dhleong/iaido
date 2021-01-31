@@ -1,4 +1,5 @@
 mod insert;
+mod mode_stack;
 mod motions;
 mod normal;
 mod prompt;
@@ -13,6 +14,8 @@ use crate::{
     input::{Key, KeyError, Keymap, KeymapContext},
 };
 
+use self::mode_stack::VimModeStack;
+
 use super::{KeyHandlerContext, KeyResult};
 
 type KeyHandler = super::KeyHandler<VimKeymapState>;
@@ -21,6 +24,7 @@ type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> 
 // ======= modes ==========================================
 
 pub struct VimMode {
+    pub id: String,
     pub mappings: KeyTreeNode,
     pub default_handler: Option<Box<KeyHandler>>,
 }
@@ -36,7 +40,7 @@ impl std::fmt::Debug for VimMode {
 pub struct VimKeymapState {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
-    mode_stack: Vec<VimMode>,
+    mode_stack: VimModeStack,
 }
 
 impl Default for VimKeymapState {
@@ -44,7 +48,7 @@ impl Default for VimKeymapState {
         Self {
             pending_linewise_operator_key: None,
             operator_fn: None,
-            mode_stack: Vec::default(),
+            mode_stack: VimModeStack::default(),
         }
     }
 }
@@ -76,12 +80,12 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
-        let (mode, index_on_stack) = if let Some(mode) = self.keymap.mode_stack.pop() {
-            (mode, Some(self.keymap.mode_stack.len()))
+        let (mode, mode_from_stack) = if let Some(mode) = self.keymap.mode_stack.take_top() {
+            (mode, true)
         } else if context.state().current_window().inserting {
-            (vim_insert_mode(), None)
+            (vim_insert_mode(), false)
         } else {
-            (vim_normal_mode(), None)
+            (vim_normal_mode(), false)
         };
 
         let mut current = &mode.mappings;
@@ -124,18 +128,9 @@ impl Keymap for VimKeymap {
             }
         }
 
-        if let Some(index) = index_on_stack {
+        if mode_from_stack {
             // return the moved mode value back to the stack...
-            // this is a terrible idea, but is a crappy, temporary workaround to immutably
-            // borrowing .keymap when if we peek at the stack, then later passing a mutable
-            // reference to a handler. In particular, there's no way to pop the mode off the stack
-            // from a handler... because it's not on there!
-            if index == self.keymap.mode_stack.len() {
-                // no mode has been pushed
-                self.keymap.mode_stack.push(mode);
-            } else {
-                self.keymap.mode_stack.insert(index, mode);
-            }
+            self.keymap.mode_stack.return_top(mode);
         }
 
         result

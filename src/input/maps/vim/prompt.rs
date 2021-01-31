@@ -29,6 +29,7 @@ fn mappings(prompt: String) -> KeyTreeNode {
 pub fn vim_prompt_mode(prompt: String) -> VimMode {
     // TODO an "after" handler to ensure we don't delete or move onto the prompt
     VimMode {
+        id: format!("prompt:{}", prompt),
         mappings: vim_insert_mappings() + mappings(prompt),
         default_handler: Some(key_handler!(
             VimKeymapState | ctx | {

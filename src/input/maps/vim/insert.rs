@@ -35,6 +35,7 @@ pub fn vim_insert_mode() -> VimMode {
     } + vim_insert_mappings();
 
     VimMode {
+        id: "i".to_string(),
         mappings,
         default_handler: Some(key_handler!(
             VimKeymapState | ctx | {

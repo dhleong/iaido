@@ -5,7 +5,7 @@ use std::fmt;
 
 use super::{
     motion::MotionRange,
-    text::{TextLine, TextLines},
+    text::{EditableLine, TextLine, TextLines},
     CursorPosition, HasId,
 };
 
@@ -25,6 +25,17 @@ pub trait Buffer: HasId + Send + Sync {
         } else {
             None
         }
+    }
+
+    fn get_contents(&self) -> String {
+        let mut s = String::default();
+        for i in 0..self.lines_count() {
+            if i > 0 {
+                s.push_str("\n");
+            }
+            s.push_str(self.get(i).to_string().as_str());
+        }
+        return s;
     }
 
     fn is_empty(&self) -> bool {

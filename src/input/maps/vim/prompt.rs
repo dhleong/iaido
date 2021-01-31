@@ -15,7 +15,7 @@ fn mappings(prompt: String) -> KeyTreeNode {
          },
 
          "<cr>" => move |ctx| {
-             let input = ctx.state().prompt.buffer.to_string()[prompt_len..].to_string();
+             let input = ctx.state().prompt.buffer.get_contents()[prompt_len..].to_string();
              ctx.keymap.mode_stack.pop();
              ctx.state_mut().prompt.clear();
 

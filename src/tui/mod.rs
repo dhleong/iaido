@@ -123,6 +123,10 @@ impl Tui {
             &mut RenderContext::new(app, &mut prompt_display).with_buffer(&app.prompt.buffer),
         );
 
+        if app.prompt.window.focused {
+            display.cursor = prompt_display.cursor.clone();
+        }
+
         display.shift_up(prompt_height - 1);
         display.merge_at_y(display.size.h - prompt_height, prompt_display);
     }

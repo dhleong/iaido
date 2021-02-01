@@ -38,7 +38,7 @@ impl Renderable for Window {
             let (x, y) = if count > 0 {
                 // FIXME this y_offset doesn't account for word-wrapping
                 let cursor_x = self.cursor.col % area.width;
-                let cursor_y_offset = (self.cursor.col / area.width).checked_sub(1).unwrap_or(0);
+                let cursor_y_offset = self.cursor.col / area.width;
 
                 let cursor_y_absolute = self.cursor.line.checked_sub(start).unwrap_or(0);
                 let cursor_y = cursor_y_absolute
@@ -46,7 +46,7 @@ impl Renderable for Window {
                     .unwrap_or(0);
 
                 let x = area.x + cursor_x;
-                let y = area.y + (cursor_y as u16) - cursor_y_offset;
+                let y = area.y + (cursor_y as u16) + cursor_y_offset;
                 (x, y)
             } else {
                 // simple case
@@ -209,14 +209,29 @@ mod tests {
         }
 
         #[test]
-        fn cursor_with_wrap() {
+        fn cursor_with_single_wrap() {
             let mut ctx = window(indoc! {"
                 Take me where I cannot |stand
             "});
 
             let display = ctx.render_into_size(14, 2);
             display.assert_visual_match(indoc! {"
-                Take me where 
+                Take me where
+                I cannot |stand
+            "});
+        }
+
+        #[test]
+        fn cursor_with_multi_wrap() {
+            let mut ctx = window(indoc! {"
+                Take my love, Take my land, Take me where I cannot |stand
+            "});
+
+            let display = ctx.render_into_size(14, 4);
+            display.assert_visual_match(indoc! {"
+                Take my love,
+                Take my land,
+                Take me where
                 I cannot |stand
             "});
         }

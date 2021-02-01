@@ -4,8 +4,8 @@ use crate::{
 };
 
 use crossterm::terminal;
-use editing::{window::Window, Buffer};
-use std::io;
+use editing::window::Window;
+use std::{cmp::min, io};
 pub use tui::text;
 use tui::{backend::Backend, Terminal};
 use tui::{backend::CrosstermBackend, layout::Rect};
@@ -14,6 +14,7 @@ pub mod cursor;
 pub mod events;
 pub mod layout;
 pub mod measure;
+pub mod rendering;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;
@@ -21,90 +22,10 @@ pub mod window;
 use cursor::CursorRenderer;
 use measure::Measurable;
 
-pub struct Display {
-    pub size: Size,
-    pub buffer: tui::buffer::Buffer,
-    pub cursor: editing::Cursor,
-}
-
-impl Display {
-    pub fn new(size: Size) -> Self {
-        Self {
-            size,
-            buffer: tui::buffer::Buffer::empty(size.into()),
-            cursor: editing::Cursor::None,
-        }
-    }
-
-    pub fn set_cursor(&mut self, cursor: editing::Cursor) {
-        self.cursor = cursor;
-    }
-}
-
-impl tui::widgets::Widget for Display {
-    fn render(self, _area: Rect, buf: &mut tui::buffer::Buffer) {
-        buf.merge(&self.buffer);
-    }
-}
-
-impl std::fmt::Display for Display {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[Display({:?})", self.size)?;
-
-        // TODO copy content
-        // for line in &self.lines {
-        //     write!(f, "\n  {:?}", line)?;
-        // }
-
-        write!(f, "]")
-    }
-}
-
-impl Into<Rect> for Size {
-    fn into(self) -> Rect {
-        Rect::new(0, 0, self.w, self.h)
-    }
-}
-
-impl From<Rect> for Size {
-    fn from(rect: Rect) -> Self {
-        Self {
-            w: rect.width,
-            h: rect.height,
-        }
-    }
-}
-
-impl From<(u16, u16)> for Size {
-    fn from(size: (u16, u16)) -> Self {
-        Self {
-            w: size.0,
-            h: size.1,
-        }
-    }
-}
-
-pub struct RenderContext<'a> {
-    app: &'a crate::app::State,
-    display: &'a mut Display,
-    area: Rect,
-    buffer_override: Option<&'a Box<dyn Buffer>>,
-}
-
-impl<'a> RenderContext<'a> {
-    pub fn with_area(&mut self, new_area: Rect) -> RenderContext {
-        RenderContext {
-            app: self.app,
-            display: self.display,
-            area: new_area,
-            buffer_override: self.buffer_override,
-        }
-    }
-}
-
-pub trait Renderable {
-    fn render(&self, app: &mut RenderContext);
-}
+pub use rendering::context::RenderContext;
+pub use rendering::display::Display;
+pub use rendering::size;
+pub use rendering::Renderable;
 
 pub struct Tui {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
@@ -153,6 +74,9 @@ impl Tui {
         };
         app.tabpages.render(&mut context);
 
+        // prompt
+        self.render_prompt(app, &mut display);
+
         self.render_display(display)
     }
 
@@ -182,6 +106,29 @@ impl Tui {
             h: echo_height,
         });
         win.render(&mut context);
+    }
+
+    fn render_prompt(&mut self, app: &mut crate::app::State, display: &mut Display) {
+        let prompt_height = min(
+            display.size.h,
+            app.prompt.buffer.measure_height(display.size.w),
+        );
+        if prompt_height == 0 {
+            // nop
+            return;
+        }
+
+        let mut prompt_display = Display::new(display.size);
+        app.prompt.window.render(
+            &mut RenderContext::new(app, &mut prompt_display).with_buffer(&app.prompt.buffer),
+        );
+
+        if app.prompt.window.focused {
+            display.cursor = prompt_display.cursor.clone();
+        }
+
+        display.shift_up(prompt_height - 1);
+        display.merge_at_y(display.size.h - prompt_height, prompt_display);
     }
 
     fn render_display(&mut self, display: Display) -> Result<(), io::Error> {

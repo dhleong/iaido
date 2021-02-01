@@ -10,7 +10,7 @@ pub mod window;
 
 pub use buffer::Buffer;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Size {
     pub w: u16,
     pub h: u16,

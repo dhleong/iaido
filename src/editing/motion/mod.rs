@@ -76,7 +76,10 @@ pub trait Motion {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::editing::{buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId};
+    use crate::{
+        editing::{buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId},
+        tui::{Display, RenderContext, Renderable},
+    };
 
     use super::*;
 
@@ -97,6 +100,12 @@ pub mod tests {
         pub fn assert_visual_match(&self, s: &'static str) {
             let win = window(s);
             assert_eq!(self.cursor(), win.cursor());
+        }
+
+        pub fn render(&self, display: &mut Display) {
+            let state = crate::app::State::default();
+            let mut context = RenderContext::new(&state, display).with_buffer(&self.buffer);
+            self.window.render(&mut context);
         }
     }
 

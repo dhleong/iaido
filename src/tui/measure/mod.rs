@@ -60,6 +60,19 @@ impl Measurable for TextLines {
     }
 }
 
+impl Measurable for Vec<&TextLine> {
+    fn measure_height(&self, width: u16) -> u16 {
+        self.iter().map(|line| line.measure_height(width)).sum()
+    }
+}
+
+impl Measurable for dyn crate::editing::buffer::Buffer {
+    fn measure_height(&self, width: u16) -> u16 {
+        let lines: Vec<&TextLine> = (0..self.lines_count()).map(|i| self.get(i)).collect();
+        lines.measure_height(width)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

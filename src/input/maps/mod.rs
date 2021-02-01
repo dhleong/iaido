@@ -29,7 +29,7 @@ impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
 }
 
 pub type KeyResult = Result<(), KeyError>;
-pub type KeyHandler<'a, T> = dyn Fn(KeyHandlerContext<'a, T>) -> KeyResult;
+pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
 
 /// Syntactic sugar for declaring a key handler
 #[macro_export]
@@ -37,6 +37,15 @@ macro_rules! key_handler {
     ($state_type:ident |$ctx_name:ident| $body:expr) => {{
         Box::new(
             |mut $ctx_name: crate::input::maps::KeyHandlerContext<$state_type>| {
+                let result: crate::input::maps::KeyResult = $body;
+                result
+            },
+        )
+    }};
+
+    ($state_type:ident move |$ctx_name:ident| $body:expr) => {{
+        Box::new(
+            move |mut $ctx_name: crate::input::maps::KeyHandlerContext<$state_type>| {
                 let result: crate::input::maps::KeyResult = $body;
                 result
             },

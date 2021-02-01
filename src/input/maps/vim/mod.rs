@@ -1,6 +1,8 @@
 mod insert;
+mod mode_stack;
 mod motions;
 mod normal;
+mod prompt;
 mod tree;
 
 use insert::vim_insert_mode;
@@ -12,16 +14,47 @@ use crate::{
     input::{Key, KeyError, Keymap, KeymapContext},
 };
 
+use self::mode_stack::VimModeStack;
+
 use super::{KeyHandlerContext, KeyResult};
 
-type KeyHandler<'a> = super::KeyHandler<'a, VimKeymapState>;
+type KeyHandler = super::KeyHandler<VimKeymapState>;
 type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> KeyResult;
 
 // ======= modes ==========================================
 
-pub struct VimMode<'a> {
-    pub mappings: KeyTreeNode<'a>,
-    pub default_handler: Option<Box<KeyHandler<'a>>>,
+pub struct VimMode {
+    pub id: String,
+    pub mappings: KeyTreeNode,
+    pub default_handler: Option<Box<KeyHandler>>,
+    pub after_handler: Option<Box<KeyHandler>>,
+}
+
+impl VimMode {
+    pub fn new<Id: Into<String>>(id: Id, mappings: KeyTreeNode) -> Self {
+        Self {
+            id: id.into(),
+            mappings,
+            default_handler: None,
+            after_handler: None,
+        }
+    }
+
+    pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
+        self.after_handler = Some(handler);
+        self
+    }
+
+    pub fn on_default(mut self, handler: Box<KeyHandler>) -> Self {
+        self.default_handler = Some(handler);
+        self
+    }
+}
+
+impl std::fmt::Debug for VimMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[VimMode]")
+    }
 }
 
 // ======= Keymap state ===================================
@@ -29,6 +62,7 @@ pub struct VimMode<'a> {
 pub struct VimKeymapState {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
+    mode_stack: VimModeStack,
 }
 
 impl Default for VimKeymapState {
@@ -36,11 +70,16 @@ impl Default for VimKeymapState {
         Self {
             pending_linewise_operator_key: None,
             operator_fn: None,
+            mode_stack: VimModeStack::default(),
         }
     }
 }
 
 impl VimKeymapState {
+    pub fn push_mode(&mut self, mode: VimMode) {
+        self.mode_stack.push(mode);
+    }
+
     fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
@@ -63,13 +102,17 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
-        let mode = if context.state().current_window().inserting {
-            vim_insert_mode()
+        let (mode, mode_from_stack) = if let Some(mode) = self.keymap.mode_stack.take_top() {
+            (mode, true)
+        } else if context.state().current_window().inserting {
+            (vim_insert_mode(), false)
         } else {
-            vim_normal_mode()
+            (vim_normal_mode(), false)
         };
+
         let mut current = &mode.mappings;
         let mut at_root = true;
+        let mut result = Ok(());
 
         loop {
             if let Some(key) = context.next_key()? {
@@ -79,11 +122,12 @@ impl Keymap for VimKeymap {
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
                     if let Some(handler) = next.get_handler() {
-                        return handler(KeyHandlerContext {
+                        result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,
                             key,
                         });
+                        break;
                     } else {
                         // deeper into the tree
                         current = next;
@@ -91,19 +135,37 @@ impl Keymap for VimKeymap {
                     }
                 } else if at_root {
                     // use the default mapping, if any
-                    if let Some(handler) = mode.default_handler {
-                        return handler(KeyHandlerContext {
+                    if let Some(handler) = &mode.default_handler {
+                        result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: &mut self.keymap,
                             key,
                         });
+                        break;
                     }
                 }
             } else {
                 // no key read:
-                return Ok(());
+                break;
             }
         }
+
+        if let Some(handler) = &mode.after_handler {
+            if self.keymap.mode_stack.contains(&mode.id) {
+                handler(KeyHandlerContext {
+                    context: Box::new(context),
+                    keymap: &mut self.keymap,
+                    key: '\0'.into(),
+                })?;
+            }
+        }
+
+        if mode_from_stack {
+            // return the moved mode value back to the stack...
+            self.keymap.mode_stack.return_top(mode);
+        }
+
+        result
     }
 }
 
@@ -112,7 +174,9 @@ impl Keymap for VimKeymap {
 #[macro_export]
 macro_rules! vim_branches {
     // base case:
-    ($root:ident ->) => {};
+    ($root:ident ->) => {
+        use crate::input::maps::vim::VimKeymapState;
+    };
 
     // normal keymap:
     (
@@ -121,8 +185,30 @@ macro_rules! vim_branches {
             |$ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |$ctx_name| $body));
-        vim_branches! { $root -> $($tail)* }
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| $body));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
+
+    // normal keymap with move:
+    (
+        $root:ident ->
+        $keys:literal =>
+            move |$ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState move |$ctx_name| $body));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
+
+    // immutable normal keymap (for completeness):
+    (
+        $root:ident ->
+        $keys:literal =>
+            |?mut $ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |?mut $ctx_name| $body));
+        crate::vim_branches! { $root -> $($tail)* }
     };
 
     // operators:
@@ -132,7 +218,7 @@ macro_rules! vim_branches {
             operator |$ctx_name:ident, $motion_name:ident| $body:expr,
         $($tail:tt)*
     ) => {{
-        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |$ctx_name| {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
             use crate::editing::motion::Motion;
 
             if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key {
@@ -155,7 +241,7 @@ macro_rules! vim_branches {
             }));
             Ok(())
         }));
-        vim_branches! { $root -> $($tail)* }
+        crate::vim_branches! { $root -> $($tail)* }
     }};
 
     // motions:
@@ -165,7 +251,7 @@ macro_rules! vim_branches {
             motion $factory:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), key_handler!(VimKeymapState |ctx| {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |ctx| {
             use crate::editing::motion::Motion;
             let motion = $factory;
             let operator_fn = ctx.keymap.operator_fn.take();
@@ -186,21 +272,19 @@ macro_rules! vim_branches {
                 Ok(())
             }
         }));
-        vim_branches! { $root -> $($tail)* }
+        crate::vim_branches! { $root -> $($tail)* }
     };
 }
 
 #[macro_export]
 macro_rules! vim_tree {
     ( $( $SPEC:tt )* ) => {{
-        use crate::key_handler;
-        use crate::vim_branches;
         use crate::input::maps::vim::KeyTreeNode;
         use crate::input::keys::KeysParsable;
 
         let mut root = KeyTreeNode::root();
 
-        vim_branches! { root -> $($SPEC)* }
+        crate::vim_branches! { root -> $($SPEC)* }
 
         root
     }};

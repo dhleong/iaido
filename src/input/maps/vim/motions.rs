@@ -1,17 +1,15 @@
 use crate::input::KeymapContext;
+use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{DownLineMotion, ToLineEndMotion, ToLineStartMotion, UpLineMotion},
     editing::motion::word::{is_big_word_boundary, is_small_word_boundary, WordMotion},
-    key_handler,
 };
-use crate::{vim_branches, vim_tree};
 
 use super::tree::KeyTreeNode;
-use super::VimKeymapState;
 
 /// Motions shared across all types of vim navigation
-pub fn vim_standard_motions<'a>() -> KeyTreeNode<'a> {
+pub fn vim_standard_motions() -> KeyTreeNode {
     vim_tree! {
         "b" => motion { WordMotion::backward_until(is_small_word_boundary) },
         "B" => motion { WordMotion::backward_until(is_big_word_boundary) },
@@ -27,7 +25,7 @@ pub fn vim_standard_motions<'a>() -> KeyTreeNode<'a> {
 }
 
 /// Motions that should only be used for linewise vim (IE: not input mode)
-pub fn vim_linewise_motions<'a>() -> KeyTreeNode<'a> {
+pub fn vim_linewise_motions() -> KeyTreeNode {
     vim_tree! {
         "j" => motion { DownLineMotion },
         "k" => motion { UpLineMotion },

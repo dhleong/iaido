@@ -10,19 +10,32 @@ use crate::editing::{
     Buffer, Resizable, Size,
 };
 
+use super::prompt::Prompt;
+
 pub struct AppState {
     pub running: bool,
     pub buffers: Buffers,
     pub tabpages: Tabpages,
     pub echo_buffer: Box<dyn Buffer>,
+    pub prompt: Prompt,
 }
 
 impl AppState {
     pub fn current_buffer<'a>(&'a self) -> &'a Box<dyn Buffer> {
+        if self.prompt.window.focused {
+            return &self.prompt.buffer;
+        }
+
         self.current_window().current_buffer(&self.buffers)
     }
 
     pub fn current_buffer_mut<'a>(&'a mut self) -> &'a mut Box<dyn Buffer> {
+        if self.prompt.window.focused {
+            return &mut self.prompt.buffer;
+        }
+
+        // NOTE: if we just use self.current_window(), rust complains that we've already immutably
+        // borrowed self.buffers, so we go the long way:
         self.tabpages
             .current_tab()
             .current_window()
@@ -30,10 +43,16 @@ impl AppState {
     }
 
     pub fn current_window<'a>(&'a self) -> &'a Box<Window> {
+        if self.prompt.window.focused {
+            return &self.prompt.window;
+        }
         self.current_tab().current_window()
     }
 
     pub fn current_window_mut<'a>(&'a mut self) -> &'a mut Box<Window> {
+        if self.prompt.window.focused {
+            return &mut self.prompt.window;
+        }
         self.current_tab_mut().current_window_mut()
     }
 
@@ -84,6 +103,7 @@ impl Default for AppState {
             buffers,
             tabpages,
             echo_buffer: Box::new(MemoryBuffer::new(0)),
+            prompt: Prompt::default(),
         };
 
         // create the default tabpage
@@ -96,7 +116,8 @@ impl Default for AppState {
 
 impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
-        self.tabpages.resize(new_size)
+        self.tabpages.resize(new_size);
+        self.prompt.resize(new_size);
     }
 }
 
@@ -114,10 +135,10 @@ impl MotionContext for AppState {
     }
 
     fn window(&self) -> &Box<Window> {
-        self.tabpages.current_tab().current_window()
+        self.current_window()
     }
 
     fn window_mut(&mut self) -> &mut Box<Window> {
-        self.tabpages.current_tab_mut().current_window_mut()
+        self.current_window_mut()
     }
 }

@@ -151,11 +151,13 @@ impl Keymap for VimKeymap {
         }
 
         if let Some(handler) = &mode.after_handler {
-            handler(KeyHandlerContext {
-                context: Box::new(context),
-                keymap: &mut self.keymap,
-                key: '\0'.into(),
-            })?;
+            if self.keymap.mode_stack.contains(&mode.id) {
+                handler(KeyHandlerContext {
+                    context: Box::new(context),
+                    keymap: &mut self.keymap,
+                    key: '\0'.into(),
+                })?;
+            }
         }
 
         if mode_from_stack {

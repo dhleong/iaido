@@ -28,8 +28,11 @@ fn mappings(prompt: String) -> KeyTreeNode {
 }
 
 pub fn vim_prompt_mode(prompt: String) -> VimMode {
+    let prompt_len = prompt.len();
+    let mode_id = format!("prompt:{}", prompt);
+
     VimMode::new(
-        format!("prompt:{}", prompt),
+        mode_id.clone(),
         vim_insert_mappings() + mappings(prompt.clone()),
     )
     .on_default(key_handler!(
@@ -49,6 +52,11 @@ pub fn vim_prompt_mode(prompt: String) -> VimMode {
             let b = &ctx.state().prompt.buffer;
             if b.is_empty() || !b.get(0).starts_with(&prompt) {
                 ctx.state_mut().prompt.buffer.insert((0, 0).into(), prompt.clone().into());
+            }
+
+            let cursor = ctx.state().current_window().cursor;
+            if cursor.line == 0 && cursor.col < prompt_len as u16 {
+                ctx.state_mut().current_window_mut().cursor.col = prompt_len as u16;
             }
 
             Ok(())

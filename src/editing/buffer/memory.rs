@@ -108,6 +108,11 @@ impl Buffer for MemoryBuffer {
     }
 
     fn insert(&mut self, cursor: CursorPosition, mut text: TextLine) {
+        if cursor == (0, 0).into() && self.content.lines.is_empty() {
+            self.content.lines.push(text);
+            return;
+        }
+
         let original = &self.content.lines[cursor.line];
         let mut before = original.subs(0, cursor.col as usize);
         let mut after = original.subs(cursor.col as usize, original.width());
@@ -224,6 +229,13 @@ mod tests {
             buf.append("Take my".into());
             buf.insert((0, 7).into(), " love".into());
             assert_visual_match(buf, "Take my love");
+        }
+
+        #[test]
+        fn into_empty() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.insert((0, 0).into(), "serenity".into());
+            assert_visual_match(buf, "serenity");
         }
     }
 }

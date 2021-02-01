@@ -44,6 +44,7 @@ impl Prompt {
     pub fn clear(&mut self) {
         self.buffer.clear();
         self.window.focused = false;
+        self.handle_content_change();
     }
 
     pub fn handle_content_change(&mut self) {

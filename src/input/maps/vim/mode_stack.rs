@@ -19,6 +19,10 @@ impl Default for VimModeStack {
 }
 
 impl VimModeStack {
+    pub fn contains(&self, mode_id: &String) -> bool {
+        self.stack.contains(mode_id)
+    }
+
     pub fn push(&mut self, new_mode: VimMode) {
         self.stack.push(new_mode.id.clone());
         self.modes.insert(new_mode.id.clone(), new_mode);

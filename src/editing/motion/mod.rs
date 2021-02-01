@@ -77,7 +77,13 @@ pub trait Motion {
 #[cfg(test)]
 pub mod tests {
     use crate::{
-        editing::{buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId},
+        editing::{
+            buffer::MemoryBuffer,
+            buffers::{tests::TestableBuffers, Buffers},
+            text::TextLines,
+            window::Window,
+            Buffer, HasId, Resizable, Size,
+        },
         tui::{Display, RenderContext, Renderable},
     };
 
@@ -102,10 +108,30 @@ pub mod tests {
             assert_eq!(self.cursor(), win.cursor());
         }
 
-        pub fn render(&self, display: &mut Display) {
+        pub fn render(&mut self, display: &mut Display) {
+            self.window.resize(display.size);
+
             let state = crate::app::State::default();
             let mut context = RenderContext::new(&state, display).with_buffer(&self.buffer);
             self.window.render(&mut context);
+        }
+
+        pub fn render_into_size(&mut self, width: u16, height: u16) -> Display {
+            let mut display = Display::new(Size {
+                w: width,
+                h: height,
+            });
+            self.render(&mut display);
+            display
+        }
+
+        pub fn scroll_lines(&mut self, virtual_lines: i32) {
+            let mut clone = MemoryBuffer::new(self.buffer.id());
+            for i in 0..self.buffer.lines_count() {
+                clone.append(self.buffer.get(i).clone().into());
+            }
+            let buffers = Buffers::with_buffer(Box::new(clone));
+            self.window.scroll_lines(&buffers, virtual_lines);
         }
     }
 

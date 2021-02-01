@@ -80,13 +80,13 @@ impl std::fmt::Display for Display {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::editing::{motion::tests::window, Resizable};
+pub mod tests {
+    use crate::editing::motion::tests::window;
     use indoc::indoc;
 
     use super::*;
 
-    trait TestableDisplay {
+    pub trait TestableDisplay {
         fn of_string(s: &'static str) -> Display;
         fn cursor_coords(&self) -> Option<(u16, u16)>;
         fn to_visual_string(&self) -> String;
@@ -103,7 +103,6 @@ mod tests {
                 h: height as u16,
             });
             let mut win = window(s);
-            win.window.resize(display.size);
             win.render(&mut display);
 
             display

@@ -69,7 +69,10 @@ mod tests {
     use editing::{text::TextLine, text::TextLines, Cursor, CursorPosition, Resizable, Size};
     use tui::layout::Rect;
 
+    use crate::tui::rendering::display::tests::TestableDisplay;
     use crate::{app::State, tui::Display};
+
+    use indoc::indoc;
 
     use super::*;
 
@@ -180,6 +183,67 @@ mod tests {
             let text = TextLines::raw("Take my love\nTake my land\nTake me where");
             let display = text.render(Rect::new(0, 5, 15, 10), CursorPosition { line: 1, col: 0 });
             assert_eq!(display.cursor, Cursor::Block(0, 8));
+        }
+    }
+
+    #[cfg(test)]
+    mod simple_integration {
+        use crate::editing::motion::tests::window;
+
+        use super::*;
+
+        #[test]
+        fn cursor_at_bottom() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                Take my land
+                Take |me where
+            "});
+
+            let display = ctx.render_into_size(14, 3);
+            display.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+                Take |me where
+            "});
+        }
+
+        #[test]
+        fn cursor_with_wrap() {
+            let mut ctx = window(indoc! {"
+                Take me where I cannot |stand
+            "});
+
+            let display = ctx.render_into_size(14, 2);
+            display.assert_visual_match(indoc! {"
+                Take me where 
+                I cannot |stand
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod scrolled_rendering {
+        use crate::editing::motion::tests::window;
+
+        use super::*;
+
+        #[ignore] // TODO fix the bugs
+        #[test]
+        fn one_line_scroll() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                Take |my land
+                Take me where
+            "});
+            ctx.scroll_lines(1);
+
+            let display = ctx.render_into_size(13, 3);
+            display.assert_visual_match(indoc! {"
+                _
+                Take my love
+                Take |my land
+            "});
         }
     }
 }

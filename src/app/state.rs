@@ -135,10 +135,10 @@ impl MotionContext for AppState {
     }
 
     fn window(&self) -> &Box<Window> {
-        self.tabpages.current_tab().current_window()
+        self.current_window()
     }
 
     fn window_mut(&mut self) -> &mut Box<Window> {
-        self.tabpages.current_tab_mut().current_window_mut()
+        self.current_window_mut()
     }
 }

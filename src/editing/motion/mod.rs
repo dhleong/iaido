@@ -116,6 +116,12 @@ pub mod tests {
             self.window.render(&mut context);
         }
 
+        pub fn render_at_own_size(&mut self) -> Display {
+            let mut display = Display::new(self.window.size);
+            self.render(&mut display);
+            display
+        }
+
         pub fn render_into_size(&mut self, width: u16, height: u16) -> Display {
             let mut display = Display::new(Size {
                 w: width,

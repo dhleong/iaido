@@ -243,7 +243,6 @@ mod tests {
 
         use super::*;
 
-        #[ignore] // TODO fix the bugs
         #[test]
         fn one_line_scroll() {
             let mut ctx = window(indoc! {"
@@ -251,11 +250,12 @@ mod tests {
                 Take |my land
                 Take me where
             "});
+            ctx.window.resize(Size { w: 13, h: 3 });
             ctx.scroll_lines(1);
 
-            let display = ctx.render_into_size(13, 3);
+            let display = ctx.render_at_own_size();
             display.assert_visual_match(indoc! {"
-                _
+
                 Take my love
                 Take |my land
             "});

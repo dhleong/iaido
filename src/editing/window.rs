@@ -90,6 +90,7 @@ impl Window {
 
             to_scroll -= consumable as usize;
             self.scroll_offset = 0;
+            self.scrolled_lines += 1;
 
             // finish scrolling past a wrapped line
             if to_scroll == 0 {

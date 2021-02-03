@@ -1,8 +1,51 @@
-use tui::{layout::Alignment, text, widgets::Paragraph, widgets::Widget, widgets::Wrap};
+use tui::{
+    layout::Alignment,
+    style::{Color, Style},
+    text::{self, Span, Spans},
+    widgets::Paragraph,
+    widgets::Widget,
+    widgets::Wrap,
+};
 
-use super::{RenderContext, Renderable};
-use crate::editing::{self, window::Window};
+use super::{measure::render_into, RenderContext, Renderable};
+use crate::editing::{self, text::TextLine, window::Window};
 use crate::tui::Measurable;
+
+fn wrap_cursor(line: &TextLine, width: u16, cursor_col: usize) -> (u16, u16) {
+    // FIXME: it would be way more efficient to actually do our own wrapping...
+    let restyled = line
+        .0
+        .iter()
+        .flat_map(|span| span.styled_graphemes(Style::default()))
+        .enumerate()
+        .map(|(i, grapheme)| {
+            if i < cursor_col {
+                Span::raw(grapheme.symbol)
+            } else {
+                Span::styled(grapheme.symbol, Style::default().fg(Color::Cyan))
+            }
+        });
+
+    let restyled_line = Spans(restyled.collect());
+    let mut buffer = tui::buffer::Buffer::default();
+    render_into(&restyled_line, width, &mut buffer);
+    let cursor_index = buffer
+        .content
+        .iter()
+        .position(|cell| cell.style().fg == Some(Color::Cyan));
+
+    if let Some(cursor_index) = cursor_index {
+        buffer.pos_of(cursor_index)
+    } else {
+        // probably after the last
+        let cursor_index = buffer.content.iter().position(|cell| cell.symbol == "\x00");
+        if let Some(cursor_index) = cursor_index {
+            buffer.pos_of(cursor_index)
+        } else {
+            (0, 0)
+        }
+    }
+}
 
 impl Renderable for Window {
     fn render(&self, context: &mut RenderContext) {
@@ -45,9 +88,11 @@ impl Renderable for Window {
 
         if self.focused {
             let (x, y) = if count > 0 {
-                // FIXME this y_offset doesn't account for word-wrapping
-                let cursor_x = self.cursor.col % area.width;
-                let cursor_y_offset = self.cursor.col / area.width;
+                let (cursor_x, cursor_y_offset) = wrap_cursor(
+                    buf.get(self.cursor.line),
+                    area.width,
+                    self.cursor.col as usize,
+                );
 
                 let cursor_y = self.cursor.line.checked_sub(start).unwrap_or(0);
 
@@ -171,10 +216,10 @@ mod tests {
         }
 
         #[test]
-        fn last_line_last_col_at_bottom() {
+        fn last_line_after_last_col_at_bottom() {
             let text = TextLines::raw("Take my land\nTake me where");
-            let display = text.render((15, 10), CursorPosition { line: 1, col: 14 });
-            assert_eq!(display.cursor, Cursor::Block(14, 9));
+            let display = text.render((15, 10), CursorPosition { line: 1, col: 13 });
+            assert_eq!(display.cursor, Cursor::Block(13, 9));
         }
 
         #[test]
@@ -295,6 +340,36 @@ mod tests {
             display.assert_visual_match(indoc! {"
 
                 Take my |land
+            "});
+        }
+
+        #[test]
+        fn cursor_on_word_wrapped_character() {
+            let mut ctx = window(indoc! {"
+                Take me where |I cannot stand
+            "});
+            ctx.window.resize(Size { w: 9, h: 4 });
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+                Take me
+                where |I
+                cannot
+                stand
+            "});
+        }
+
+        #[test]
+        fn cursor_on_word_wrapped_whitespace() {
+            let mut ctx = window(indoc! {"
+                Take  my | love
+            "});
+            ctx.window.resize(Size { w: 8, h: 2 });
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+                Take  my
+                |love
             "});
         }
     }

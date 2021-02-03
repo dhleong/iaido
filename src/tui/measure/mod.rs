@@ -1,11 +1,51 @@
 use std::cmp::max;
 
 use tui::{
-    buffer, buffer::Buffer, layout::Alignment, layout::Rect, text::Text, widgets::Paragraph,
-    widgets::Widget, widgets::Wrap,
+    buffer::Buffer,
+    layout::Alignment,
+    layout::Rect,
+    text::{Spans, Text},
+    widgets::Paragraph,
+    widgets::Widget,
+    widgets::Wrap,
 };
 
 use crate::editing::text::{TextLine, TextLines};
+
+pub fn render_into(line: &Spans, width: u16, mut buffer: &mut Buffer) -> Rect {
+    // TODO: this whole thing is HACKS; just do the wrapping, please
+
+    // NOTE: in order to avoid wildly excessive allocations,
+    // we use some simple heuristics to guess how much space
+    // we might need, then double that guess
+    let perfect_height = max(1, line.width() / (width as usize));
+    let available_height = (perfect_height * 2) as u16;
+
+    let size = Rect {
+        x: 0,
+        y: 0,
+        width,
+        height: available_height,
+    };
+    let expected_len = size.area();
+    if expected_len as usize > buffer.content.len() {
+        // make space
+        buffer.resize(size);
+    }
+
+    // clear:
+    for cell in &mut buffer.content {
+        cell.set_symbol("\x00");
+    }
+
+    // TODO: this is HACKS; just do the wrapping, please
+    let text = Text::from(vec![line.clone()]);
+    let p = Paragraph::new(text)
+        .wrap(Wrap { trim: true }) // NOTE: may become a pref?
+        .alignment(Alignment::Left);
+    p.render(size, &mut buffer);
+    return size;
+}
 
 pub trait Measurable {
     fn measure_height(&self, width: u16) -> u16;
@@ -17,28 +57,8 @@ impl Measurable for TextLine {
             return 0;
         }
 
-        // TODO: this is HACKS; just do the wrapping, please
-        let text = Text::from(vec![self.clone()]);
-        let p = Paragraph::new(text)
-            .wrap(Wrap { trim: true }) // NOTE: may become a pref?
-            .alignment(Alignment::Left);
-
-        // NOTE: in order to avoid wildly excessive allocations,
-        // we use some simple heuristics to guess how much space
-        // we might need, then double that guess
-        let perfect_height = max(1, self.width() / (width as usize));
-        let available_height = (perfect_height * 2) as u16;
-
-        let size = Rect {
-            x: 0,
-            y: 0,
-            width,
-            height: available_height,
-        };
-        let mut empty_cell = buffer::Cell::default();
-        empty_cell.set_symbol("\x00");
-        let mut buffer = Buffer::filled(size, &empty_cell);
-        p.render(size, &mut buffer);
+        let mut buffer = Buffer::default();
+        let size = render_into(self, width, &mut buffer);
 
         // NOTE: it's always at least 1-height...
         for i in 1..size.height {

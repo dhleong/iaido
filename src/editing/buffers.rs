@@ -40,3 +40,20 @@ impl fmt::Display for Buffers {
         write!(f, "[Buffers: count={}]", self.all.len())
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    pub trait TestableBuffers {
+        fn with_buffer(buffer: Box<dyn Buffer>) -> Buffers;
+    }
+
+    impl TestableBuffers for Buffers {
+        fn with_buffer(buffer: Box<dyn Buffer>) -> Buffers {
+            let mut b = Buffers::new();
+            b.all.push(buffer);
+            b
+        }
+    }
+}

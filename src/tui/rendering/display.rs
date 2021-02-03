@@ -80,14 +80,15 @@ impl std::fmt::Display for Display {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::editing::{motion::tests::window, Resizable};
+pub mod tests {
+    use crate::editing::motion::tests::window;
     use indoc::indoc;
 
     use super::*;
 
-    trait TestableDisplay {
+    pub trait TestableDisplay {
         fn of_string(s: &'static str) -> Display;
+        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str) -> Display;
         fn cursor_coords(&self) -> Option<(u16, u16)>;
         fn to_visual_string(&self) -> String;
         fn assert_visual_match(&self, s: &'static str);
@@ -95,15 +96,25 @@ mod tests {
 
     impl TestableDisplay for Display {
         fn of_string(s: &'static str) -> Display {
-            let width = s.split('\n').map(|l| l.len()).max().unwrap_or(s.len());
+            let width = s
+                .split('\n')
+                .map(|l| l.replace('|', "").len())
+                .max()
+                .unwrap_or(s.len());
             let height = s.chars().filter(|ch| *ch == '\n').count();
 
-            let mut display = Display::new(Size {
-                w: width as u16,
-                h: height as u16,
-            });
+            return Display::of_sized_string(
+                Size {
+                    w: width as u16,
+                    h: height as u16,
+                },
+                s,
+            );
+        }
+
+        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str) -> Display {
+            let mut display = Display::new(size.into());
             let mut win = window(s);
-            win.window.resize(display.size);
             win.render(&mut display);
 
             display
@@ -143,7 +154,8 @@ mod tests {
         }
 
         fn assert_visual_match(&self, s: &'static str) {
-            let expected_display = Display::of_string(s);
+            let expected_display = Display::of_sized_string(self.size, s);
+            assert_eq!(self.size, expected_display.size);
             assert_eq!(self.to_visual_string(), expected_display.to_visual_string());
         }
     }

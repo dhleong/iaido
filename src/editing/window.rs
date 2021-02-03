@@ -54,7 +54,7 @@ impl Window {
     /// the screen)
     pub fn scroll_lines(&mut self, buffers: &Buffers, virtual_lines: i32) {
         let buffer = buffers.by_id(self.buffer).expect("Window buffer missing");
-        if buffer.is_empty() || self.size.w <= 0 {
+        if buffer.is_empty() || self.size.w <= 0 || virtual_lines == 0 {
             // nop
             return;
         }

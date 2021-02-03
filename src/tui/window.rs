@@ -21,12 +21,21 @@ impl Renderable for Window {
 
         let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
         let candidate_text = text::Text::from(lines);
-        let inner_height = candidate_text.measure_height(context.area.width) - self.scroll_offset;
+        let text_height = candidate_text.measure_height(context.area.width);
+        let inner_height = text_height - self.scroll_offset;
 
+        // NOTE: each line scrolled on Paragraph is a line removed
+        // from the TOP of the buffer; our scroll goes backward (IE:
+        // each scroll_offset removes from the BOTTOM of the buffer)
+        // so we invert the scroll_offset to achieve the same effect
+        let available_height = context.area.height;
+        let scroll = text_height
+            .checked_sub(available_height + self.scroll_offset + 1)
+            .unwrap_or(0);
         let paragraph = Paragraph::new(candidate_text)
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Left)
-            .scroll((0, self.scroll_offset));
+            .scroll((scroll, 0));
 
         let mut area = context.area.clone();
         if inner_height < area.height {
@@ -40,10 +49,7 @@ impl Renderable for Window {
                 let cursor_x = self.cursor.col % area.width;
                 let cursor_y_offset = self.cursor.col / area.width;
 
-                let cursor_y_absolute = self.cursor.line.checked_sub(start).unwrap_or(0);
-                let cursor_y = cursor_y_absolute
-                    .checked_sub(self.scroll_offset as usize)
-                    .unwrap_or(0);
+                let cursor_y = self.cursor.line.checked_sub(start).unwrap_or(0);
 
                 let x = area.x + cursor_x;
                 let y = area.y + (cursor_y as u16) + cursor_y_offset;
@@ -258,6 +264,37 @@ mod tests {
 
                 Take my love
                 Take |my land
+            "});
+        }
+
+        #[test]
+        fn cursor_with_single_scroll_offset() {
+            let mut ctx = window(indoc! {"
+                Take my land
+                Take me wher|e I cannot stand
+            "});
+            ctx.window.resize(Size { w: 14, h: 2 });
+            ctx.scroll_lines(1);
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+                Take my land
+                Take me wher|e
+            "});
+        }
+
+        #[test]
+        fn cursor_with_multi_scroll_offset() {
+            let mut ctx = window(indoc! {"
+                Take my |land Take me where I cannot stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.scroll_lines(3);
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+
+                Take my |land
             "});
         }
     }

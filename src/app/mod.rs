@@ -1,3 +1,4 @@
+pub mod bufwin;
 pub mod looper;
 pub mod prompt;
 pub mod state;

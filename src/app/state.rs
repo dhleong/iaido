@@ -10,7 +10,7 @@ use crate::editing::{
     Buffer, Resizable, Size,
 };
 
-use super::prompt::Prompt;
+use super::{bufwin::BufWin, prompt::Prompt};
 
 pub struct AppState {
     pub running: bool,
@@ -62,6 +62,17 @@ impl AppState {
 
     pub fn current_tab_mut<'a>(&'a mut self) -> &'a mut Box<Tabpage> {
         self.tabpages.current_tab_mut()
+    }
+
+    pub fn current_bufwin<'a>(&'a mut self) -> BufWin<'a> {
+        BufWin::new(
+            if self.prompt.window.focused {
+                &mut self.prompt.window
+            } else {
+                self.tabpages.current_tab_mut().current_window_mut()
+            },
+            &self.buffers,
+        )
     }
 
     // ======= echo ===========================================
@@ -128,6 +139,10 @@ impl MotionContext for AppState {
 
     fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
         self.current_buffer_mut()
+    }
+
+    fn bufwin(&mut self) -> BufWin {
+        self.current_bufwin()
     }
 
     fn cursor(&self) -> crate::editing::CursorPosition {

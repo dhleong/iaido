@@ -2,6 +2,8 @@ pub mod char;
 pub mod linewise;
 pub mod word;
 
+use crate::app::bufwin::BufWin;
+
 use super::{window::Window, Buffer, CursorPosition};
 
 pub type MotionRange = (CursorPosition, CursorPosition);
@@ -12,6 +14,8 @@ pub trait MotionContext {
     fn cursor(&self) -> CursorPosition;
     fn window(&self) -> &Box<Window>;
     fn window_mut(&mut self) -> &mut Box<Window>;
+
+    fn bufwin(&mut self) -> BufWin;
 
     fn with_cursor(&self, cursor: CursorPosition) -> PositionedMotionContext<Self> {
         PositionedMotionContext { base: self, cursor }
@@ -28,6 +32,9 @@ impl<'a, T: MotionContext> MotionContext for PositionedMotionContext<'a, T> {
         self.base.buffer()
     }
     fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
+        panic!("PositionedMotionContext should not be used mutatively")
+    }
+    fn bufwin(&mut self) -> BufWin {
         panic!("PositionedMotionContext should not be used mutatively")
     }
     fn cursor(&self) -> CursorPosition {
@@ -92,6 +99,7 @@ pub mod tests {
     pub struct TestWindow {
         pub window: Box<Window>,
         pub buffer: Box<dyn Buffer>,
+        buffers: Buffers,
     }
 
     impl TestWindow {
@@ -132,12 +140,7 @@ pub mod tests {
         }
 
         pub fn scroll_lines(&mut self, virtual_lines: i32) {
-            let mut clone = MemoryBuffer::new(self.buffer.id());
-            for i in 0..self.buffer.lines_count() {
-                clone.append(self.buffer.get(i).clone().into());
-            }
-            let buffers = Buffers::with_buffer(Box::new(clone));
-            self.window.scroll_lines(&buffers, virtual_lines);
+            self.bufwin().scroll_lines(virtual_lines);
         }
     }
 
@@ -148,6 +151,15 @@ pub mod tests {
 
         fn buffer_mut(&mut self) -> &mut Box<dyn Buffer> {
             &mut self.buffer
+        }
+
+        fn bufwin(&mut self) -> BufWin {
+            let mut clone = MemoryBuffer::new(self.buffer.id());
+            for i in 0..self.buffer.lines_count() {
+                clone.append(self.buffer.get(i).clone().into());
+            }
+            self.buffers = Buffers::with_buffer(Box::new(clone));
+            BufWin::new(&mut self.window, &self.buffers)
         }
 
         fn cursor(&self) -> crate::editing::CursorPosition {
@@ -183,6 +195,9 @@ pub mod tests {
         TestWindow {
             window: Box::new(window),
             buffer: Box::new(buffer),
+            buffers: Buffers::new(),
+        }
+    }
         }
     }
 }

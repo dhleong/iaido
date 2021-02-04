@@ -7,7 +7,7 @@ use tui::{
     widgets::Wrap,
 };
 
-use super::{measure::render_into, RenderContext, Renderable};
+use super::{measure::render_into, LayoutContext, RenderContext, Renderable};
 use crate::editing::{self, text::TextLine, window::Window};
 use crate::tui::Measurable;
 
@@ -48,6 +48,16 @@ fn wrap_cursor(line: &TextLine, width: u16, cursor_col: usize) -> (u16, u16) {
 }
 
 impl Renderable for Window {
+    fn layout(&mut self, context: &LayoutContext) {
+        let buf = if let Some(buf) = context.buffer(self.buffer) {
+            buf
+        } else {
+            return;
+        };
+
+        // TODO
+    }
+
     fn render(&self, context: &mut RenderContext) {
         let buf = if let Some(overridden) = context.buffer_override {
             overridden
@@ -94,6 +104,11 @@ impl Renderable for Window {
                     self.cursor.col as usize,
                 );
 
+                println!(
+                    "{} + {}",
+                    (self.cursor.line as i32) - (start as i32),
+                    cursor_y_offset
+                );
                 let cursor_y = self.cursor.line.checked_sub(start).unwrap_or(0);
 
                 let x = area.x + cursor_x;
@@ -370,6 +385,19 @@ mod tests {
             display.assert_visual_match(indoc! {"
                 Take  my
                 |love
+            "});
+        }
+
+        #[test]
+        fn cursor_above_window_area() {
+            let mut ctx = window(indoc! {"
+                |Take my love Take my land Take me where
+            "});
+            ctx.window.resize(Size { w: 13, h: 1 });
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+                |Take my love
             "});
         }
     }

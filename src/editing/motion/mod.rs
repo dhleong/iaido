@@ -187,4 +187,61 @@ pub mod tests {
             buffer: Box::new(buffer),
         }
     }
+
+    mod apply_cursor {
+        use crate::{
+            editing::motion::word::{is_small_word_boundary, WordMotion},
+            tui::rendering::display::tests::TestableDisplay,
+        };
+
+        use super::*;
+        use indoc::indoc;
+
+        #[test]
+        fn adjusts_scroll_up() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+        }
+
+        #[ignore]
+        #[test]
+        fn adjusts_wrapped_scroll_up() {
+            let mut ctx = window(indoc! {"
+                Take my love |Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+        }
+
+        #[ignore]
+        #[test]
+        fn adjusts_scroll_down() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+                Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.scroll_lines(1);
+
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+    }
 }

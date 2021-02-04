@@ -3,5 +3,6 @@ pub mod display;
 pub mod size;
 
 pub trait Renderable {
-    fn render(&self, app: &mut context::RenderContext);
+    fn layout(&mut self, _ctx: &context::LayoutContext) {}
+    fn render(&self, ctx: &mut context::RenderContext);
 }

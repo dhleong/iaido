@@ -87,7 +87,7 @@ pub mod tests {
         editing::{
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
-        tui::{Display, RenderContext, Renderable},
+        tui::{Display, LayoutContext, RenderContext, Renderable},
     };
 
     use super::*;
@@ -113,6 +113,9 @@ pub mod tests {
 
         pub fn render(&mut self, display: &mut Display) {
             self.window.resize(display.size);
+
+            self.window
+                .layout(&LayoutContext::with_buffer(&self.buffer));
 
             let state = crate::app::State::default();
             let mut context = RenderContext::new(&state, display).with_buffer(&self.buffer);

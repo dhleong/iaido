@@ -8,8 +8,59 @@ use tui::{
 };
 
 use super::{measure::render_into, LayoutContext, RenderContext, Renderable};
-use crate::editing::{self, text::TextLine, window::Window};
+use crate::editing::{self, text::TextLine, window::Window, Buffer};
 use crate::tui::Measurable;
+
+struct WrappedLineOffset {
+    line: usize,
+
+    /// number of virtual lines skipped
+    visual_offset: u16,
+}
+
+struct RenderableContent<'a> {
+    start: WrappedLineOffset,
+    end: WrappedLineOffset,
+    candidate_text: text::Text<'a>,
+    inner_height: u16,
+}
+
+impl<'a> RenderableContent<'a> {
+    fn new(window: &Window, buf: &Box<dyn Buffer>) -> Self {
+        let count = buf.lines_count();
+        let end = count
+            .checked_sub(window.scrolled_lines as usize)
+            .unwrap_or(0);
+        let start = end.checked_sub(window.size.h as usize).unwrap_or(0);
+
+        let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
+        let candidate_text = text::Text::from(lines);
+        let text_height = candidate_text.measure_height(window.size.w);
+        let inner_height = text_height - window.scroll_offset;
+
+        // NOTE: each line scrolled on Paragraph is a line removed
+        // from the TOP of the buffer; our scroll goes backward (IE:
+        // each scroll_offset removes from the BOTTOM of the buffer)
+        // so we invert the scroll_offset to achieve the same effect
+        let available_height = window.size.h; //context.area.height;
+        let scroll = text_height
+            .checked_sub(available_height + window.scroll_offset + 1)
+            .unwrap_or(0);
+
+        Self {
+            start: WrappedLineOffset {
+                line: start,
+                visual_offset: scroll,
+            },
+            end: WrappedLineOffset {
+                line: end,
+                visual_offset: inner_height.checked_sub(available_height).unwrap_or(0),
+            },
+            candidate_text,
+            inner_height,
+        }
+    }
+}
 
 fn wrap_cursor(line: &TextLine, width: u16, cursor_col: usize) -> (u16, u16) {
     // FIXME: it would be way more efficient to actually do our own wrapping...
@@ -55,7 +106,25 @@ impl Renderable for Window {
             return;
         };
 
-        // TODO
+        let renderable = RenderableContent::new(self, buf);
+        let (_, cursor_y_offset) = wrap_cursor(
+            buf.get(self.cursor.line),
+            self.size.w,
+            self.cursor.col as usize,
+        );
+
+        if self.cursor.line < renderable.start.line {
+            self.scroll_offset = 0;
+            self.scrolled_lines += (renderable.start.line - self.cursor.line) as u32;
+        } else if self.cursor.line > renderable.end.line {
+            self.scroll_offset = 0;
+            self.scrolled_lines = self
+                .scrolled_lines
+                .checked_sub((self.cursor.line - renderable.start.line) as u32)
+                .unwrap_or(0);
+        } else {
+            // TODO scroll within wrapped lines
+        }
     }
 
     fn render(&self, context: &mut RenderContext) {
@@ -68,48 +137,31 @@ impl Renderable for Window {
             }
         };
 
-        let count = buf.lines_count();
-        let end = count.checked_sub(self.scrolled_lines as usize).unwrap_or(0);
-        let start = end.checked_sub(self.size.h as usize).unwrap_or(0);
-
-        let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
-        let candidate_text = text::Text::from(lines);
-        let text_height = candidate_text.measure_height(context.area.width);
-        let inner_height = text_height - self.scroll_offset;
-
-        // NOTE: each line scrolled on Paragraph is a line removed
-        // from the TOP of the buffer; our scroll goes backward (IE:
-        // each scroll_offset removes from the BOTTOM of the buffer)
-        // so we invert the scroll_offset to achieve the same effect
-        let available_height = context.area.height;
-        let scroll = text_height
-            .checked_sub(available_height + self.scroll_offset + 1)
-            .unwrap_or(0);
-        let paragraph = Paragraph::new(candidate_text)
+        let renderable = RenderableContent::new(self, buf);
+        let paragraph = Paragraph::new(renderable.candidate_text)
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Left)
-            .scroll((scroll, 0));
+            .scroll((renderable.start.visual_offset, 0));
 
         let mut area = context.area.clone();
-        if inner_height < area.height {
-            area.y = area.bottom() - inner_height;
-            area.height = inner_height;
+        if renderable.inner_height < area.height {
+            area.y = area.bottom() - renderable.inner_height;
+            area.height = renderable.inner_height;
         }
 
         if self.focused {
-            let (x, y) = if count > 0 {
+            let (x, y) = if buf.lines_count() > 0 {
                 let (cursor_x, cursor_y_offset) = wrap_cursor(
                     buf.get(self.cursor.line),
                     area.width,
                     self.cursor.col as usize,
                 );
 
-                println!(
-                    "{} + {}",
-                    (self.cursor.line as i32) - (start as i32),
-                    cursor_y_offset
-                );
-                let cursor_y = self.cursor.line.checked_sub(start).unwrap_or(0);
+                let cursor_y = self
+                    .cursor
+                    .line
+                    .checked_sub(renderable.start.line)
+                    .unwrap_or(0);
 
                 let x = area.x + cursor_x;
                 let y = area.y + (cursor_y as u16) + cursor_y_offset;

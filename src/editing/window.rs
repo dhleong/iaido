@@ -52,8 +52,7 @@ impl Window {
     /// Scroll the window "back in time" by the given number of "virtual" (visual) lines.
     /// Pass a negative value for `virtual_lines` to scroll "forward in time" (toward the bottom of
     /// the screen)
-    pub fn scroll_lines(&mut self, buffers: &Buffers, virtual_lines: i32) {
-        let buffer = buffers.by_id(self.buffer).expect("Window buffer missing");
+    pub fn scroll_lines(&mut self, buffer: &Box<dyn Buffer>, virtual_lines: i32) {
         if buffer.is_empty() || self.size.w <= 0 || virtual_lines == 0 {
             // nop
             return;

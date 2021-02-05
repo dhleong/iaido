@@ -22,6 +22,16 @@ impl Tabpages {
         self.all.len()
     }
 
+    pub fn containing_window_mut(&self, window_id: usize) -> Option<&mut Box<Tabpage>> {
+        for tabpage in &mut self.all {
+            if let Some(_) = tabpage.by_id(window_id) {
+                return Some(tabpage);
+            }
+        }
+
+        None
+    }
+
     pub fn current_tab(&self) -> &Box<Tabpage> {
         self.by_id(self.current).unwrap()
     }

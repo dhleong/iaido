@@ -65,14 +65,27 @@ impl AppState {
     }
 
     pub fn current_bufwin<'a>(&'a mut self) -> BufWin<'a> {
-        BufWin::new(
-            if self.prompt.window.focused {
-                &mut self.prompt.window
-            } else {
-                self.tabpages.current_tab_mut().current_window_mut()
-            },
-            &self.buffers,
-        )
+        if self.prompt.window.focused {
+            BufWin::new(&mut self.prompt.window, &self.prompt.buffer)
+        } else {
+            let window_id = self.tabpages.current_tab_mut().current_window().id;
+            if let Some(bufwin) = self.bufwin_by_id(window_id) {
+                return bufwin;
+            }
+
+            panic!("Unable to locate current window/buffer");
+        }
+    }
+
+    pub fn bufwin_by_id<'a>(&'a mut self, window_id: usize) -> Option<BufWin<'a>> {
+        if let Some(tabpage) = self.tabpages.containing_window_mut(window_id) {
+            if let Some(window) = tabpage.by_id_mut(window_id) {
+                if let Some(buffer) = self.buffers.by_id(window.buffer) {
+                    return Some(BufWin::new(window, buffer));
+                }
+            }
+        }
+        None
     }
 
     // ======= echo ===========================================

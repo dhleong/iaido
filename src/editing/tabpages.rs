@@ -22,7 +22,7 @@ impl Tabpages {
         self.all.len()
     }
 
-    pub fn containing_window_mut(&self, window_id: usize) -> Option<&mut Box<Tabpage>> {
+    pub fn containing_window_mut(&mut self, window_id: usize) -> Option<&mut Box<Tabpage>> {
         for tabpage in &mut self.all {
             if let Some(_) = tabpage.by_id(window_id) {
                 return Some(tabpage);

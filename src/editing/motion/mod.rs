@@ -85,11 +85,7 @@ pub trait Motion {
 pub mod tests {
     use crate::{
         editing::{
-            buffer::MemoryBuffer,
-            buffers::{tests::TestableBuffers, Buffers},
-            text::TextLines,
-            window::Window,
-            Buffer, HasId, Resizable, Size,
+            buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
         tui::{Display, RenderContext, Renderable},
     };
@@ -99,7 +95,6 @@ pub mod tests {
     pub struct TestWindow {
         pub window: Box<Window>,
         pub buffer: Box<dyn Buffer>,
-        buffers: Buffers,
     }
 
     impl TestWindow {
@@ -154,12 +149,7 @@ pub mod tests {
         }
 
         fn bufwin(&mut self) -> BufWin {
-            let mut clone = MemoryBuffer::new(self.buffer.id());
-            for i in 0..self.buffer.lines_count() {
-                clone.append(self.buffer.get(i).clone().into());
-            }
-            self.buffers = Buffers::with_buffer(Box::new(clone));
-            BufWin::new(&mut self.window, &self.buffers)
+            BufWin::new(&mut self.window, &self.buffer)
         }
 
         fn cursor(&self) -> crate::editing::CursorPosition {
@@ -195,9 +185,6 @@ pub mod tests {
         TestWindow {
             window: Box::new(window),
             buffer: Box::new(buffer),
-            buffers: Buffers::new(),
-        }
-    }
         }
     }
 }

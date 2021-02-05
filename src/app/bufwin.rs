@@ -3,7 +3,7 @@ use crate::editing::{window::Window, Buffer};
 /// A BufWin provides convenient mutable access functions on a Window
 /// that require access to its associated buffer
 pub struct BufWin<'a> {
-    window: &'a mut Box<Window>,
+    pub window: &'a mut Box<Window>,
     buffer: &'a Box<dyn Buffer>,
 }
 

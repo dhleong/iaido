@@ -35,10 +35,10 @@ fn main() -> Result<(), io::Error> {
     let page = app.state.tabpages.current_tab_mut();
     let bottom_id = page.hsplit();
 
-    if let Some(bottom_win) = page.by_id_mut(bottom_id) {
-        bottom_win.scroll_lines(&app.state.buffers, 1);
-        bottom_win.set_inserting(true);
-        bottom_win.cursor = CursorPosition { line: 1, col: 0 }
+    if let Some(mut bottom_win) = app.state.bufwin_by_id(bottom_id) {
+        bottom_win.scroll_lines(1);
+        bottom_win.window.set_inserting(true);
+        bottom_win.window.cursor = CursorPosition { line: 1, col: 0 }
     }
 
     {

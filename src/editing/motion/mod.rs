@@ -215,13 +215,15 @@ pub mod tests {
             "});
         }
 
-        #[ignore]
         #[test]
         fn adjusts_wrapped_scroll_up() {
             let mut ctx = window(indoc! {"
                 Take my love |Take my land
             "});
             ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
 
             ctx.motion(WordMotion::backward_until(is_small_word_boundary));
 

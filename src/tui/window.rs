@@ -44,7 +44,7 @@ impl<'a> RenderableContent<'a> {
         // so we invert the scroll_offset to achieve the same effect
         let available_height = window.size.h; //context.area.height;
         let scroll = text_height
-            .checked_sub(available_height + window.scroll_offset + 1)
+            .checked_sub(available_height + window.scroll_offset)
             .unwrap_or(0);
 
         Self {
@@ -164,7 +164,9 @@ impl Renderable for Window {
                     .unwrap_or(0);
 
                 let x = area.x + cursor_x;
-                let y = area.y + (cursor_y as u16) + cursor_y_offset;
+                let y = (area.y + (cursor_y as u16) + cursor_y_offset)
+                    .checked_sub(renderable.start.visual_offset)
+                    .unwrap_or(0);
                 (x, y)
             } else {
                 // simple case

@@ -251,7 +251,6 @@ pub mod tests {
             "});
         }
 
-        #[ignore]
         #[test]
         fn adjusts_wrapped_scroll_down() {
             let mut ctx = window(indoc! {"

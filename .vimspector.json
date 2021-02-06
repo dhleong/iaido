@@ -13,6 +13,12 @@
         "request": "launch",
         "program": "${Exe}",
         "args": ["${Module}"]
+      },
+      "breakpoints": {
+        "exception": {
+          "cpp_throw": "",
+          "cpp_catch": ""
+        }
       }
     }
   }

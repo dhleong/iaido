@@ -11,6 +11,7 @@ use super::{measure::render_into, LayoutContext, RenderContext, Renderable};
 use crate::editing::{self, text::TextLine, window::Window, Buffer};
 use crate::tui::Measurable;
 
+#[derive(Debug, PartialEq)]
 struct WrappedLineOffset {
     line: usize,
 
@@ -53,7 +54,7 @@ impl<'a> RenderableContent<'a> {
                 visual_offset: scroll,
             },
             end: WrappedLineOffset {
-                line: end,
+                line: end.checked_sub(1).unwrap_or(0),
                 visual_offset: inner_height.checked_sub(available_height).unwrap_or(0),
             },
             candidate_text,
@@ -132,7 +133,7 @@ impl Renderable for Window {
             } else if cursor_y_offset > renderable.end.visual_offset {
                 self.scroll_lines(
                     buf,
-                    (renderable.start.visual_offset as i32) - cursor_y_offset as i32,
+                    (renderable.end.visual_offset as i32) - cursor_y_offset as i32,
                 );
             }
         }

@@ -232,7 +232,6 @@ pub mod tests {
             "});
         }
 
-        #[ignore]
         #[test]
         fn adjusts_scroll_down() {
             let mut ctx = window(indoc! {"
@@ -241,6 +240,28 @@ pub mod tests {
             "});
             ctx.window.resize(Size { w: 12, h: 1 });
             ctx.scroll_lines(1);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+
+        #[ignore]
+        #[test]
+        fn adjusts_wrapped_scroll_down() {
+            let mut ctx = window(indoc! {"
+                Take my |love Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.scroll_lines(1);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
 
             ctx.motion(WordMotion::forward_until(is_small_word_boundary));
 

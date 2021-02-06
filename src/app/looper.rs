@@ -63,11 +63,8 @@ where
 
     loop {
         if let Err(e) = map.process(&mut app_keys) {
-            let error = format!("IAIDO:ERR: {:?}", e);
-            app_keys
-                .state_mut()
-                .current_buffer_mut()
-                .append(TextLines::raw(error));
+            let error = format!("ERR: {:?}", e);
+            app_keys.state_mut().echo(TextLines::raw(error));
             // TODO fatal errors?
             continue;
         }

@@ -1,3 +1,4 @@
+pub mod commands;
 pub mod keys;
 pub mod maps;
 
@@ -26,6 +27,7 @@ impl From<KeyCode> for Key {
 #[derive(Debug)]
 pub enum KeyError {
     IO(io::Error),
+    NoSuchCommand(String),
 }
 
 impl Into<KeyError> for io::Error {

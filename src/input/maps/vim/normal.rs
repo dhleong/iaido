@@ -1,4 +1,4 @@
-use crate::input::KeymapContext;
+use crate::input::{commands::handle_command, KeymapContext};
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
-    prompt::vim_prompt_mode,
+    prompt::VimPromptConfig,
     tree::KeyTreeNode,
     VimKeymapState, VimMode,
 };
@@ -16,9 +16,13 @@ use super::{
 fn cmd_mode_access() -> KeyTreeNode {
     vim_tree! {
         ":" => |ctx| {
-            // TODO cmd handler
+            ctx.state_mut().clear_echo();
             ctx.state_mut().prompt.activate(":".into());
-            ctx.keymap.push_mode(vim_prompt_mode(":".into()));
+            ctx.keymap.push_mode(VimPromptConfig{
+                prompt: ":".into(),
+                handler: Box::new(handle_command),
+                // TODO autocomplete
+            }.into());
             Ok(())
          },
     }

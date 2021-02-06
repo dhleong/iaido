@@ -24,6 +24,10 @@ struct RenderableContent<'a> {
     end: WrappedLineOffset,
     candidate_text: text::Text<'a>,
     inner_height: u16,
+
+    /// Contains the number of virtual lines rendered per visible line.
+    /// line_heights[0] is start.line
+    line_heights: Vec<u16>,
 }
 
 impl<'a> RenderableContent<'a> {
@@ -35,8 +39,12 @@ impl<'a> RenderableContent<'a> {
         let start = end.checked_sub(window.size.h as usize).unwrap_or(0);
 
         let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
+        let line_heights: Vec<u16> = lines
+            .iter()
+            .map(|line| line.measure_height(window.size.w))
+            .collect();
         let candidate_text = text::Text::from(lines);
-        let text_height = candidate_text.measure_height(window.size.w);
+        let text_height: u16 = line_heights.iter().sum();
         let inner_height = text_height - window.scroll_offset;
 
         // NOTE: each line scrolled on Paragraph is a line removed
@@ -59,6 +67,7 @@ impl<'a> RenderableContent<'a> {
             },
             candidate_text,
             inner_height,
+            line_heights,
         }
     }
 }
@@ -168,16 +177,22 @@ impl Renderable for Window {
                     self.cursor.col as usize,
                 );
 
-                let cursor_y = self
+                let cursor_virtual_lines = self
                     .cursor
                     .line
                     .checked_sub(renderable.start.line)
                     .unwrap_or(0);
+                let cursor_y: u16 = renderable
+                    .line_heights
+                    .iter()
+                    .take(cursor_virtual_lines)
+                    .sum();
 
                 let x = area.x + cursor_x;
-                let y = (area.y + (cursor_y as u16) + cursor_y_offset)
+                let y = (area.y + cursor_y + cursor_y_offset)
                     .checked_sub(renderable.start.visual_offset)
                     .unwrap_or(0);
+
                 (x, y)
             } else {
                 // simple case
@@ -356,6 +371,22 @@ mod tests {
         fn cursor_with_multi_wrap() {
             let mut ctx = window(indoc! {"
                 Take my love, Take my land, Take me where I cannot |stand
+            "});
+
+            let display = ctx.render_into_size(14, 4);
+            display.assert_visual_match(indoc! {"
+                Take my love,
+                Take my land,
+                Take me where
+                I cannot |stand
+            "});
+        }
+
+        #[test]
+        fn cursor_after_wrapped() {
+            let mut ctx = window(indoc! {"
+                Take my love, Take my land, Take me where
+                I cannot |stand
             "});
 
             let display = ctx.render_into_size(14, 4);

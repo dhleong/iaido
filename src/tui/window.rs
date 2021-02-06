@@ -42,7 +42,7 @@ impl<'a> RenderableContent<'a> {
         // from the TOP of the buffer; our scroll goes backward (IE:
         // each scroll_offset removes from the BOTTOM of the buffer)
         // so we invert the scroll_offset to achieve the same effect
-        let available_height = window.size.h; //context.area.height;
+        let available_height = window.size.h;
         let scroll = text_height
             .checked_sub(available_height + window.scroll_offset)
             .unwrap_or(0);
@@ -124,6 +124,17 @@ impl Renderable for Window {
                 .unwrap_or(0);
         } else {
             // TODO scroll within wrapped lines
+            if cursor_y_offset < renderable.start.visual_offset {
+                self.scroll_lines(
+                    buf,
+                    (renderable.start.visual_offset - cursor_y_offset) as i32,
+                );
+            } else if cursor_y_offset > renderable.end.visual_offset {
+                self.scroll_lines(
+                    buf,
+                    (renderable.start.visual_offset as i32) - cursor_y_offset as i32,
+                );
+            }
         }
     }
 

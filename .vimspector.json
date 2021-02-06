@@ -11,7 +11,8 @@
       "adapter": "CodeLLDB",
       "configuration": {
         "request": "launch",
-        "program": "${Exe}"
+        "program": "${Exe}",
+        "args": ["${Module}"]
       }
     }
   }

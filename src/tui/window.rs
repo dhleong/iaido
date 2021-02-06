@@ -124,7 +124,6 @@ impl Renderable for Window {
                 .checked_sub((self.cursor.line - renderable.start.line) as u32)
                 .unwrap_or(0);
         } else {
-            // TODO scroll within wrapped lines
             if cursor_y_offset < renderable.start.visual_offset {
                 self.scroll_lines(
                     buf,

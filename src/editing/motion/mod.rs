@@ -87,7 +87,7 @@ pub mod tests {
         editing::{
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
-        tui::{Display, RenderContext, Renderable},
+        tui::{Display, LayoutContext, RenderContext, Renderable},
     };
 
     use super::*;
@@ -113,6 +113,9 @@ pub mod tests {
 
         pub fn render(&mut self, display: &mut Display) {
             self.window.resize(display.size);
+
+            self.window
+                .layout(&LayoutContext::with_buffer(&self.buffer));
 
             let state = crate::app::State::default();
             let mut context = RenderContext::new(&state, display).with_buffer(&self.buffer);
@@ -185,6 +188,85 @@ pub mod tests {
         TestWindow {
             window: Box::new(window),
             buffer: Box::new(buffer),
+        }
+    }
+
+    mod apply_cursor {
+        use crate::{
+            editing::motion::word::{is_small_word_boundary, WordMotion},
+            tui::rendering::display::tests::TestableDisplay,
+        };
+
+        use super::*;
+        use indoc::indoc;
+
+        #[test]
+        fn adjusts_scroll_up() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+        }
+
+        #[test]
+        fn adjusts_wrapped_scroll_up() {
+            let mut ctx = window(indoc! {"
+                Take my love |Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
+
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+        }
+
+        #[test]
+        fn adjusts_scroll_down() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+                Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.scroll_lines(1);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn adjusts_wrapped_scroll_down() {
+            let mut ctx = window(indoc! {"
+                Take my |love Take my land
+            "});
+            ctx.window.resize(Size { w: 12, h: 1 });
+            ctx.scroll_lines(1);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my |love
+            "});
+
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my land
+            "});
         }
     }
 }

@@ -59,8 +59,7 @@ impl Window {
         }
 
         let to_scroll = virtual_lines.abs();
-        let step = virtual_lines / to_scroll;
-        if step > 0 {
+        if virtual_lines > 0 {
             self.scroll_up(buffer, to_scroll as usize);
         } else {
             self.scroll_down(buffer, to_scroll as usize);
@@ -110,7 +109,7 @@ impl Window {
         let mut to_scroll = virtual_lines;
 
         let window_width = self.size.w;
-        for _ in (end - self.scrolled_lines as usize)..end {
+        for _ in (end - self.scrolled_lines as usize)..=end {
             // NOTE: there's always at least one:
             let consumable = self.scroll_offset as usize + 1;
             self.scroll_offset = (self.scroll_offset as usize)

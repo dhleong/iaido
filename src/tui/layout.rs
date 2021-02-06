@@ -4,6 +4,15 @@ use super::Renderable;
 use crate::editing::layout::{Layout, LayoutDirection, LayoutEntry};
 
 impl Renderable for Layout {
+    fn layout(&mut self, ctx: &super::LayoutContext) {
+        for entry in &mut self.entries {
+            match entry {
+                LayoutEntry::Window(win) => win.layout(ctx),
+                LayoutEntry::Layout(lyt) => lyt.layout(ctx),
+            };
+        }
+    }
+
     fn render(&self, context: &mut crate::tui::RenderContext) {
         match self.direction {
             LayoutDirection::Horizontal => todo!(), //render_horizontal(self, app, display, area),

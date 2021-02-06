@@ -1,6 +1,40 @@
 use tui::layout::Rect;
 
-use crate::{editing::Buffer, tui::Display};
+use crate::{
+    editing::{buffers::Buffers, Buffer},
+    tui::Display,
+};
+
+pub struct LayoutContext<'a> {
+    pub buffers: Option<&'a Buffers>,
+    pub buffer_override: Option<&'a Box<dyn Buffer>>,
+}
+
+impl<'a> LayoutContext<'a> {
+    pub fn new(buffers: &'a Buffers) -> Self {
+        Self {
+            buffers: Some(&buffers),
+            buffer_override: None,
+        }
+    }
+
+    pub fn with_buffer(buffer: &'a Box<dyn Buffer>) -> Self {
+        Self {
+            buffers: None,
+            buffer_override: Some(buffer),
+        }
+    }
+
+    pub fn buffer(&self, id: usize) -> Option<&Box<dyn Buffer>> {
+        if let Some(overridden) = self.buffer_override {
+            Some(overridden)
+        } else if let Some(buffers) = self.buffers {
+            buffers.by_id(id)
+        } else {
+            panic!("Had neither buffers nor buffer")
+        }
+    }
+}
 
 pub struct RenderContext<'a> {
     pub app: &'a crate::app::State,

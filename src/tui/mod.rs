@@ -22,6 +22,7 @@ pub mod window;
 use cursor::CursorRenderer;
 use measure::Measurable;
 
+pub use rendering::context::LayoutContext;
 pub use rendering::context::RenderContext;
 pub use rendering::display::Display;
 pub use rendering::size;
@@ -66,13 +67,9 @@ impl Tui {
         self.render_echo(app, &mut display);
 
         // main UI:
-        let mut context = RenderContext {
-            app: &app,
-            display: &mut display,
-            area: size,
-            buffer_override: None,
-        };
-        app.tabpages.render(&mut context);
+        app.tabpages.layout(&LayoutContext::new(&app.buffers));
+        app.tabpages
+            .render(&mut RenderContext::new(&app, &mut display).with_area(size));
 
         // prompt
         self.render_prompt(app, &mut display);
@@ -117,6 +114,10 @@ impl Tui {
             // nop
             return;
         }
+
+        app.prompt
+            .window
+            .layout(&LayoutContext::with_buffer(&app.prompt.buffer));
 
         let mut prompt_display = Display::new(display.size);
         app.prompt.window.render(

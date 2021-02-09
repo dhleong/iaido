@@ -1,8 +1,9 @@
 pub mod core;
+pub mod registry;
 
 use std::time::Duration;
 
-use self::core::quit;
+use self::{core::declare_core, registry::CommandRegistry};
 
 use super::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
 
@@ -40,13 +41,26 @@ impl KeySource for CommandHandlerContext<'_> {
     }
 }
 
+pub fn create_command_registry() -> CommandRegistry {
+    let mut registry = CommandRegistry::default();
+    declare_core(&mut registry);
+    return registry;
+}
+
 pub fn handle_command(context: CommandHandlerContext) -> KeyResult {
     let input_text = context.input.clone();
+    let registry = create_command_registry();
 
-    match input_text.as_ref() {
-        // TODO better dispatch
-        "q" | "quit" => quit(context),
-
-        _ => Err(KeyError::NoSuchCommand(input_text)),
+    if let Some(handler) = registry.get(input_text) {
+        handler(context)
+    } else {
+        Err(KeyError::NoSuchCommand(context.input.clone()))
     }
+
+    // match input_text.as_ref() {
+    //     // TODO better dispatch
+    //     "q" | "quit" => quit(context),
+    //
+    //     _ => Err(KeyError::NoSuchCommand(input_text)),
+    // }
 }

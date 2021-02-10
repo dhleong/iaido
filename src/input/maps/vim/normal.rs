@@ -45,11 +45,6 @@ fn cmd_mode_access() -> KeyTreeNode {
 
 pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
-        "<cr>" => |ctx| {
-            ctx.state_mut().running = false;
-            Ok(())
-        },
-
         "a" => |ctx| {
             ctx.state_mut().current_window_mut().set_inserting(true);
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());

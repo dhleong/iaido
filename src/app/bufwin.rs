@@ -4,7 +4,7 @@ use crate::editing::{window::Window, Buffer};
 /// that require access to its associated buffer
 pub struct BufWin<'a> {
     pub window: &'a mut Box<Window>,
-    buffer: &'a Box<dyn Buffer>,
+    pub buffer: &'a Box<dyn Buffer>,
 }
 
 impl<'a> BufWin<'a> {

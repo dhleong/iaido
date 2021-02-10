@@ -28,14 +28,14 @@ impl CommandRegistry {
         self.commands.insert(name, handler);
     }
 
-    pub fn get(&self, name: String) -> Option<&Box<CommandHandler>> {
-        if let Some(handler) = self.commands.get(&name) {
-            return Some(handler);
+    pub fn take(&mut self, name: &String) -> Option<(String, Box<CommandHandler>)> {
+        if let Some(handler) = self.commands.remove(name) {
+            return Some((name.clone(), handler));
         }
 
-        if let Some(full_name) = self.abbreviations.get(&name) {
-            if let Some(handler) = self.commands.get(full_name) {
-                return Some(handler);
+        if let Some(full_name) = self.abbreviations.get(name) {
+            if let Some(handler) = self.commands.remove(full_name) {
+                return Some((full_name.clone(), handler));
             }
         }
 
@@ -48,11 +48,11 @@ macro_rules! command_decl {
     // base case:
     ($r:ident ->) => {};
 
-    ($r:ident -> pub fn $name:ident(mut $context:ident) $body:expr, $($tail:tt)*) => {
+    ($r:ident -> pub fn $name:ident($context:ident) $body:expr, $($tail:tt)*) => {
         $r.declare(
             stringify!($name).to_string(),
             true,
-            Box::new(|mut $context| $body),
+            Box::new(|$context| $body),
         );
         crate::command_decl! { $r -> $($tail)* }
     };

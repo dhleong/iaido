@@ -7,11 +7,11 @@ use self::{core::declare_core, registry::CommandRegistry};
 
 use super::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
 
-pub type CommandHandler = dyn Fn(CommandHandlerContext<'_>) -> KeyResult;
+pub type CommandHandler = dyn Fn(&mut CommandHandlerContext<'_>) -> KeyResult;
 
 pub struct CommandHandlerContext<'a> {
-    context: Box<&'a mut dyn KeymapContext>,
-    input: String,
+    pub context: Box<&'a mut dyn KeymapContext>,
+    pub input: String,
 }
 
 impl<'a> CommandHandlerContext<'a> {
@@ -41,26 +41,8 @@ impl KeySource for CommandHandlerContext<'_> {
     }
 }
 
-pub fn create_command_registry() -> CommandRegistry {
+pub fn create_builtin_commands() -> CommandRegistry {
     let mut registry = CommandRegistry::default();
     declare_core(&mut registry);
     return registry;
-}
-
-pub fn handle_command(context: CommandHandlerContext) -> KeyResult {
-    let input_text = context.input.clone();
-    let registry = create_command_registry();
-
-    if let Some(handler) = registry.get(input_text) {
-        handler(context)
-    } else {
-        Err(KeyError::NoSuchCommand(context.input.clone()))
-    }
-
-    // match input_text.as_ref() {
-    //     // TODO better dispatch
-    //     "q" | "quit" => quit(context),
-    //
-    //     _ => Err(KeyError::NoSuchCommand(input_text)),
-    // }
 }

@@ -1,8 +1,8 @@
-use crate::input::{maps::KeyResult, KeymapContext};
+use crate::{declare_commands, input::KeymapContext};
 
-use super::CommandHandlerContext;
-
-pub fn quit(mut context: CommandHandlerContext) -> KeyResult {
-    context.state_mut().running = false;
-    Ok(())
-}
+declare_commands!(declare_core {
+    pub fn quit(context) {
+        context.state_mut().running = false;
+        Ok(())
+    },
+});

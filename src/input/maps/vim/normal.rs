@@ -1,4 +1,4 @@
-use crate::input::{commands::handle_command, KeymapContext};
+use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
@@ -13,11 +13,26 @@ use super::{
     VimKeymapState, VimMode,
 };
 
+fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
+    let input = context.input.clone();
+    if let Some((name, handler)) = context.state_mut().builtin_commands.take(&input) {
+        let result = handler(&mut context);
+        context
+            .state_mut()
+            .builtin_commands
+            .declare(name, false, handler);
+        result
+    } else {
+        Err(KeyError::NoSuchCommand(input))
+    }
+}
+
 fn cmd_mode_access() -> KeyTreeNode {
     vim_tree! {
         ":" => |ctx| {
             ctx.state_mut().clear_echo();
             ctx.state_mut().prompt.activate(":".into());
+
             ctx.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
                 handler: Box::new(handle_command),
@@ -30,11 +45,6 @@ fn cmd_mode_access() -> KeyTreeNode {
 
 pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
-        "<cr>" => |ctx| {
-            ctx.state_mut().running = false;
-            Ok(())
-        },
-
         "a" => |ctx| {
             ctx.state_mut().current_window_mut().set_inserting(true);
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());

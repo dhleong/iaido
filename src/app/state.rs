@@ -1,13 +1,16 @@
-use crate::editing::{
-    buffer::MemoryBuffer,
-    buffers::Buffers,
-    motion::char::CharMotion,
-    motion::{Motion, MotionContext},
-    tabpage::Tabpage,
-    tabpages::Tabpages,
-    text::{TextLine, TextLines},
-    window::Window,
-    Buffer, Resizable, Size,
+use crate::{
+    editing::{
+        buffer::MemoryBuffer,
+        buffers::Buffers,
+        motion::char::CharMotion,
+        motion::{Motion, MotionContext},
+        tabpage::Tabpage,
+        tabpages::Tabpages,
+        text::{TextLine, TextLines},
+        window::Window,
+        Buffer, Resizable, Size,
+    },
+    input::commands::{create_builtin_commands, registry::CommandRegistry},
 };
 
 use super::{bufwin::BufWin, prompt::Prompt};
@@ -18,6 +21,7 @@ pub struct AppState {
     pub tabpages: Tabpages,
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
+    pub builtin_commands: CommandRegistry,
 }
 
 impl AppState {
@@ -128,6 +132,7 @@ impl Default for AppState {
             tabpages,
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
+            builtin_commands: create_builtin_commands(),
         };
 
         // create the default tabpage

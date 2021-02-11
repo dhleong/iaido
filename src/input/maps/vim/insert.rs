@@ -1,10 +1,13 @@
 use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
-use crate::editing::motion::{
-    char::CharMotion,
-    word::{is_small_word_boundary, WordMotion},
-    Motion,
+use crate::input::{completion::Completer, KeyCode, KeymapContext};
+use crate::{
+    editing::motion::{
+        char::CharMotion,
+        word::{is_small_word_boundary, WordMotion},
+        Motion,
+    },
+    input::completion::commands::CommandsCompleter,
 };
-use crate::input::{KeyCode, KeymapContext};
 use crate::{key_handler, vim_tree};
 
 pub fn vim_insert_mappings() -> KeyTreeNode {
@@ -21,6 +24,14 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             ctx.state_mut().backspace();
             Ok(())
         },
+        "<tab>" => |?mut ctx| {
+            // TODO get the completer to use from context, probably
+            // TODO save completer state... temporarily?
+            // TODO update buffer with completion
+            let c = CommandsCompleter;
+            c.suggest(ctx.state().into()).next();
+            Ok(())
+         },
     }
 }
 

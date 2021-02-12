@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use crate::tui::measure::Measurable;
+use crate::{input::completion::state::CompletionState, tui::measure::Measurable};
 
 use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
@@ -17,6 +17,8 @@ pub struct Window {
     pub scrolled_lines: u32,
     /// the visual-line offset within the current (bottom-most) line
     pub scroll_offset: u16,
+
+    pub completion_state: Option<CompletionState>,
 }
 
 impl Window {
@@ -30,6 +32,7 @@ impl Window {
             cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,
             scroll_offset: 0,
+            completion_state: None,
         }
     }
 

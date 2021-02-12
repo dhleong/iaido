@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod state;
 
 use crate::editing::{motion::MotionContext, text::EditableLine};
 
@@ -48,6 +49,7 @@ impl<'a, T: MotionContext> From<&'a mut T> for CompletionContext<'a, T> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Completion {
     pub start: usize,
     pub end: usize,

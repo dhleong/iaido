@@ -1,8 +1,5 @@
 use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
-use crate::input::{
-    completion::{state::CompletionState, Completer, CompletionContext},
-    KeyCode, KeymapContext,
-};
+use crate::input::{completion::state::CompletionState, KeyCode, KeymapContext};
 use crate::{
     editing::motion::{
         char::CharMotion,
@@ -27,28 +24,20 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             ctx.state_mut().backspace();
             Ok(())
         },
+
         "<tab>" => |ctx| {
-            if let Some(ref mut current_state) = ctx.state_mut().current_window_mut().completion_state {
-                // apply next completion
-                let prev = current_state.take_current();
-                let next = current_state.advance();
-                ctx.state_mut().current_buffer_mut().apply_completion(prev.as_ref(), next.as_ref());
-                ctx.state_mut().current_window_mut().apply_completion(next.as_ref());
-                ctx.state_mut().current_window_mut().completion_state.as_mut().unwrap().push_history(prev, next);
+            let mut state = if let Some(current_state) = ctx.state_mut().current_window_mut().completion_state.take() {
+                current_state
             } else {
                 // TODO get the completer to use from context/window/buffer, probably
                 let c = CommandsCompleter;
-                let context: CompletionContext = ctx.state_mut().into();
-                let mut state = CompletionState::new(Box::new(c.suggest(ctx.state(), context)));
+                CompletionState::new(c, &mut ctx)
+            };
 
-                // apply initial suggestion
-                let next = state.take_current();
-                ctx.state_mut().current_buffer_mut().apply_completion(None, next.as_ref());
-                ctx.state_mut().current_window_mut().apply_completion(next.as_ref());
-                state.push_history(None, next);
+            state.apply_next(&mut ctx);
 
-                ctx.state_mut().current_window_mut().completion_state = Some(state);
-            }
+            ctx.state_mut().current_window_mut().completion_state = Some(state);
+
             Ok(())
          },
     }

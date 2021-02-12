@@ -12,10 +12,12 @@ impl Completer for CommandsCompleter {
         Box::new(
             gen!({
                 for name in names {
-                    yield_!(context.create_completion(name));
+                    yield_!(name);
                 }
+                yield_!("quidditch".to_string());
             })
             .into_iter()
+            .map(move |n| context.create_completion(n))
             .filter(move |candidate| candidate.replacement.starts_with(&input)),
         )
     }

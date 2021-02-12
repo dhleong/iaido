@@ -122,6 +122,7 @@ impl AppState {
     pub fn type_at_cursor(&mut self, ch: char) {
         self.insert_at_cursor(String::from(ch).into());
         self.current_window_mut().cursor.col += 1;
+        self.current_window_mut().completion_state = None; // reset on type
     }
 }
 

@@ -4,7 +4,6 @@ use crate::input::{
     KeyCode, KeymapContext,
 };
 use crate::{
-    app,
     editing::motion::{
         char::CharMotion,
         word::{is_small_word_boundary, WordMotion},
@@ -34,16 +33,18 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
                 let prev = current_state.take_current();
                 let next = current_state.advance();
                 ctx.state_mut().current_buffer_mut().apply_completion(prev.as_ref(), next.as_ref());
+                ctx.state_mut().current_window_mut().apply_completion(next.as_ref());
                 ctx.state_mut().current_window_mut().completion_state.as_mut().unwrap().push_history(prev, next);
             } else {
                 // TODO get the completer to use from context/window/buffer, probably
                 let c = CommandsCompleter;
-                let context: CompletionContext<app::State> = ctx.state_mut().into();
-                let mut state = CompletionState::new(Box::new(c.suggest(&context)));
+                let context: CompletionContext = ctx.state_mut().into();
+                let mut state = CompletionState::new(Box::new(c.suggest(context)));
 
                 // apply initial suggestion
                 let next = state.take_current();
                 ctx.state_mut().current_buffer_mut().apply_completion(None, next.as_ref());
+                ctx.state_mut().current_window_mut().apply_completion(next.as_ref());
                 state.push_history(None, next);
 
                 ctx.state_mut().current_window_mut().completion_state = Some(state);

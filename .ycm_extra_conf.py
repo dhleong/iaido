@@ -9,7 +9,10 @@ def Settings( **kwargs ):
           'enable': True,
         },
         'diagnostics': {
-          'disabled': ["unresolved-proc-macro"],
+          'disabled': [
+            'macro-error',
+            'unresolved-proc-macro'
+          ],
         },
       }
     }

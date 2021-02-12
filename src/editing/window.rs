@@ -1,6 +1,9 @@
 use std::cmp::{max, min};
 
-use crate::{input::completion::state::CompletionState, tui::measure::Measurable};
+use crate::{
+    input::completion::{state::CompletionState, Completion},
+    tui::measure::Measurable,
+};
 
 use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
@@ -50,6 +53,13 @@ impl Window {
 
     pub fn set_inserting(&mut self, inserting: bool) {
         self.inserting = inserting;
+        self.completion_state = None; // reset on mode change
+    }
+
+    pub fn apply_completion(&mut self, new: Option<&Completion>) {
+        if let Some(new) = new {
+            self.cursor = new.replacement_end();
+        }
     }
 
     /// Scroll the window "back in time" by the given number of "virtual" (visual) lines.

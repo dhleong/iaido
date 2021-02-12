@@ -39,7 +39,7 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
                 // TODO get the completer to use from context/window/buffer, probably
                 let c = CommandsCompleter;
                 let context: CompletionContext = ctx.state_mut().into();
-                let mut state = CompletionState::new(Box::new(c.suggest(context)));
+                let mut state = CompletionState::new(Box::new(c.suggest(ctx.state(), context)));
 
                 // apply initial suggestion
                 let next = state.take_current();

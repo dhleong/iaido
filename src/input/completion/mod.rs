@@ -1,7 +1,10 @@
 pub mod commands;
 pub mod state;
 
-use crate::{app::bufwin::BufWin, editing::text::EditableLine};
+use crate::{
+    app::bufwin::BufWin,
+    editing::{text::EditableLine, CursorPosition},
+};
 
 use super::commands::registry::CommandRegistry;
 
@@ -15,6 +18,7 @@ pub struct CompletionContext<'a, T: CompletableContext> {
     pub context: &'a T,
     pub text: String,
     pub cursor: usize,
+    line_index: usize,
 }
 
 impl<T: CompletableContext> CompletionContext<'_, T> {
@@ -36,6 +40,7 @@ impl<T: CompletableContext> CompletionContext<'_, T> {
     pub fn create_completion(&self, replacement: String) -> Completion {
         let (start, end) = self.word_range();
         Completion {
+            line_index: self.line_index,
             start,
             end,
             replacement,
@@ -50,6 +55,7 @@ impl<'a, T: CompletableContext> From<&'a mut T> for CompletionContext<'a, T> {
         let text = bufwin.buffer.get(line).to_string();
         let cursor = bufwin.window.cursor.col as usize;
         Self {
+            line_index: line,
             context,
             text,
             cursor,
@@ -59,15 +65,35 @@ impl<'a, T: CompletableContext> From<&'a mut T> for CompletionContext<'a, T> {
 
 #[derive(Debug, Clone)]
 pub struct Completion {
+    pub line_index: usize,
     pub start: usize,
     pub end: usize,
     pub replacement: String,
 }
 
+impl Completion {
+    pub fn range(&self) -> (CursorPosition, CursorPosition) {
+        (
+            self.start(),
+            CursorPosition {
+                line: self.line_index,
+                col: self.end as u16,
+            },
+        )
+    }
+
+    pub fn start(&self) -> CursorPosition {
+        CursorPosition {
+            line: self.line_index,
+            col: self.start as u16,
+        }
+    }
+}
+
 pub trait Completer<T: CompletableContext> {
     type Iter: Iterator<Item = Completion>;
 
-    fn suggest(&self, context: &T) -> Self::Iter;
+    fn suggest(&self, context: &CompletionContext<T>) -> Self::Iter;
 }
 
 #[cfg(test)]

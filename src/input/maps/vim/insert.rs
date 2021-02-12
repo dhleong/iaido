@@ -1,9 +1,10 @@
 use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
 use crate::input::{
-    completion::{state::CompletionState, Completer},
+    completion::{state::CompletionState, Completer, CompletionContext},
     KeyCode, KeymapContext,
 };
 use crate::{
+    app,
     editing::motion::{
         char::CharMotion,
         word::{is_small_word_boundary, WordMotion},
@@ -28,15 +29,25 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             Ok(())
         },
         "<tab>" => |ctx| {
-            if let Some(ref current_state) = ctx.state_mut().current_window_mut().completion_state {
-                // TODO apply next completion
+            if let Some(ref mut current_state) = ctx.state_mut().current_window_mut().completion_state {
+                // apply next completion
+                let prev = current_state.take_current();
+                let next = current_state.advance();
+                ctx.state_mut().current_buffer_mut().apply_completion(prev.as_ref(), next.as_ref());
+                ctx.state_mut().current_window_mut().completion_state.as_mut().unwrap().push_history(prev, next);
             } else {
-                // TODO get the completer to use from context, probably
+                // TODO get the completer to use from context/window/buffer, probably
                 let c = CommandsCompleter;
-                let state = CompletionState::new(Box::new(c.suggest(ctx.state().into())));
+                let context: CompletionContext<app::State> = ctx.state_mut().into();
+                let mut state = CompletionState::new(Box::new(c.suggest(&context)));
+
+                // apply initial suggestion
+                let next = state.take_current();
+                ctx.state_mut().current_buffer_mut().apply_completion(None, next.as_ref());
+                state.push_history(None, next);
+
                 ctx.state_mut().current_window_mut().completion_state = Some(state);
             }
-            // TODO update buffer with current completion
             Ok(())
          },
     }

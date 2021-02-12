@@ -18,7 +18,19 @@ impl CompletionState {
         }
     }
 
-    pub fn current(&self) -> Option<&Completion> {
-        self.current.as_ref()
+    pub fn take_current(&mut self) -> Option<Completion> {
+        self.current.take()
+    }
+
+    pub fn advance(&mut self) -> Option<Completion> {
+        self.completions.next()
+    }
+
+    pub fn push_history(&mut self, prev: Option<Completion>, current: Option<Completion>) {
+        if let Some(prev) = prev {
+            self.history.push(prev);
+            self.index = self.history.len()
+        }
+        self.current = current;
     }
 }

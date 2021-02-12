@@ -87,6 +87,7 @@ pub mod tests {
         editing::{
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
+        input::{commands::registry::CommandRegistry, completion::CompletableContext},
         tui::{Display, LayoutContext, RenderContext, Renderable},
     };
 
@@ -95,6 +96,7 @@ pub mod tests {
     pub struct TestWindow {
         pub window: Box<Window>,
         pub buffer: Box<dyn Buffer>,
+        commands: CommandRegistry,
     }
 
     impl TestWindow {
@@ -138,7 +140,17 @@ pub mod tests {
         }
 
         pub fn scroll_lines(&mut self, virtual_lines: i32) {
-            self.bufwin().scroll_lines(virtual_lines);
+            <TestWindow as MotionContext>::bufwin(self).scroll_lines(virtual_lines);
+        }
+    }
+
+    impl CompletableContext for TestWindow {
+        fn bufwin(&mut self) -> BufWin {
+            <TestWindow as MotionContext>::bufwin(self)
+        }
+
+        fn commands(&self) -> &CommandRegistry {
+            &self.commands
         }
     }
 
@@ -188,6 +200,7 @@ pub mod tests {
         TestWindow {
             window: Box::new(window),
             buffer: Box::new(buffer),
+            commands: CommandRegistry::default(),
         }
     }
 

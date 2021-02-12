@@ -1,10 +1,8 @@
-use crate::editing::motion::MotionContext;
-
-use super::{Completer, Completion};
+use super::{CompletableContext, Completer, Completion};
 
 pub struct CommandsCompleter;
 
-impl<T: MotionContext> Completer<T> for CommandsCompleter {
+impl<T: CompletableContext> Completer<T> for CommandsCompleter {
     type Iter = Iter;
 
     fn suggest(&self, context: &T) -> Self::Iter {

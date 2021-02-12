@@ -1,5 +1,3 @@
-use crate::editing::motion::MotionContext;
-
 use super::Completion;
 
 pub struct CompletionState {

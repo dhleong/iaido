@@ -1,15 +1,23 @@
 pub mod commands;
 pub mod state;
 
-use crate::editing::{motion::MotionContext, text::EditableLine};
+use crate::{app::bufwin::BufWin, editing::text::EditableLine};
 
-pub struct CompletionContext<'a, T: MotionContext> {
+use super::commands::registry::CommandRegistry;
+
+/// A mockable view onto App State
+pub trait CompletableContext {
+    fn bufwin(&mut self) -> BufWin;
+    fn commands(&self) -> &CommandRegistry;
+}
+
+pub struct CompletionContext<'a, T: CompletableContext> {
     pub context: &'a T,
     pub text: String,
     pub cursor: usize,
 }
 
-impl<T: MotionContext> CompletionContext<'_, T> {
+impl<T: CompletableContext> CompletionContext<'_, T> {
     pub fn word_range(&self) -> (usize, usize) {
         for i in (1..self.cursor).rev() {
             let is_whitespace = self.text[i..i + 1].find(char::is_whitespace);
@@ -35,7 +43,7 @@ impl<T: MotionContext> CompletionContext<'_, T> {
     }
 }
 
-impl<'a, T: MotionContext> From<&'a mut T> for CompletionContext<'a, T> {
+impl<'a, T: CompletableContext> From<&'a mut T> for CompletionContext<'a, T> {
     fn from(context: &'a mut T) -> Self {
         let bufwin = context.bufwin();
         let line = bufwin.window.cursor.line;
@@ -56,7 +64,7 @@ pub struct Completion {
     pub replacement: String,
 }
 
-pub trait Completer<T: MotionContext> {
+pub trait Completer<T: CompletableContext> {
     type Iter: Iterator<Item = Completion>;
 
     fn suggest(&self, context: &T) -> Self::Iter;
@@ -64,23 +72,24 @@ pub trait Completer<T: MotionContext> {
 
 #[cfg(test)]
 mod tests {
-    // use crate::editing::motion::{tests::window, MotionContext};
-    //
-    // use super::*;
-    //
-    // #[test]
-    // fn word_extraction() {
-    //     let w = window("take| my love");
-    //     let ctx: CompletionContext = &w.into();
-    //     assert_eq!(ctx.cursor, 4);
-    //     assert_eq!(ctx.word(), "take");
-    //     assert_eq!(ctx.word_range(), (0, 4));
-    // }
-    //
-    // #[test]
-    // fn word_on_whitespace() {
-    //     let ctx: CompletionContext = window("take |my love").into();
-    //     assert_eq!(ctx.word(), "");
-    //     assert_eq!(ctx.word_range(), (5, 5));
-    // }
+    use crate::editing::motion::tests::{window, TestWindow};
+
+    use super::*;
+
+    #[test]
+    fn word_extraction() {
+        let mut w = window("take| my love");
+        let ctx: CompletionContext<TestWindow> = (&mut w).into();
+        assert_eq!(ctx.cursor, 4);
+        assert_eq!(ctx.word(), "take");
+        assert_eq!(ctx.word_range(), (0, 4));
+    }
+
+    #[test]
+    fn word_on_whitespace() {
+        let mut w = window("take |my love");
+        let ctx: CompletionContext<TestWindow> = (&mut w).into();
+        assert_eq!(ctx.word(), "");
+        assert_eq!(ctx.word_range(), (5, 5));
+    }
 }

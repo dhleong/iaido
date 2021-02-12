@@ -10,7 +10,10 @@ use crate::{
         window::Window,
         Buffer, Resizable, Size,
     },
-    input::commands::{create_builtin_commands, registry::CommandRegistry},
+    input::{
+        commands::{create_builtin_commands, registry::CommandRegistry},
+        completion::CompletableContext,
+    },
 };
 
 use super::{bufwin::BufWin, prompt::Prompt};
@@ -147,6 +150,16 @@ impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
         self.tabpages.resize(new_size);
         self.prompt.resize(new_size);
+    }
+}
+
+impl CompletableContext for AppState {
+    fn bufwin(&mut self) -> BufWin {
+        self.current_bufwin()
+    }
+
+    fn commands(&self) -> &CommandRegistry {
+        &self.builtin_commands
     }
 }
 

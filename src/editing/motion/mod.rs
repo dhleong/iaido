@@ -88,7 +88,10 @@ pub mod tests {
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
         input::{commands::registry::CommandRegistry, completion::CompletableContext},
-        tui::{Display, LayoutContext, RenderContext, Renderable},
+        tui::{
+            rendering::display::tests::TestableDisplay, Display, LayoutContext, RenderContext,
+            Renderable,
+        },
     };
 
     use super::*;
@@ -108,9 +111,13 @@ pub mod tests {
             self.window.set_inserting(inserting);
         }
 
-        pub fn assert_visual_match(&self, s: &'static str) {
-            let win = window(s);
-            assert_eq!(self.cursor(), win.cursor());
+        pub fn assert_visual_match(&mut self, s: &'static str) {
+            // let win = window(s);
+            // assert_eq!(self.cursor(), win.cursor());
+            // win.render_at_own_size()
+            let expected = window(s).render_at_own_size();
+            let actual = self.render_at_own_size();
+            assert_eq!(actual.to_visual_string(), expected.to_visual_string());
         }
 
         pub fn render(&mut self, display: &mut Display) {
@@ -196,6 +203,17 @@ pub mod tests {
 
         buffer.append(TextLines::raw(s.replace("|", "")));
         window.cursor = cursor;
+
+        let width = s
+            .split('\n')
+            .map(|l| l.replace('|', "").len())
+            .max()
+            .unwrap_or(s.len());
+        let height = s.chars().filter(|ch| *ch == '\n').count();
+        window.resize(Size {
+            w: width as u16,
+            h: height as u16,
+        });
 
         TestWindow {
             window: Box::new(window),

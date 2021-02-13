@@ -51,15 +51,29 @@ impl CompletionState {
         }
     }
 
-    // TODO: none of these actually use index; we'll need to
-    // fix that to handle rewinding
+    pub fn apply_prev<C: MotionContext>(&mut self, ctx: &mut C) {
+        // bit of a dance: we actually take ownership temporarily
+        // and return it after
+        let current_index = self.index - 1;
+        let current = self.take_current();
+        if let Some(ref prev) = self.back() {
+            ctx.buffer_mut().apply_completion(&current, &prev);
+            ctx.window_mut().apply_completion(&prev);
+        }
+        self.history.insert(current_index, current);
+    }
 
     fn take_current(&mut self) -> Completion {
-        self.index -= 1;
-        self.history.pop().expect("No history to take from")
+        self.history.remove(self.index - 1)
     }
 
     fn advance(&mut self) -> Option<Completion> {
+        if self.index < self.history.len() {
+            let result = self.history.remove(self.index);
+            self.index += 1;
+            return Some(result);
+        }
+
         if let Some(completions) = &mut self.completions {
             if let Some(next) = completions.next() {
                 return Some(next);
@@ -69,6 +83,14 @@ impl CompletionState {
         self.completions = None;
 
         None
+    }
+
+    fn back(&mut self) -> Option<&Completion> {
+        if self.index <= 1 {
+            return None;
+        }
+        self.index -= 1;
+        return self.history.get(self.index);
     }
 
     fn push_history(&mut self, item: Completion) {
@@ -112,6 +134,39 @@ mod tests {
         win.assert_visual_match("take my where|");
 
         // don't explode:
+        state.apply_next(&mut win);
+        win.assert_visual_match("take my where|");
+    }
+
+    #[test]
+    fn apply_prev_and_next() {
+        let mut win = window("take my |");
+        let mut state = completion_state(&mut win);
+        state.apply_next(&mut win);
+        state.apply_next(&mut win);
+        state.apply_next(&mut win);
+        win.assert_visual_match("take my where|");
+
+        state.apply_prev(&mut win);
+        win.assert_visual_match("take my land|");
+
+        state.apply_prev(&mut win);
+        win.assert_visual_match("take my love|");
+
+        state.apply_prev(&mut win);
+        win.assert_visual_match("take my |");
+
+        // don't explode:
+        state.apply_prev(&mut win);
+        win.assert_visual_match("take my |");
+
+        // and... back forward
+        state.apply_next(&mut win);
+        win.assert_visual_match("take my love|");
+
+        state.apply_next(&mut win);
+        win.assert_visual_match("take my land|");
+
         state.apply_next(&mut win);
         win.assert_visual_match("take my where|");
     }

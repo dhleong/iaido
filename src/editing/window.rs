@@ -139,6 +139,10 @@ impl Window {
             to_scroll = to_scroll - consumable;
             self.scrolled_lines -= 1;
 
+            if self.scrolled_lines == 0 {
+                break;
+            }
+
             let line = buffer.get(end - self.scrolled_lines as usize);
             self.scroll_offset = line.measure_height(window_width) - 1;
 

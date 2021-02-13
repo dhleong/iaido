@@ -1,24 +1,20 @@
-use super::{CompletableContext, Completer, Completion, CompletionContext};
+use crate::declare_simple_completer;
 use genawaiter::{sync::gen, yield_};
 
-pub struct CommandsCompleter;
+declare_simple_completer!(
+    CommandsCompleter (app, context) {
+        let names: Vec<String> = app.commands()
+            .names()
+            .map(|v| v.to_string())
+            .collect();
 
-impl Completer for CommandsCompleter {
-    type Iter = Box<dyn Iterator<Item = Completion>>;
-
-    fn suggest<T: CompletableContext>(&self, app: &T, context: CompletionContext) -> Self::Iter {
-        let input = context.word().to_string();
-        let names: Vec<String> = app.commands().names().map(|v| v.to_string()).collect();
-        Box::new(
-            gen!({
-                for name in names {
-                    yield_!(name);
-                }
-                yield_!("quidditch".to_string());
-            })
-            .into_iter()
-            .map(move |n| context.create_completion(n))
-            .filter(move |candidate| candidate.replacement.starts_with(&input)),
-        )
+        gen!({
+            // NOTE: this generator is obviously not doing much work
+            // here, but more complicated completers might benefit...
+            for name in names {
+                yield_!(name);
+            }
+            yield_!("quidditch".to_string());
+        })
     }
-}
+);

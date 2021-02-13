@@ -77,15 +77,8 @@ pub struct Completion {
 }
 
 impl Completion {
-    pub fn range(&self) -> (CursorPosition, CursorPosition) {
-        (self.start(), self.end())
-    }
-
-    pub fn end(&self) -> CursorPosition {
-        CursorPosition {
-            line: self.line_index,
-            col: self.end as u16,
-        }
+    pub fn replacement_range(&self) -> (CursorPosition, CursorPosition) {
+        (self.start(), self.replacement_end())
     }
 
     pub fn replacement_end(&self) -> CursorPosition {

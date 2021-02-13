@@ -82,12 +82,9 @@ pub trait Buffer: HasId + Send + Sync {
         self.lines_count().checked_sub(1)
     }
 
-    fn apply_completion(&mut self, _old: Option<&Completion>, new: Option<&Completion>) {
-        // TODO
-        if let Some(new) = new {
-            self.delete_range(new.range());
-            self.insert(new.start(), new.replacement.clone().into());
-        }
+    fn apply_completion(&mut self, old: &Completion, new: &Completion) {
+        self.delete_range(old.replacement_range());
+        self.insert(new.start(), new.replacement.clone().into());
     }
 }
 

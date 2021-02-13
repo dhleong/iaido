@@ -56,10 +56,8 @@ impl Window {
         self.completion_state = None; // reset on mode change
     }
 
-    pub fn apply_completion(&mut self, new: Option<&Completion>) {
-        if let Some(new) = new {
-            self.cursor = new.replacement_end();
-        }
+    pub fn apply_completion(&mut self, new: &Completion) {
+        self.cursor = new.replacement_end();
     }
 
     /// Scroll the window "back in time" by the given number of "virtual" (visual) lines.

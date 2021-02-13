@@ -34,7 +34,7 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
                 CompletionState::new(c, &mut ctx)
             };
 
-            state.apply_next(&mut ctx);
+            state.apply_next(ctx.state_mut());
 
             ctx.state_mut().current_window_mut().completion_state = Some(state);
 

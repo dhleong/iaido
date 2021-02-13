@@ -19,13 +19,17 @@ macro_rules! impl_simple_completer {
             }
         }
     };
+
+    ($completer_name:ident $body:expr) => {
+        crate::impl_simple_completer!($completer_name (_app, _context) $body);
+    }
 }
 
 #[macro_export]
 macro_rules! declare_simple_completer {
-    ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
+    ($completer_name:ident $($body:tt)+) => {
         pub struct $completer_name;
 
-        crate::impl_simple_completer!($completer_name ($app, $context) $body);
+        crate::impl_simple_completer!($completer_name $($body)*);
     }
 }

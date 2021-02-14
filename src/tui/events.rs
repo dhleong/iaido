@@ -32,6 +32,10 @@ impl From<crossterm::event::KeyEvent> for Key {
                 };
             }
 
+            KeyCode::BackTab => {
+                return Key::new(KeyCode::Tab, ev.modifiers | KeyModifiers::SHIFT);
+            }
+
             _ => {} // fall through for default:
         }
 

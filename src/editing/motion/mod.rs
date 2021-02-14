@@ -83,6 +83,8 @@ pub trait Motion {
 
 #[cfg(test)]
 pub mod tests {
+    use std::cmp::max;
+
     use crate::{
         editing::{
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
@@ -112,9 +114,6 @@ pub mod tests {
         }
 
         pub fn assert_visual_match(&mut self, s: &'static str) {
-            // let win = window(s);
-            // assert_eq!(self.cursor(), win.cursor());
-            // win.render_at_own_size()
             let expected = window(s).render_at_own_size();
             let actual = self.render_at_own_size();
             assert_eq!(actual.to_visual_string(), expected.to_visual_string());
@@ -204,14 +203,9 @@ pub mod tests {
         buffer.append(TextLines::raw(s.replace("|", "")));
         window.cursor = cursor;
 
-        let width = s
-            .split('\n')
-            .map(|l| l.replace('|', "").len())
-            .max()
-            .unwrap_or(s.len());
-        let height = s.chars().filter(|ch| *ch == '\n').count();
+        let height = max(1, s.chars().filter(|ch| *ch == '\n').count());
         window.resize(Size {
-            w: width as u16,
+            w: 20,
             h: height as u16,
         });
 

@@ -123,6 +123,8 @@ mod tests {
     #[test]
     fn apply_next() {
         let mut win = window("take my |");
+        win.assert_visual_match("take my |");
+
         let mut state = completion_state(&mut win);
         state.apply_next(&mut win);
         win.assert_visual_match("take my love|");
@@ -138,6 +140,7 @@ mod tests {
         win.assert_visual_match("take my where|");
     }
 
+    #[ignore]
     #[test]
     fn apply_prev_and_next() {
         let mut win = window("take my |");

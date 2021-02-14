@@ -1,4 +1,5 @@
 mod app;
+mod connection;
 mod editing;
 mod input;
 mod tui;

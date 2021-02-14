@@ -90,7 +90,7 @@ impl CompletionState {
             return None;
         }
         self.index -= 1;
-        return self.history.get(self.index);
+        return self.history.get(self.index - 1);
     }
 
     fn push_history(&mut self, item: Completion) {

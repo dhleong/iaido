@@ -14,16 +14,20 @@ use super::{
 };
 
 fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
-    let input = context.input.clone();
-    if let Some((name, handler)) = context.state_mut().builtin_commands.take(&input) {
-        let result = handler(&mut context);
-        context
-            .state_mut()
-            .builtin_commands
-            .declare(name, false, handler);
-        result
+    if let Some(command) = context.command().and_then(|s| Some(s.to_string())) {
+        if let Some((name, handler)) = context.state_mut().builtin_commands.take(&command) {
+            let result = handler(&mut context);
+            context
+                .state_mut()
+                .builtin_commands
+                .declare(name, false, handler);
+            result
+        } else {
+            Err(KeyError::NoSuchCommand(command))
+        }
     } else {
-        Err(KeyError::NoSuchCommand(input))
+        // no command; nop is okay
+        Ok(())
     }
 }
 

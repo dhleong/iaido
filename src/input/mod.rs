@@ -28,6 +28,7 @@ impl From<KeyCode> for Key {
 #[derive(Debug)]
 pub enum KeyError {
     IO(io::Error),
+    InvalidInput(String),
     NoSuchCommand(String),
 }
 

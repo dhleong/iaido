@@ -1,5 +1,6 @@
 use crate::editing::{
     motion::MotionRange,
+    source::BufferSource,
     text::EditableLine,
     text::{TextLine, TextLines},
     Buffer, CursorPosition, HasId,
@@ -8,6 +9,7 @@ use crate::editing::{
 pub struct MemoryBuffer {
     id: usize,
     content: TextLines,
+    pub source: BufferSource,
 }
 
 impl MemoryBuffer {
@@ -15,6 +17,7 @@ impl MemoryBuffer {
         MemoryBuffer {
             id,
             content: TextLines::default(),
+            source: BufferSource::None,
         }
     }
 }
@@ -26,6 +29,10 @@ impl HasId for MemoryBuffer {
 }
 
 impl Buffer for MemoryBuffer {
+    fn source(&self) -> &BufferSource {
+        &self.source
+    }
+
     fn lines_count(&self) -> usize {
         self.content.height()
     }

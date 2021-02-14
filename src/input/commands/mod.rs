@@ -1,9 +1,10 @@
 pub mod core;
+pub mod file;
 pub mod registry;
 
 use std::time::Duration;
 
-use self::{core::declare_core, registry::CommandRegistry};
+use self::{core::declare_core, file::declare_file, registry::CommandRegistry};
 
 use super::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
 
@@ -20,6 +21,29 @@ impl<'a> CommandHandlerContext<'a> {
             context: Box::new(context),
             input,
         }
+    }
+}
+
+impl CommandHandlerContext<'_> {
+    pub fn args(&self) -> Vec<&str> {
+        self.split_input().skip(1).collect()
+    }
+
+    pub fn command(&self) -> Option<&str> {
+        if let Some(cmd) = self.split_input().next() {
+            if cmd.is_empty() {
+                None
+            } else {
+                Some(cmd)
+            }
+        } else {
+            None
+        }
+    }
+
+    fn split_input(&self) -> impl Iterator<Item = &str> {
+        // TODO handle quoted input
+        self.input.split(" ")
     }
 }
 
@@ -44,5 +68,6 @@ impl KeySource for CommandHandlerContext<'_> {
 pub fn create_builtin_commands() -> CommandRegistry {
     let mut registry = CommandRegistry::default();
     declare_core(&mut registry);
+    declare_file(&mut registry);
     return registry;
 }

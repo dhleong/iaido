@@ -3,6 +3,7 @@ pub mod buffers;
 pub mod ids;
 pub mod layout;
 pub mod motion;
+pub mod source;
 pub mod tabpage;
 pub mod tabpages;
 pub mod text;

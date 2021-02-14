@@ -7,11 +7,20 @@ use crate::input::completion::Completion;
 
 use super::{
     motion::MotionRange,
+    source::BufferSource,
     text::{EditableLine, TextLine, TextLines},
     CursorPosition, HasId,
 };
 
 pub trait Buffer: HasId + Send + Sync {
+    fn source(&self) -> &BufferSource;
+    fn is_read_only(&self) -> bool {
+        match self.source() {
+            BufferSource::Connection(_) => true,
+            _ => false,
+        }
+    }
+
     fn lines_count(&self) -> usize;
     fn append(&mut self, text: TextLines);
     fn clear(&mut self);

@@ -17,3 +17,4 @@ tui = { version = "0.14", default-features = false, features = ['crossterm'] }
 genawaiter = "0.99.1"
 telnet = "0.1.4"
 url = "2.2.0"
+vte = "0.10.0"

@@ -3,18 +3,36 @@ use std::io;
 use telnet::Telnet;
 use url::Url;
 
-use super::{Connection, ConnectionFactory};
+use super::{ansi::AnsiPipeline, Connection, ConnectionFactory, ReadValue};
 
 const BUFFER_SIZE: usize = 2048;
 
 pub struct TelnetConnection {
     telnet: Telnet,
+    pipeline: AnsiPipeline,
 }
 
 impl Connection for TelnetConnection {
     fn read(&mut self) -> std::io::Result<super::ReadValue> {
-        let event = self.telnet.read_nonblocking()?;
-        todo!("handle {:?}", event);
+        match self.telnet.read_nonblocking()? {
+            telnet::TelnetEvent::Data(data) => {
+                self.pipeline.feed(&data, data.len());
+                // TODO pull ReadValues out of the pipeline
+            }
+            telnet::TelnetEvent::UnknownIAC(_) => {}
+            telnet::TelnetEvent::Negotiation(_, _) => {}
+            telnet::TelnetEvent::Subnegotiation(_, _) => {}
+            telnet::TelnetEvent::TimedOut => {
+                return Ok(ReadValue::None);
+            }
+            telnet::TelnetEvent::NoData => {
+                return Ok(ReadValue::None);
+            }
+            telnet::TelnetEvent::Error(e) => {
+                return Err(io::Error::new(io::ErrorKind::Other, e));
+            }
+        }
+        return Ok(ReadValue::None);
     }
 }
 
@@ -32,12 +50,13 @@ impl ConnectionFactory<TelnetConnection> for TelnetConnectionFactory {
 
         if let Some(host) = uri.host_str() {
             if let Some(port) = uri.port() {
-                match Telnet::connect((host, port), BUFFER_SIZE) {
-                    Ok(conn) => {
-                        todo!("connected")
-                    }
-                    Err(e) => return Some(Err(e)),
-                }
+                return match Telnet::connect((host, port), BUFFER_SIZE) {
+                    Ok(conn) => Some(Ok(TelnetConnection {
+                        telnet: conn,
+                        pipeline: AnsiPipeline::default(),
+                    })),
+                    Err(e) => Some(Err(e)),
+                };
             }
         }
 

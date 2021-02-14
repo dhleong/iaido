@@ -6,9 +6,11 @@ use crate::editing::text::TextLine;
 
 use self::telnet::TelnetConnectionFactory;
 
+mod ansi;
 mod telnet;
 
 pub enum ReadValue {
+    None,
     Newline,
     Text(TextLine),
 }

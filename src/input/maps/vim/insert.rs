@@ -1,10 +1,13 @@
 use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
-use crate::editing::motion::{
-    char::CharMotion,
-    word::{is_small_word_boundary, WordMotion},
-    Motion,
+use crate::input::{completion::state::CompletionState, KeyCode, KeymapContext};
+use crate::{
+    editing::motion::{
+        char::CharMotion,
+        word::{is_small_word_boundary, WordMotion},
+        Motion,
+    },
+    input::completion::commands::CommandsCompleter,
 };
-use crate::input::{KeyCode, KeymapContext};
 use crate::{key_handler, vim_tree};
 
 pub fn vim_insert_mappings() -> KeyTreeNode {
@@ -21,6 +24,31 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             ctx.state_mut().backspace();
             Ok(())
         },
+
+        "<tab>" => |ctx| {
+            let mut state = if let Some(current_state) = ctx.state_mut().current_window_mut().completion_state.take() {
+                current_state
+            } else {
+                // TODO get the completer to use from context/window/buffer, probably
+                let c = CommandsCompleter;
+                CompletionState::new(c, &mut ctx)
+            };
+
+            state.apply_next(ctx.state_mut());
+
+            ctx.state_mut().current_window_mut().completion_state = Some(state);
+
+            Ok(())
+        },
+        "<s-tab>" => |ctx| {
+            if let Some(mut state) = ctx.state_mut().current_window_mut().completion_state.take() {
+                state.apply_prev(ctx.state_mut());
+
+                ctx.state_mut().current_window_mut().completion_state = Some(state);
+            }
+
+            Ok(())
+         },
     }
 }
 

@@ -59,7 +59,6 @@ fn parse_key(s: &str) -> Result<Key, KeyParseError> {
                 "cr" | "enter" => KeyCode::Enter,
                 "esc" => KeyCode::Esc,
                 "tab" => KeyCode::Tab,
-                "s+tab" => KeyCode::BackTab,
 
                 "left" => KeyCode::Left,
                 "up" => KeyCode::Up,

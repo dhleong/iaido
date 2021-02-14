@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
 
 use super::CommandHandler;
 
@@ -26,6 +26,10 @@ impl CommandRegistry {
         }
 
         self.commands.insert(name, handler);
+    }
+
+    pub fn names(&self) -> hash_map::Keys<String, Box<CommandHandler>> {
+        self.commands.keys()
     }
 
     pub fn take(&mut self, name: &String) -> Option<(String, Box<CommandHandler>)> {

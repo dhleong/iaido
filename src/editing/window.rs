@@ -1,6 +1,9 @@
 use std::cmp::{max, min};
 
-use crate::tui::measure::Measurable;
+use crate::{
+    input::completion::{state::CompletionState, Completion},
+    tui::measure::Measurable,
+};
 
 use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
@@ -17,6 +20,8 @@ pub struct Window {
     pub scrolled_lines: u32,
     /// the visual-line offset within the current (bottom-most) line
     pub scroll_offset: u16,
+
+    pub completion_state: Option<CompletionState>,
 }
 
 impl Window {
@@ -30,6 +35,7 @@ impl Window {
             cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,
             scroll_offset: 0,
+            completion_state: None,
         }
     }
 
@@ -47,6 +53,11 @@ impl Window {
 
     pub fn set_inserting(&mut self, inserting: bool) {
         self.inserting = inserting;
+        self.completion_state = None; // reset on mode change
+    }
+
+    pub fn apply_completion(&mut self, new: &Completion) {
+        self.cursor = new.replacement_end();
     }
 
     /// Scroll the window "back in time" by the given number of "virtual" (visual) lines.
@@ -127,6 +138,10 @@ impl Window {
 
             to_scroll = to_scroll - consumable;
             self.scrolled_lines -= 1;
+
+            if self.scrolled_lines == 0 {
+                break;
+            }
 
             let line = buffer.get(end - self.scrolled_lines as usize);
             self.scroll_offset = line.measure_height(window_width) - 1;

@@ -3,6 +3,8 @@ pub use memory::MemoryBuffer;
 
 use std::fmt;
 
+use crate::input::completion::Completion;
+
 use super::{
     motion::MotionRange,
     text::{EditableLine, TextLine, TextLines},
@@ -78,6 +80,11 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn last_index(&self) -> Option<usize> {
         self.lines_count().checked_sub(1)
+    }
+
+    fn apply_completion(&mut self, old: &Completion, new: &Completion) {
+        self.delete_range(old.replacement_range());
+        self.insert(new.start(), new.replacement.clone().into());
     }
 }
 

@@ -14,7 +14,6 @@ declare_simple_completer!(
             for name in names {
                 yield_!(name);
             }
-            yield_!("quidditch".to_string());
         })
     }
 );

@@ -40,15 +40,14 @@ impl CompletionState {
     pub fn apply_next<C: MotionContext>(&mut self, ctx: &mut C) {
         // bit of a dance: we actually take ownership temporarily
         // and return it after
+        let current_index = self.index - 1;
         let prev = self.take_current();
         if let Some(next) = self.advance() {
             ctx.buffer_mut().apply_completion(&prev, &next);
             ctx.window_mut().apply_completion(&next);
-            self.push_history(prev);
-            self.push_history(next);
-        } else {
-            self.push_history(prev);
+            self.history.insert(current_index, next);
         }
+        self.history.insert(current_index, prev);
     }
 
     pub fn apply_prev<C: MotionContext>(&mut self, ctx: &mut C) {
@@ -68,14 +67,15 @@ impl CompletionState {
     }
 
     fn advance(&mut self) -> Option<Completion> {
-        if self.index < self.history.len() {
-            let result = self.history.remove(self.index);
+        if self.index <= self.history.len() {
+            let result = self.history.remove(self.index - 1);
             self.index += 1;
             return Some(result);
         }
 
         if let Some(completions) = &mut self.completions {
             if let Some(next) = completions.next() {
+                self.index += 1;
                 return Some(next);
             }
         }
@@ -91,11 +91,6 @@ impl CompletionState {
         }
         self.index -= 1;
         return self.history.get(self.index - 1);
-    }
-
-    fn push_history(&mut self, item: Completion) {
-        self.history.push(item);
-        self.index = self.history.len()
     }
 }
 
@@ -140,7 +135,6 @@ mod tests {
         win.assert_visual_match("take my where|");
     }
 
-    #[ignore]
     #[test]
     fn apply_prev_and_next() {
         let mut win = window("take my |");

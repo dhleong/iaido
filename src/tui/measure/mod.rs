@@ -39,9 +39,27 @@ pub fn render_into(line: &Spans, width: u16, mut buffer: &mut Buffer) -> Rect {
     }
 
     // TODO: this is HACKS; just do the wrapping, please
-    let text = Text::from(vec![line.clone()]);
+    let mut to_wrap = line.clone();
+    if !to_wrap.0.is_empty() {
+        let last_index = to_wrap.0.len() - 1;
+        let old = &to_wrap.0[last_index].content;
+
+        // replace trailing whitespace with nbsp so the wrapping
+        // doesn't eat it
+        let last_non_space = old.rfind(|c| c != ' ');
+        let first_whitespace = last_non_space.and_then(|off| Some(off + 1)).unwrap_or(0);
+        if first_whitespace < old.len() {
+            let spaces: String = vec!['\u{00A0}'; old.len() - first_whitespace]
+                .into_iter()
+                .collect();
+            let mut new_content = old[0..first_whitespace].to_string();
+            new_content.push_str(&spaces.into_boxed_str());
+            to_wrap.0[last_index].content = new_content.into();
+        }
+    }
+    let text = Text::from(vec![to_wrap]);
     let p = Paragraph::new(text)
-        .wrap(Wrap { trim: true }) // NOTE: may become a pref?
+        .wrap(Wrap { trim: false }) // NOTE: may become a pref?
         .alignment(Alignment::Left);
     p.render(size, &mut buffer);
     return size;

@@ -31,9 +31,9 @@ pub enum KeyError {
     NoSuchCommand(String),
 }
 
-impl Into<KeyError> for io::Error {
-    fn into(self) -> KeyError {
-        KeyError::IO(self)
+impl From<io::Error> for KeyError {
+    fn from(error: io::Error) -> Self {
+        KeyError::IO(error)
     }
 }
 

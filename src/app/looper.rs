@@ -27,17 +27,15 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
             self.app.render();
 
             loop {
-                match self.events.poll_event(Duration::from_millis(100)) {
-                    Ok(Some(UiEvent::Key(_))) => break,
-                    Err(e) => return Err(e.into()),
-                    _ => {}
-                }
                 // TODO: poll other main event loop sources?
+                match self.events.poll_event(Duration::from_millis(100))? {
+                    Some(_) => break,
+                    None => {}
+                }
             }
 
-            match self.events.next_event() {
-                Ok(UiEvent::Key(key)) => return Ok(Some(key)),
-                Err(e) => return Err(e.into()),
+            match self.events.next_event()? {
+                UiEvent::Key(key) => return Ok(Some(key)),
                 _ => {}
             }
         }

@@ -88,13 +88,11 @@ impl UiEvents for TuiEvents {
             return Ok(pending);
         }
 
-        loop {
-            match crossterm::event::read() {
-                Ok(Event::Resize(_, _)) => return Ok(UiEvent::Redraw),
-                Ok(Event::Key(key)) => return Ok(UiEvent::Key(key.into())),
-                Err(e) => return Err(wrap_as_io(e)),
-                _ => {}
-            }
+        match crossterm::event::read() {
+            Ok(Event::Resize(_, _)) => Ok(UiEvent::Redraw),
+            Ok(Event::Key(key)) => Ok(UiEvent::Key(key.into())),
+            Ok(Event::Mouse(_)) => Ok(UiEvent::Redraw),
+            Err(e) => Err(wrap_as_io(e)),
         }
     }
 }

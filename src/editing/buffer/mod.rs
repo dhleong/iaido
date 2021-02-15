@@ -14,6 +14,7 @@ use super::{
 
 pub trait Buffer: HasId + Send + Sync {
     fn source(&self) -> &BufferSource;
+    fn set_source(&mut self, source: BufferSource);
     fn is_read_only(&self) -> bool {
         match self.source() {
             BufferSource::Connection(_) => true,

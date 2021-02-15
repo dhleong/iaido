@@ -32,6 +32,9 @@ impl Buffer for MemoryBuffer {
     fn source(&self) -> &BufferSource {
         &self.source
     }
+    fn set_source(&mut self, source: BufferSource) {
+        self.source = source;
+    }
 
     fn lines_count(&self) -> usize {
         self.content.height()
@@ -154,6 +157,7 @@ mod tests {
         let expected = MemoryBuffer {
             id: 0,
             content: s.into(),
+            source: BufferSource::None,
         }
         .to_string();
 

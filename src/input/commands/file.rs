@@ -7,11 +7,13 @@ use crate::{
         source::BufferSource,
         text::{TextLine, TextLines},
     },
-    input::KeyError,
+    input::{maps::KeyResult, KeyError},
 };
 use std::fs;
 
 use crate::{declare_commands, input::KeymapContext};
+
+use super::CommandHandlerContext;
 
 declare_commands!(declare_file {
     pub fn edit(context, file_path: String) {
@@ -49,4 +51,46 @@ declare_commands!(declare_file {
 
         Ok(())
     },
+
+    pub fn write(context, given_path: Optional<String>) {
+        let current_path = match context.state().current_buffer().source() {
+            &BufferSource::LocalFile(ref path) => Some(path.clone()),
+            _ => None,
+        };
+
+        let path = if let Some(path) = given_path {
+            path
+        } else if let Some(path) = current_path {
+            path.clone()
+        } else {
+            return Err(KeyError::InvalidInput("No file name".to_string()));
+        };
+
+        write(context, path)
+    },
 });
+
+fn write(context: &mut CommandHandlerContext, path: String) -> KeyResult {
+    let content = context.state().current_buffer().get_contents();
+    let lines_count = context.state().current_buffer().lines_count();
+    let bytes = content.as_bytes().len();
+
+    fs::write(&path, content)?;
+
+    context
+        .state_mut()
+        .echo(format!("\"{}\": {}L, {}B written", path, lines_count, bytes,).into());
+
+    // if we don't already have a source, set it
+    if context.state().current_buffer().source().is_none() {
+        let canonical = fs::canonicalize(path)?;
+        context
+            .state_mut()
+            .current_buffer_mut()
+            .set_source(BufferSource::LocalFile(
+                canonical.to_string_lossy().to_string(),
+            ));
+    }
+
+    Ok(())
+}

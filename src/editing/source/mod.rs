@@ -10,3 +10,12 @@ pub enum BufferSource {
     /// buffers MUST be read-only
     Connection(String),
 }
+
+impl BufferSource {
+    pub fn is_none(&self) -> bool {
+        match self {
+            &BufferSource::None => true,
+            _ => false,
+        }
+    }
+}

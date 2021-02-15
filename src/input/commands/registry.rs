@@ -52,6 +52,7 @@ macro_rules! command_decl {
     // base case:
     ($r:ident ->) => {};
 
+    // simple case: no special args handling
     ($r:ident -> pub fn $name:ident($context:ident) $body:expr, $($tail:tt)*) => {
         $r.declare(
             stringify!($name).to_string(),
@@ -59,6 +60,42 @@ macro_rules! command_decl {
             Box::new(|$context| $body),
         );
         crate::command_decl! { $r -> $($tail)* }
+    };
+
+    // optional string arg
+    ($r:ident -> pub fn $name:ident($context:ident, $arg:ident: Optional<String>) $body:expr, $($tail:tt)*) => {
+        crate::command_decl! { $r ->
+            pub fn $name($context) {
+                let args = $context.args();
+                let $arg = if args.len() < 1 {
+                    None
+                } else {
+                    Some(args[0].to_string())
+                };
+                $body
+            },
+            $($tail)*
+        }
+    };
+
+    // required string arg
+    ($r:ident -> pub fn $name:ident($context:ident, $arg:ident: String) $body:expr, $($tail:tt)*) => {
+        crate::command_decl! { $r ->
+            pub fn $name($context, optional_arg: Optional<String>) {
+                let $arg = if let Some(v) = optional_arg {
+                    v
+                } else {
+                    return Err(crate::input::KeyError::InvalidInput(
+                        format!(
+                            "{}: requires 1 argument ({})",
+                            stringify!($name), stringify!($arg)
+                        )
+                    ));
+                };
+                $body
+            },
+            $($tail)*
+        }
     };
 }
 

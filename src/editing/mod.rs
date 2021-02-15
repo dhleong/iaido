@@ -44,7 +44,7 @@ impl CursorPosition {
         let line_width = buffer.get(self.line).width();
         CursorPosition {
             line: self.line,
-            col: (line_width - 1) as u16,
+            col: line_width.checked_sub(1).unwrap_or(0) as u16,
         }
     }
 }

@@ -218,7 +218,10 @@ pub mod tests {
 
     mod apply_cursor {
         use crate::{
-            editing::motion::word::{is_small_word_boundary, WordMotion},
+            editing::motion::{
+                linewise::DownLineMotion,
+                word::{is_small_word_boundary, WordMotion},
+            },
             tui::rendering::display::tests::TestableDisplay,
         };
 
@@ -291,6 +294,22 @@ pub mod tests {
 
             ctx.render_at_own_size().assert_visual_match(indoc! {"
                 |Take my land
+            "});
+        }
+
+        #[test]
+        fn handles_empty_lines() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+                
+            "});
+            ctx.window.resize(Size { w: 12, h: 2 });
+            ctx.motion(DownLineMotion {});
+            ctx.motion(DownLineMotion {});
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my love
+                |
             "});
         }
     }

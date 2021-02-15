@@ -496,5 +496,22 @@ mod tests {
                 |Take my love
             "});
         }
+
+        #[test]
+        fn cursor_after_whitespace() {
+            let mut ctx = window(":|");
+            ctx.window.resize(Size { w: 12, h: 1 });
+            let before = ctx.render_at_own_size();
+            assert_eq!(before.cursor_coords(), Some((1, 0)));
+
+            ctx.buffer.insert(ctx.window.cursor, " ".into());
+            ctx.window.cursor.col += 1;
+
+            let display = ctx.render_at_own_size();
+            assert_eq!(display.cursor_coords(), Some((2, 0)));
+            display.assert_visual_match(indoc! {"
+                : |
+            "});
+        }
     }
 }

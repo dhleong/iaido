@@ -4,7 +4,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::Span,
 };
-use vte::{Parser, Perform};
+use vte::{ParamsIter, Parser, Perform};
 
 use crate::editing::text::TextLine;
 
@@ -140,7 +140,13 @@ impl Perform for AnsiPerformer {
         self.builder_to_line();
 
         let mut style = Style::default();
-        for param in params {
+        let mut params = params.iter();
+        loop {
+            let param = if let Some(param) = params.next() {
+                param
+            } else {
+                break;
+            };
             let v = param[0];
             style = match v {
                 0 => Style::reset(),
@@ -191,6 +197,9 @@ impl Perform for AnsiPerformer {
                 }),
                 49 => style.clear_bg(),
 
+                38 => style.fg(read_high_color(&mut params)),
+                48 => style.bg(read_high_color(&mut params)),
+
                 // default nop:
                 _ => style,
             };
@@ -199,6 +208,33 @@ impl Perform for AnsiPerformer {
     }
 
     fn esc_dispatch(&mut self, _intermediates: &[u8], _ignore: bool, _byte: u8) {}
+}
+
+fn read_high_color(params: &mut ParamsIter) -> Color {
+    if let Some(kind) = params.next() {
+        match kind {
+            // RGB:
+            &[2] => {
+                if let Some(r) = params.next() {
+                    if let Some(g) = params.next() {
+                        if let Some(b) = params.next() {
+                            return Color::Rgb(r[0] as u8, g[0] as u8, b[0] as u8);
+                        }
+                    }
+                }
+            }
+
+            // Indexed:
+            &[5] => {
+                if let Some(index) = params.next() {
+                    return Color::Indexed(index[0] as u8);
+                }
+            }
+
+            _ => {}
+        }
+    }
+    Color::Reset
 }
 
 trait IaidoStyle {
@@ -252,6 +288,32 @@ mod tests {
                         .fg(Color::Green)
                 )
             ],))
+        );
+    }
+
+    #[test]
+    fn indexed_color() {
+        let mut pipe = AnsiPipeline::new();
+        pipe.feed_str("\x1b[38;5;120mTake my love");
+        assert_eq!(
+            pipe.next().unwrap(),
+            ReadValue::Text(TextLine::from(vec![Span::styled(
+                "Take my love",
+                Style::default().fg(Color::Indexed(120))
+            )]))
+        );
+    }
+
+    #[test]
+    fn rgb_color() {
+        let mut pipe = AnsiPipeline::new();
+        pipe.feed_str("\x1b[38;2;22;32;42mTake my love");
+        assert_eq!(
+            pipe.next().unwrap(),
+            ReadValue::Text(TextLine::from(vec![Span::styled(
+                "Take my love",
+                Style::default().fg(Color::Rgb(22, 32, 42))
+            )]))
         );
     }
 }

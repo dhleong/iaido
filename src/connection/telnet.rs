@@ -13,26 +13,22 @@ pub struct TelnetConnection {
 }
 
 impl Connection for TelnetConnection {
-    fn read(&mut self) -> std::io::Result<super::ReadValue> {
+    fn read(&mut self) -> std::io::Result<Option<ReadValue>> {
         match self.telnet.read_nonblocking()? {
             telnet::TelnetEvent::Data(data) => {
                 self.pipeline.feed(&data, data.len());
-                // TODO pull ReadValues out of the pipeline
             }
             telnet::TelnetEvent::UnknownIAC(_) => {}
             telnet::TelnetEvent::Negotiation(_, _) => {}
             telnet::TelnetEvent::Subnegotiation(_, _) => {}
-            telnet::TelnetEvent::TimedOut => {
-                return Ok(ReadValue::None);
-            }
-            telnet::TelnetEvent::NoData => {
-                return Ok(ReadValue::None);
-            }
+            telnet::TelnetEvent::TimedOut => {}
+            telnet::TelnetEvent::NoData => {}
             telnet::TelnetEvent::Error(e) => {
                 return Err(io::Error::new(io::ErrorKind::Other, e));
             }
         }
-        return Ok(ReadValue::None);
+        // always attempt to pull ReadValues out of the pipeline
+        return Ok(self.pipeline.next());
     }
 }
 
@@ -53,7 +49,7 @@ impl ConnectionFactory<TelnetConnection> for TelnetConnectionFactory {
                 return match Telnet::connect((host, port), BUFFER_SIZE) {
                     Ok(conn) => Some(Ok(TelnetConnection {
                         telnet: conn,
-                        pipeline: AnsiPipeline::default(),
+                        pipeline: AnsiPipeline::new(),
                     })),
                     Err(e) => Some(Err(e)),
                 };

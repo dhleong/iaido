@@ -9,14 +9,14 @@ use self::telnet::TelnetConnectionFactory;
 mod ansi;
 mod telnet;
 
+#[derive(Debug, PartialEq)]
 pub enum ReadValue {
-    None,
     Newline,
     Text(TextLine),
 }
 
 pub trait Connection {
-    fn read(&mut self) -> io::Result<ReadValue>;
+    fn read(&mut self) -> io::Result<Option<ReadValue>>;
 }
 
 pub trait ConnectionFactory<T: Connection> {

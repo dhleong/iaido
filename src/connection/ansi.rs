@@ -171,34 +171,17 @@ impl Perform for AnsiPerformer {
                 28 => style.remove_modifier(Modifier::HIDDEN),
                 29 => style.remove_modifier(Modifier::CROSSED_OUT),
 
-                30..=37 => style.fg(match v {
-                    30 => Color::Black,
-                    31 => Color::Red,
-                    32 => Color::Green,
-                    33 => Color::Yellow,
-                    34 => Color::Blue,
-                    35 => Color::Magenta,
-                    36 => Color::Cyan,
-                    37 => Color::White,
-                    _ => panic!(),
-                }),
+                30..=37 => style.fg(read_simple_color(v - 30)),
                 39 => style.clear_fg(),
 
-                40..=47 => style.bg(match v {
-                    40 => Color::Black,
-                    41 => Color::Red,
-                    42 => Color::Green,
-                    43 => Color::Yellow,
-                    44 => Color::Blue,
-                    45 => Color::Magenta,
-                    46 => Color::Cyan,
-                    47 => Color::White,
-                    _ => panic!(),
-                }),
+                40..=47 => style.bg(read_simple_color(v - 40)),
                 49 => style.clear_bg(),
 
                 38 => style.fg(read_high_color(&mut params)),
                 48 => style.bg(read_high_color(&mut params)),
+
+                90..=97 => style.fg(read_simple_color(v - 80)),
+                100..=107 => style.bg(read_simple_color(v - 90)),
 
                 // default nop:
                 _ => style,
@@ -208,6 +191,30 @@ impl Perform for AnsiPerformer {
     }
 
     fn esc_dispatch(&mut self, _intermediates: &[u8], _ignore: bool, _byte: u8) {}
+}
+
+fn read_simple_color(index: u16) -> Color {
+    match index {
+        0 => Color::Black,
+        1 => Color::Red,
+        2 => Color::Green,
+        3 => Color::Yellow,
+        4 => Color::Blue,
+        5 => Color::Magenta,
+        6 => Color::Cyan,
+        7 => Color::Gray,
+
+        10 => Color::DarkGray,
+        11 => Color::LightRed,
+        12 => Color::LightGreen,
+        13 => Color::LightYellow,
+        14 => Color::LightBlue,
+        15 => Color::LightMagenta,
+        16 => Color::LightCyan,
+        17 => Color::White,
+
+        _ => Color::Reset,
+    }
 }
 
 fn read_high_color(params: &mut ParamsIter) -> Color {
@@ -314,6 +321,19 @@ mod tests {
                 "Take my love",
                 Style::default().fg(Color::Rgb(22, 32, 42))
             )]))
+        );
+    }
+
+    #[test]
+    fn bright_color() {
+        let mut pipe = AnsiPipeline::new();
+        pipe.feed_str("\x1b[91mTake my \x1b[102mlove");
+        assert_eq!(
+            pipe.next().unwrap(),
+            ReadValue::Text(TextLine::from(vec![
+                Span::styled("Take my ", Style::default().fg(Color::LightRed)),
+                Span::styled("love", Style::default().bg(Color::LightGreen))
+            ],))
         );
     }
 }

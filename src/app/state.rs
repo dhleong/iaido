@@ -1,4 +1,5 @@
 use crate::{
+    connection::connections::Connections,
     editing::{
         buffer::MemoryBuffer,
         buffers::Buffers,
@@ -25,6 +26,7 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
+    pub connections: Connections,
 }
 
 impl AppState {
@@ -137,6 +139,7 @@ impl Default for AppState {
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
+            connections: Connections::default(),
         };
 
         // create the default tabpage

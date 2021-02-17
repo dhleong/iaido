@@ -27,6 +27,12 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
             self.app.render();
 
             loop {
+                // process incoming data from connections
+                self.app
+                    .state
+                    .connections
+                    .process(&mut self.app.state.buffers);
+
                 // TODO: poll other main event loop sources?
                 match self.events.poll_event(Duration::from_millis(100))? {
                     Some(_) => break,

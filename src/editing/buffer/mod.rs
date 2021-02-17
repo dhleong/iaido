@@ -36,7 +36,7 @@ pub trait Buffer: HasId + Send + Sync {
                 self.append("".into());
             }
             ReadValue::Text(text) => {
-                let line = self.lines_count() - 1;
+                let line = self.lines_count().checked_sub(1).unwrap_or(0);
                 self.insert(
                     CursorPosition {
                         line,

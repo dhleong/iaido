@@ -38,7 +38,7 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         }
     };
 
-    context.state_mut().current_window_mut().buffer = buffer_id;
+    context.state_mut().set_current_window_buffer(buffer_id);
     context
         .state_mut()
         .current_buffer_mut()

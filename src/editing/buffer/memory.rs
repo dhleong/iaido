@@ -249,4 +249,18 @@ mod tests {
             assert_visual_match(buf, "serenity");
         }
     }
+
+    #[cfg(test)]
+    mod append_value {
+        use crate::connection::ReadValue;
+
+        use super::*;
+
+        #[test]
+        fn into_empty() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append_value(ReadValue::Text("serenity".into()));
+            assert_visual_match(buf, "serenity");
+        }
+    }
 }

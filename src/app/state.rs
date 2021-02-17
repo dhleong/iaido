@@ -9,7 +9,7 @@ use crate::{
         tabpages::Tabpages,
         text::{TextLine, TextLines},
         window::Window,
-        Buffer, Resizable, Size,
+        Buffer, Id, Resizable, Size,
     },
     input::{
         commands::{create_builtin_commands, registry::CommandRegistry},
@@ -125,6 +125,19 @@ impl AppState {
         self.insert_at_cursor(String::from(ch).into());
         self.current_window_mut().cursor.col += 1;
         self.current_window_mut().completion_state = None; // reset on type
+    }
+
+    // ======= buf/win cross-modification =====================
+
+    pub fn set_current_window_buffer(&mut self, new_id: Id) {
+        self.current_window_mut().buffer = new_id;
+        let buffer = self
+            .buffers
+            .by_id(new_id)
+            .expect("Could not find new buffer");
+        let cursor = self.current_window().cursor;
+
+        self.current_window_mut().cursor = self.current_window().clamp_cursor(buffer, cursor);
     }
 }
 

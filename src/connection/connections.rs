@@ -77,6 +77,11 @@ fn retain<T, F>(v: &mut Vec<T>, mut pred: F)
 where
     F: FnMut(&mut T) -> RetainAction,
 {
+    if v.is_empty() {
+        // nop
+        return;
+    }
+
     let mut i = 0;
     let mut end = v.len() - 1;
     loop {

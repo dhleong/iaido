@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::editing::{buffers::Buffers, ids::Ids, text::TextLines, Id};
 
-use super::{Connection, ConnectionFactories, ReadValue};
+use super::{Connection, ConnectionFactories};
 
 pub struct Connections {
     ids: Ids,
@@ -56,9 +56,8 @@ impl Connections {
                 .expect("Could not find buffer for connection");
 
             match conn.read() {
-                Ok(Some(ReadValue::Newline)) => {}     // TODO
-                Ok(Some(ReadValue::Text(_text))) => {} // TODO
-                Ok(None) => {}                         // nop
+                Ok(None) => {} // nop
+                Ok(Some(value)) => buffer.append_value(value),
                 Err(e) => {
                     buffer.append(TextLines::from(e.to_string()));
                     to_buffer.remove(&conn.id());

@@ -34,17 +34,12 @@ impl Connections {
     }
 
     /// Create a new connection attached to the given buffer_id
-    pub fn create(&mut self, buffer_id: Id, uri: &str) -> io::Result<Id> {
-        match Url::parse(uri) {
-            Ok(url) => {
-                let id = self.ids.next();
-                let result = self.factories.create(id, url)?;
-                self.connection_to_buffer.insert(id, buffer_id);
-                self.all.push(result);
-                Ok(id)
-            }
-            Err(e) => Err(io::Error::new(io::ErrorKind::NotFound, e.to_string())),
-        }
+    pub fn create(&mut self, buffer_id: Id, uri: Url) -> io::Result<Id> {
+        let id = self.ids.next();
+        let result = self.factories.create(id, uri)?;
+        self.connection_to_buffer.insert(id, buffer_id);
+        self.all.push(result);
+        Ok(id)
     }
 
     pub fn process(&mut self, buffers: &mut Buffers) {

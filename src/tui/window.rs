@@ -110,6 +110,11 @@ fn wrap_cursor(line: &TextLine, width: u16, cursor_col: usize) -> (u16, u16) {
 
 impl Renderable for Window {
     fn layout(&mut self, context: &LayoutContext) {
+        if !self.focused {
+            // don't scroll to keep cursor in view unless focused
+            return;
+        }
+
         let buf = if let Some(buf) = context.buffer(self.buffer) {
             buf
         } else {
@@ -117,11 +122,11 @@ impl Renderable for Window {
         };
 
         let renderable = RenderableContent::new(self, buf);
-        let (_, cursor_y_offset) = wrap_cursor(
-            buf.get(self.cursor.line),
-            self.size.w,
-            self.cursor.col as usize,
-        );
+        let cursor_line = match buf.checked_get(self.cursor.line) {
+            Some(line) => line,
+            None => return, // nothing we can do
+        };
+        let (_, cursor_y_offset) = wrap_cursor(cursor_line, self.size.w, self.cursor.col as usize);
 
         if self.cursor.line < renderable.start.line {
             self.scroll_offset = 0;
@@ -511,6 +516,30 @@ mod tests {
             assert_eq!(display.cursor_coords(), Some((2, 0)));
             display.assert_visual_match(indoc! {"
                 : |
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod append_value {
+        use crate::{connection::ReadValue, editing::motion::tests::window};
+
+        use super::*;
+
+        #[test]
+        fn append_value() {
+            let mut ctx = window("");
+            ctx.window.resize(Size { w: 12, h: 3 });
+            ctx.render_at_own_size();
+
+            ctx.buffer
+                .append_value(ReadValue::Text("Take my love".into()));
+
+            let display = ctx.render_at_own_size();
+            display.assert_visual_match(indoc! {"
+
+
+                |Take my love
             "});
         }
     }

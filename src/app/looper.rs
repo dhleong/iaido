@@ -23,15 +23,21 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     }
 
     fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
+        let mut dirty = true;
         loop {
-            self.app.render();
-
             loop {
+                if dirty {
+                    dirty = false;
+                    self.app.render();
+                }
+
                 // process incoming data from connections
-                self.app
-                    .state
-                    .connections
-                    .process(&mut self.app.state.buffers);
+                dirty = dirty
+                    || self
+                        .app
+                        .state
+                        .connections
+                        .process(&mut self.app.state.buffers);
 
                 // TODO: poll other main event loop sources?
                 match self.events.poll_event(Duration::from_millis(100))? {
@@ -44,6 +50,8 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 UiEvent::Key(key) => return Ok(Some(key)),
                 _ => {}
             }
+
+            dirty = true;
         }
     }
 }

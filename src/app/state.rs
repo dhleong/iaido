@@ -137,7 +137,11 @@ impl AppState {
             .expect("Could not find new buffer");
         let cursor = self.current_window().cursor;
 
-        self.current_window_mut().cursor = self.current_window().clamp_cursor(buffer, cursor);
+        let clamped_cursor = self.current_window().clamp_cursor(buffer, cursor);
+        let mut window = self.current_window_mut();
+        window.cursor = clamped_cursor;
+        window.scrolled_lines = 0;
+        window.scroll_offset = 0;
     }
 }
 

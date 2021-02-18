@@ -42,8 +42,9 @@ impl Connections {
         Ok(id)
     }
 
-    pub fn process(&mut self, buffers: &mut Buffers) {
+    pub fn process(&mut self, buffers: &mut Buffers) -> bool {
         let to_buffer = &mut self.connection_to_buffer;
+        let mut any_updated = false;
         retain(&mut self.all, |conn| {
             let buffer_id = to_buffer[&conn.id()];
             let buffer = buffers
@@ -52,8 +53,12 @@ impl Connections {
 
             match conn.read() {
                 Ok(None) => {} // nop
-                Ok(Some(value)) => buffer.append_value(value),
+                Ok(Some(value)) => {
+                    any_updated = true;
+                    buffer.append_value(value)
+                }
                 Err(e) => {
+                    any_updated = true;
                     buffer.append(TextLines::from(e.to_string()));
                     to_buffer.remove(&conn.id());
                     return RetainAction::Remove;
@@ -63,6 +68,7 @@ impl Connections {
             // keep the conn, by default
             return RetainAction::Keep;
         });
+        any_updated
     }
 }
 

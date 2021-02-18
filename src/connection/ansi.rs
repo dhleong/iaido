@@ -114,7 +114,15 @@ impl Perform for AnsiPerformer {
         }
     }
 
-    fn execute(&mut self, _byte: u8) {}
+    fn execute(&mut self, byte: u8) {
+        match byte as char {
+            '\n' => {
+                self.line_to_buffer();
+                self.buffer.push_back(ReadValue::Newline);
+            }
+            _ => {} // nop
+        };
+    }
 
     fn hook(&mut self, _params: &vte::Params, _intermediates: &[u8], _ignore: bool, _action: char) {
     }
@@ -334,6 +342,40 @@ mod tests {
                 Span::styled("Take my ", Style::default().fg(Color::LightRed)),
                 Span::styled("love", Style::default().bg(Color::LightGreen))
             ],))
+        );
+    }
+
+    #[test]
+    fn simple_newline() {
+        let mut pipe = AnsiPipeline::new();
+        pipe.feed_str("Take\nmy\nlove");
+        let read: Vec<ReadValue> = (0..5).map(|_| pipe.next().unwrap()).collect();
+        assert_eq!(
+            read,
+            vec![
+                ReadValue::Text("Take".into()),
+                ReadValue::Newline,
+                ReadValue::Text("my".into()),
+                ReadValue::Newline,
+                ReadValue::Text("love".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn normalize_crlf() {
+        let mut pipe = AnsiPipeline::new();
+        pipe.feed_str("Take\r\nmy\r\nlove");
+        let read: Vec<ReadValue> = (0..5).map(|_| pipe.next().unwrap()).collect();
+        assert_eq!(
+            read,
+            vec![
+                ReadValue::Text("Take".into()),
+                ReadValue::Newline,
+                ReadValue::Text("my".into()),
+                ReadValue::Newline,
+                ReadValue::Text("love".into()),
+            ]
         );
     }
 }

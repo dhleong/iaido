@@ -106,12 +106,7 @@ impl AnsiPerformer {
 
 impl Perform for AnsiPerformer {
     fn print(&mut self, c: char) {
-        if c == '\n' {
-            self.line_to_buffer();
-            self.buffer.push_back(ReadValue::Newline);
-        } else {
-            self.builder.push(c);
-        }
+        self.builder.push(c);
     }
 
     fn execute(&mut self, byte: u8) {

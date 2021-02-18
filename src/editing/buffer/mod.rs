@@ -33,7 +33,7 @@ pub trait Buffer: HasId + Send + Sync {
     fn append_value(&mut self, value: ReadValue) {
         match value {
             ReadValue::Newline => {
-                self.append("".into());
+                self.append(TextLines::from(vec!["".into()]));
             }
             ReadValue::Text(text) => {
                 let line = self.lines_count().checked_sub(1).unwrap_or(0);

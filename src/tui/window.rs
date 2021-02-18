@@ -535,11 +535,20 @@ mod tests {
             ctx.buffer
                 .append_value(ReadValue::Text("Take my love".into()));
 
-            let display = ctx.render_at_own_size();
-            display.assert_visual_match(indoc! {"
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
 
 
                 |Take my love
+            "});
+
+            ctx.buffer.append_value(ReadValue::Newline);
+            ctx.buffer
+                .append_value(ReadValue::Text("Take my land".into()));
+
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+
+                |Take my love
+                Take my land
             "});
         }
     }

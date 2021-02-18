@@ -78,7 +78,7 @@ enum RetainAction {
     Keep,
 }
 
-// mutating, partitioning iteration
+// mutating, partitioning iteration. order is not preserved
 fn retain<T, F>(v: &mut Vec<T>, mut pred: F)
 where
     F: FnMut(&mut T) -> RetainAction,
@@ -89,21 +89,71 @@ where
     }
 
     let mut i = 0;
-    let mut end = v.len() - 1;
+    let mut end = v.len();
     loop {
         // invariants:
         // items v[0..end] will be kept
         // items v[j..i] will be removed
 
         if pred(&mut v[i]) == RetainAction::Remove {
-            v.swap(i, end);
-            end += 1;
+            v.swap(i, end - 1);
+            end -= 1;
+        } else {
+            i += 1;
         }
 
-        i += 1;
         if i >= end {
             break;
         }
     }
     v.truncate(end);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(test)]
+    mod retain {
+        use super::*;
+
+        #[test]
+        fn touches_all_items() {
+            let mut v = vec![1, 2, 3, 4];
+            let mut sum = 0;
+            retain(&mut v, |val| {
+                sum += *val;
+                RetainAction::Keep
+            });
+            assert_eq!(sum, 10);
+        }
+
+        #[test]
+        fn visits_all_after_remove() {
+            let mut v = vec![1, 2, 3, 4];
+            let mut sum = 0;
+            retain(&mut v, |val| {
+                sum += val.to_owned();
+                if *val == 2 {
+                    RetainAction::Remove
+                } else {
+                    RetainAction::Keep
+                }
+            });
+            assert_eq!(sum, 10);
+            assert_eq!(v.len(), 3);
+        }
+
+        #[test]
+        fn remove_all_safely() {
+            let mut v = vec![1, 2, 3, 4];
+            let mut sum = 0;
+            retain(&mut v, |val| {
+                sum += val.to_owned();
+                RetainAction::Remove
+            });
+            assert_eq!(sum, 10);
+            assert_eq!(v.len(), 0);
+        }
+    }
 }

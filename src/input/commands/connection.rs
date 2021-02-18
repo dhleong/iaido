@@ -14,8 +14,16 @@ declare_commands!(declare_connection {
     },
 });
 
+fn parse_url(url: &str) -> Result<Url, url::ParseError> {
+    if url.find("://").is_none() {
+        Url::parse(format!("telnet://{}", url).as_str())
+    } else {
+        Url::parse(url)
+    }
+}
+
 fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
-    let uri = Url::parse(url.as_str())?;
+    let uri = parse_url(url.as_str())?;
     let buffer = context.state().current_buffer();
     let buffer_id = match &buffer.source() {
         &BufferSource::Connection(existing_url) if existing_url == &url => {
@@ -48,4 +56,19 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     context.state_mut().connections.create(buffer_id, uri)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(test)]
+    mod parse_url {
+        use super::*;
+
+        #[test]
+        fn defaults_to_telnet() {
+            assert_eq!(parse_url("serenity.co"), Url::parse("telnet://serenity.co"));
+        }
+    }
 }

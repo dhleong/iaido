@@ -48,25 +48,28 @@ impl Connections {
     pub fn process(&mut self, app: &mut app::State) -> bool {
         let to_buffer = &mut self.connection_to_buffer;
         let mut any_updated = false;
+        let lines_per_redraw = app.current_window().size.h;
         retain(&mut self.all, |conn| {
             let buffer_id = to_buffer[&conn.id()];
             let mut winsbuf = app
                 .winsbuf_by_id(buffer_id)
                 .expect("Could not find buffer for connection");
 
-            match conn.read() {
-                Ok(None) => {} // nop
-                Ok(Some(value)) => {
-                    any_updated = true;
-                    winsbuf.append_value(value);
+            for _ in 0..lines_per_redraw {
+                match conn.read() {
+                    Ok(None) => break, // nop
+                    Ok(Some(value)) => {
+                        any_updated = true;
+                        winsbuf.append_value(value);
+                    }
+                    Err(e) => {
+                        any_updated = true;
+                        winsbuf.append(TextLines::from(e.to_string()));
+                        to_buffer.remove(&conn.id());
+                        return RetainAction::Remove;
+                    }
                 }
-                Err(e) => {
-                    any_updated = true;
-                    winsbuf.append(TextLines::from(e.to_string()));
-                    to_buffer.remove(&conn.id());
-                    return RetainAction::Remove;
-                }
-            };
+            }
 
             // keep the conn, by default
             return RetainAction::Keep;

@@ -164,7 +164,7 @@ impl Renderable for Window {
 
         let renderable = RenderableContent::new(self, buf);
         let paragraph = Paragraph::new(renderable.candidate_text)
-            .wrap(Wrap { trim: true })
+            .wrap(Wrap { trim: false })
             .alignment(Alignment::Left)
             .scroll((renderable.start.visual_offset, 0));
 

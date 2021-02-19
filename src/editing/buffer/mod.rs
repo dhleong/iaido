@@ -30,6 +30,11 @@ pub trait Buffer: HasId + Send + Sync {
     fn delete_range(&mut self, range: MotionRange);
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
 
+    fn append_line(&mut self, text: String) {
+        self.append_value(ReadValue::Text(text.into()));
+        self.append_value(ReadValue::Newline);
+    }
+
     fn append_value(&mut self, value: ReadValue) {
         match value {
             ReadValue::Newline => {

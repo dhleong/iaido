@@ -21,6 +21,12 @@ impl<'a> WinsBuf<'a> {
         });
     }
 
+    pub fn append_line(&mut self, line: String) {
+        self.adjusting_cursor(|me| {
+            me.buffer.append_line(line);
+        });
+    }
+
     pub fn append_value(&mut self, value: ReadValue) {
         self.adjusting_cursor(|me| {
             me.buffer.append_value(value);
@@ -33,9 +39,9 @@ impl<'a> WinsBuf<'a> {
         action(self);
         let lines_after = self.buffer.lines_count();
 
-        if lines_before > 0 && lines_before < lines_after {
+        if lines_before < lines_after {
             for win in &mut self.windows {
-                if win.cursor.line == lines_before - 1 {
+                if win.cursor.line == lines_before.checked_sub(1).unwrap_or(0) {
                     win.cursor.line = lines_after - 1;
                 }
             }

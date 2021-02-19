@@ -45,6 +45,10 @@ impl Tabpage {
         self.layout.by_id_mut(id)
     }
 
+    pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {
+        self.layout.windows_for_buffer(buffer_id)
+    }
+
     pub fn hsplit(&mut self) -> Id {
         let id: Id = self.ids.next();
 

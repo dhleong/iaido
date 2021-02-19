@@ -53,7 +53,12 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .append(format!("Connecting to {}...", uri).into());
 
     // TODO can we redraw first? and/or can this be async?
-    context.state_mut().connections.create(buffer_id, uri)?;
+    context
+        .state_mut()
+        .connections
+        .as_mut()
+        .unwrap()
+        .create(buffer_id, uri)?;
 
     Ok(())
 }

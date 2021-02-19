@@ -2,6 +2,7 @@ pub mod bufwin;
 pub mod looper;
 pub mod prompt;
 pub mod state;
+pub mod winsbuf;
 
 use crate::ui::UI;
 pub use state::AppState as State;

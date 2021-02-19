@@ -1,3 +1,5 @@
+use genawaiter::{sync::gen, yield_};
+
 use super::{window::Window, Id, Resizable, Size};
 
 pub enum LayoutEntry {
@@ -64,6 +66,34 @@ impl Layout {
             }
         }
         None
+    }
+
+    pub fn windows_for_buffer(
+        &mut self,
+        buffer_id: Id,
+    ) -> Box<dyn Iterator<Item = &mut Box<Window>> + '_> {
+        Box::new(
+            gen!({
+                for entry in &mut self.entries {
+                    match entry {
+                        LayoutEntry::Window(win) => {
+                            if win.id == buffer_id {
+                                yield_!(win);
+                            }
+                        }
+
+                        LayoutEntry::Layout(lyt) => {
+                            for win in lyt.windows_for_buffer(buffer_id) {
+                                yield_!(win);
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+            })
+            .into_iter(),
+        )
     }
 
     pub fn split(&mut self, win: Box<Window>) {

@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{bufwin::BufWin, prompt::Prompt};
+use super::{bufwin::BufWin, prompt::Prompt, winsbuf::WinsBuf};
 
 pub struct AppState {
     pub running: bool,
@@ -26,7 +26,10 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
-    pub connections: Connections,
+
+    // Connections should generally be available, but is an
+    // Option so callers may temporarily take ownership of it
+    pub connections: Option<Connections>,
 }
 
 impl AppState {
@@ -97,6 +100,15 @@ impl AppState {
         None
     }
 
+    pub fn winsbuf_by_id<'a>(&'a mut self, buffer_id: Id) -> Option<WinsBuf<'a>> {
+        if let Some(buffer) = self.buffers.by_id_mut(buffer_id) {
+            let windows = self.tabpages.windows_for_buffer(buffer_id);
+            Some(WinsBuf::new(windows.collect(), buffer))
+        } else {
+            None
+        }
+    }
+
     // ======= echo ===========================================
 
     pub fn clear_echo(&mut self) {
@@ -156,7 +168,7 @@ impl Default for AppState {
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
-            connections: Connections::default(),
+            connections: Some(Connections::default()),
         };
 
         // create the default tabpage

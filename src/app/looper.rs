@@ -31,11 +31,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 }
 
                 // process incoming data from connections
-                dirty = self
-                    .app
-                    .state
-                    .connections
-                    .process(&mut self.app.state.buffers);
+                if let Some(mut connections) = self.app.state.connections.take() {
+                    dirty = connections.process(&mut self.app.state);
+                    self.app.state.connections = Some(connections);
+                }
 
                 // TODO: poll other main event loop sources?
                 match self.events.poll_event(Duration::from_millis(100))? {

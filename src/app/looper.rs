@@ -8,6 +8,8 @@ use crate::{
     input::KeymapContext,
 };
 
+use super::jobs::MainThreadAction;
+
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
     events: UE,
@@ -36,8 +38,16 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                     self.app.state.connections = Some(connections);
                 }
 
-                // TODO: poll other main event loop sources?
-                match self.events.poll_event(Duration::from_millis(100))? {
+                // process messages from jobs
+                if let Some(action) = self.app.state.jobs.process()? {
+                    match action {
+                        MainThreadAction::Echo(msg) => self.app.state.echo(msg.into()),
+                        MainThreadAction::Err(e) => return Err(e.into()),
+                    };
+                }
+
+                // finally, check for input:
+                match self.events.poll_event(Duration::from_millis(10))? {
                     Some(_) => break,
                     None => {}
                 }

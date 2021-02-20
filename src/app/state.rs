@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{bufwin::BufWin, prompt::Prompt, winsbuf::WinsBuf};
+use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, winsbuf::WinsBuf};
 
 pub struct AppState {
     pub running: bool,
@@ -30,6 +30,8 @@ pub struct AppState {
     // Connections should generally be available, but is an
     // Option so callers may temporarily take ownership of it
     pub connections: Option<Connections>,
+
+    pub jobs: Jobs,
 }
 
 impl AppState {
@@ -175,6 +177,7 @@ impl Default for AppState {
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
             connections: Some(Connections::default()),
+            jobs: Jobs::new(),
         };
 
         // create the default tabpage

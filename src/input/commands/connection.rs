@@ -56,13 +56,17 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .current_winsbuf()
         .append_line(format!("Connecting to {}...", uri));
 
-    // TODO can we redraw first? and/or can this be async?
-    context
-        .state_mut()
-        .connections
-        .as_mut()
-        .unwrap()
-        .create(buffer_id, uri)?;
+    let connections = context
+            .state_mut()
+            .connections
+            .as_mut()
+            .unwrap().factories.clone();
+    context.state_mut().jobs.spawn(move |ctx| async move {
+        ctx.echo("Connecting...".into())?;
+        connections.create(buffer_id, uri)?;
+        ctx.echo("Connected".into())?;
+        Ok(())
+    });
 
     Ok(())
 }

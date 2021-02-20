@@ -40,6 +40,10 @@ impl Connection for TelnetConnection {
 
 pub struct TelnetConnectionFactory;
 impl ConnectionFactory for TelnetConnectionFactory {
+    fn clone_boxed(&self) -> Box<dyn ConnectionFactory> {
+        Box::new(TelnetConnectionFactory)
+    }
+
     fn create(&self, id: Id, uri: &Url) -> Option<std::io::Result<Box<dyn Connection>>> {
         let secure = match uri.scheme() {
             "telnet" => false,

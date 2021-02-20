@@ -11,7 +11,8 @@ use std::io;
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
 
-fn main() -> Result<(), io::Error> {
+#[tokio::main]
+async fn main() -> Result<(), io::Error> {
     let ui = tui::create_ui()?;
     let state = app::State::default();
     let mut app = app::App::new(state, ui);

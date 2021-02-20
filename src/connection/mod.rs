@@ -21,7 +21,8 @@ pub trait Connection {
     fn read(&mut self) -> io::Result<Option<ReadValue>>;
 }
 
-pub trait ConnectionFactory {
+pub trait ConnectionFactory: Send + Sync {
+    fn clone_boxed(&self) -> Box<dyn ConnectionFactory>;
     fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Connection>>>;
 }
 
@@ -38,6 +39,12 @@ impl Default for ConnectionFactories {
 }
 
 impl ConnectionFactories {
+    pub fn clone(&self) -> Self {
+        Self {
+            factories: self.factories.iter().map(|f| f.clone_boxed()).collect(),
+        }
+    }
+
     pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Connection>> {
         for f in &self.factories {
             match f.create(id, &uri) {

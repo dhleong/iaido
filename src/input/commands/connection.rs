@@ -12,6 +12,10 @@ declare_commands!(declare_connection {
     pub fn connect(context, url: String) {
         connect(context, url)
     },
+
+    pub fn disconnect(context) {
+        disconnect(context)
+    },
 });
 
 fn parse_url(url: &str) -> Result<Url, url::ParseError> {
@@ -59,6 +63,24 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .as_mut()
         .unwrap()
         .create(buffer_id, uri)?;
+
+    Ok(())
+}
+
+fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {
+    let buffer_id = context.state().current_buffer().id();
+    context
+        .state_mut()
+        .connections
+        .as_mut()
+        .unwrap()
+        .disconnect_buffer(buffer_id)?;
+
+    context
+        .state_mut()
+        .winsbuf_by_id(buffer_id)
+        .expect("Could not find current buffer")
+        .append_line("Disconnected.".into());
 
     Ok(())
 }

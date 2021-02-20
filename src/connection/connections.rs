@@ -13,6 +13,12 @@ pub struct Connections {
     ids: Ids,
     all: Vec<Box<dyn Connection>>,
     connection_to_buffer: HashMap<Id, Id>,
+
+    // NOTE: More than one Buffer may be associated with a Connection
+    // here (for example, the input buffer) but a Connection will
+    // be associated with ONLY ONE Buffer above (IE: the buffer it
+    // writes to)
+    buffer_to_connection: HashMap<Id, Id>,
     factories: ConnectionFactories,
 }
 
@@ -22,6 +28,7 @@ impl Default for Connections {
             ids: Ids::new(),
             all: Vec::new(),
             connection_to_buffer: HashMap::default(),
+            buffer_to_connection: HashMap::default(),
             factories: ConnectionFactories::default(),
         }
     }
@@ -41,8 +48,37 @@ impl Connections {
         let id = self.ids.next();
         let result = self.factories.create(id, uri)?;
         self.connection_to_buffer.insert(id, buffer_id);
+        self.buffer_to_connection.insert(buffer_id, id);
         self.all.push(result);
         Ok(id)
+    }
+
+    /// Returns the associated buffer ID
+    pub fn disconnect(&mut self, connection_id: Id) -> io::Result<Id> {
+        if let Some(index) = self.all.iter().position(|conn| conn.id() == connection_id) {
+            self.all.swap_remove(index);
+            return Ok(self
+                .connection_to_buffer
+                .remove(&connection_id)
+                .expect("No buffer associated with connection"));
+        }
+
+        Err(io::Error::new(
+            io::ErrorKind::NotConnected,
+            format!("c{}: Connection not found", connection_id),
+        ))
+    }
+
+    /// As for `disconnect`, but accepts a Buffer Id instead of a Connection Id
+    pub fn disconnect_buffer(&mut self, buffer_id: Id) -> io::Result<Id> {
+        if let Some(connection_id) = self.buffer_to_connection.remove(&buffer_id) {
+            return self.disconnect(connection_id);
+        }
+
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("#{}: No connection for buffer", buffer_id),
+        ))
     }
 
     pub fn process(&mut self, app: &mut app::State) -> bool {

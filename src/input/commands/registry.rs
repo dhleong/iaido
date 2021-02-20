@@ -50,7 +50,10 @@ impl CommandRegistry {
 #[macro_export]
 macro_rules! command_decl {
     // base case:
-    ($r:ident ->) => {};
+    ($r:ident ->) => {
+        #[allow(unused_imports)]
+        use crate::input::KeymapContext;
+    };
 
     // simple case: no special args handling
     ($r:ident -> pub fn $name:ident($context:ident) $body:expr, $($tail:tt)*) => {

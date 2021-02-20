@@ -3,7 +3,7 @@ pub use memory::MemoryBuffer;
 
 use std::fmt;
 
-use crate::input::completion::Completion;
+use crate::{connection::ReadValue, input::completion::Completion};
 
 use super::{
     motion::MotionRange,
@@ -29,6 +29,29 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn delete_range(&mut self, range: MotionRange);
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
+
+    fn append_line(&mut self, text: String) {
+        self.append_value(ReadValue::Text(text.into()));
+        self.append_value(ReadValue::Newline);
+    }
+
+    fn append_value(&mut self, value: ReadValue) {
+        match value {
+            ReadValue::Newline => {
+                self.append(TextLines::from(vec!["".into()]));
+            }
+            ReadValue::Text(text) => {
+                let line = self.lines_count().checked_sub(1).unwrap_or(0);
+                self.insert(
+                    CursorPosition {
+                        line,
+                        col: self.get_line_width(line).unwrap_or(0) as u16,
+                    },
+                    text,
+                );
+            }
+        };
+    }
 
     // convenience:
     fn checked_get(&self, line_index: usize) -> Option<&TextLine> {

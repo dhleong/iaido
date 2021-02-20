@@ -47,7 +47,7 @@ declare_commands!(declare_file {
         buf.append(TextLines::from(lines));
         buf.set_source(BufferSource::LocalFile(full_path_string.to_string()));
 
-        context.state_mut().current_window_mut().buffer = buffer_id;
+        context.state_mut().set_current_window_buffer(buffer_id);
 
         Ok(())
     },

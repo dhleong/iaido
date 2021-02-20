@@ -7,6 +7,19 @@
         "program": "${workspaceRoot}/target/debug/vimspector_test"
       }
     },
+    "Run App": {
+      "adapter": "CodeLLDB",
+      "configuration": {
+        "request": "launch",
+        "program": "${workspaceRoot}/target/debug/iaido"
+      },
+      "breakpoints": {
+        "exception": {
+          "cpp_throw": "",
+          "cpp_catch": ""
+        }
+      }
+    },
     "Run Test": {
       "adapter": "CodeLLDB",
       "configuration": {

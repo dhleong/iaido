@@ -39,6 +39,12 @@ impl From<io::Error> for KeyError {
     }
 }
 
+impl From<url::ParseError> for KeyError {
+    fn from(error: url::ParseError) -> Self {
+        KeyError::InvalidInput(error.to_string())
+    }
+}
+
 pub trait KeySource {
     fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
     fn next_key(&mut self) -> Result<Option<Key>, KeyError>;

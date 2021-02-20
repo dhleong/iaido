@@ -1,4 +1,4 @@
-use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, Id, Resizable, Size};
+use super::{buffers::Buffers, ids::Ids, tabpage::Tabpage, window::Window, Id, Resizable, Size};
 
 /// Manages all buffers (Hidden or not) in an app
 pub struct Tabpages {
@@ -46,6 +46,12 @@ impl Tabpages {
 
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Tabpage>> {
         self.all.iter_mut().find(|tab| tab.id == id)
+    }
+
+    pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {
+        self.all
+            .iter_mut()
+            .flat_map(move |tab| tab.windows_for_buffer(buffer_id))
     }
 
     pub fn create(&mut self, buffers: &mut Buffers) -> Id {

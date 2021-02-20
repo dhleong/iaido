@@ -1,4 +1,5 @@
 use crate::{
+    connection::connections::Connections,
     editing::{
         buffer::MemoryBuffer,
         buffers::Buffers,
@@ -8,7 +9,7 @@ use crate::{
         tabpages::Tabpages,
         text::{TextLine, TextLines},
         window::Window,
-        Buffer, Resizable, Size,
+        Buffer, Id, Resizable, Size,
     },
     input::{
         commands::{create_builtin_commands, registry::CommandRegistry},
@@ -16,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{bufwin::BufWin, prompt::Prompt};
+use super::{bufwin::BufWin, prompt::Prompt, winsbuf::WinsBuf};
 
 pub struct AppState {
     pub running: bool,
@@ -25,6 +26,10 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
+
+    // Connections should generally be available, but is an
+    // Option so callers may temporarily take ownership of it
+    pub connections: Option<Connections>,
 }
 
 impl AppState {
@@ -95,6 +100,21 @@ impl AppState {
         None
     }
 
+    pub fn current_winsbuf<'a>(&'a mut self) -> WinsBuf<'a> {
+        self.winsbuf_by_id(self.current_buffer().id())
+            .expect("No current buffer!?")
+    }
+
+    /// Unlike BufWin, this will NEVER operate on the prompt window/buffer
+    pub fn winsbuf_by_id<'a>(&'a mut self, buffer_id: Id) -> Option<WinsBuf<'a>> {
+        if let Some(buffer) = self.buffers.by_id_mut(buffer_id) {
+            let windows = self.tabpages.windows_for_buffer(buffer_id);
+            Some(WinsBuf::new(windows.collect(), buffer))
+        } else {
+            None
+        }
+    }
+
     // ======= echo ===========================================
 
     pub fn clear_echo(&mut self) {
@@ -124,6 +144,23 @@ impl AppState {
         self.current_window_mut().cursor.col += 1;
         self.current_window_mut().completion_state = None; // reset on type
     }
+
+    // ======= buf/win cross-modification =====================
+
+    pub fn set_current_window_buffer(&mut self, new_id: Id) {
+        self.current_window_mut().buffer = new_id;
+        let buffer = self
+            .buffers
+            .by_id(new_id)
+            .expect("Could not find new buffer");
+        let cursor = self.current_window().cursor;
+
+        let clamped_cursor = self.current_window().clamp_cursor(buffer, cursor);
+        let mut window = self.current_window_mut();
+        window.cursor = clamped_cursor;
+        window.scrolled_lines = 0;
+        window.scroll_offset = 0;
+    }
 }
 
 impl Default for AppState {
@@ -137,6 +174,7 @@ impl Default for AppState {
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
+            connections: Some(Connections::default()),
         };
 
         // create the default tabpage

@@ -3,7 +3,7 @@ use url::Url;
 use crate::{
     declare_commands,
     editing::source::BufferSource,
-    input::{maps::KeyResult, KeymapContext},
+    input::{maps::KeyResult, KeyError, KeymapContext},
 };
 
 use super::CommandHandlerContext;
@@ -56,15 +56,30 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .current_winsbuf()
         .append_line(format!("Connecting to {}...", uri));
 
-    // TODO can we redraw first? and/or can this be async?
-    context
-        .state_mut()
-        .connections
-        .as_mut()
-        .unwrap()
-        .create(buffer_id, uri)?;
+    let mut connections = context.state_mut().connections.take().unwrap();
+    let job = connections.create_async(&mut context.state_mut().jobs, buffer_id, uri);
+    context.state_mut().connections = Some(connections);
 
-    Ok(())
+    match job.join_interruptably(context) {
+        Ok(_) => Ok(()),
+
+        // write the error to the buffer, if possible
+        Err(e) => {
+            if let Some(mut win) = context.state_mut().winsbuf_by_id(buffer_id) {
+                match e {
+                    KeyError::Interrupted => {
+                        win.append_line("Canceled.".into());
+                    }
+                    e => {
+                        win.append_line(format!("Error: {:?}.", e).into());
+                    }
+                }
+                Ok(())
+            } else {
+                Err(e)
+            }
+        }
+    }
 }
 
 fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {

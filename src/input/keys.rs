@@ -39,6 +39,12 @@ fn parse_key(s: &str) -> Result<Key, KeyParseError> {
         return Ok(s.chars().next().unwrap().into());
     }
 
+    let s = if s.starts_with("<") && s.ends_with(">") {
+        &s[1..s.len() - 1]
+    } else {
+        s
+    };
+
     let mut modifiers = KeyModifiers::empty();
     let mut code = KeyCode::Char('\0');
 
@@ -51,6 +57,8 @@ fn parse_key(s: &str) -> Result<Key, KeyParseError> {
                 "s" | "shift" => KeyModifiers::SHIFT,
                 _ => return Err(KeyParseError::InvalidModifier(part.to_string())),
             };
+        } else if part.len() == 1 {
+            code = KeyCode::Char(part.chars().next().unwrap());
         } else {
             code = match part {
                 " " | "20" | "space" => KeyCode::Char(' '),
@@ -179,5 +187,17 @@ mod tests {
     fn parse_modifiers() {
         let keys: Vec<Key> = "<aLt-Cr>".into_keys();
         assert_eq!(keys, vec![Key::new(KeyCode::Enter, KeyModifiers::ALT),]);
+    }
+
+    #[test]
+    fn parse_abbreviated_modifiers() {
+        assert_eq!(
+            "<c-c>".into_keys(),
+            vec![Key::new(KeyCode::Char('c'), KeyModifiers::CONTROL),]
+        );
+        assert_eq!(
+            Key::from("<c-c>"),
+            Key::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        );
     }
 }

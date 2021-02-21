@@ -29,6 +29,7 @@ impl From<KeyCode> for Key {
 pub enum KeyError {
     IO(io::Error),
     NotPermitted(String),
+    Interrupted,
     InvalidInput(String),
     NoSuchCommand(String),
 }

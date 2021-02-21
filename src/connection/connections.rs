@@ -1,9 +1,12 @@
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, io, sync::Mutex};
 
 use url::Url;
 
 use crate::{
-    app,
+    app::{
+        self,
+        jobs::{JobRecord, Jobs},
+    },
     editing::{ids::Ids, text::TextLines, Id},
 };
 
@@ -43,14 +46,23 @@ impl Connections {
         self.all.iter_mut().find(|conn| conn.id() == id)
     }
 
-    /// Create a new connection attached to the given buffer_id
-    pub fn create(&mut self, buffer_id: Id, uri: Url) -> io::Result<Id> {
+    /// Asynchronously create a new connection attached to the given
+    /// buffer_id. Returns a JobRecord for joining on the request
+    pub fn create_async(&mut self, jobs: &mut Jobs, buffer_id: Id, uri: Url) -> JobRecord {
         let id = self.ids.next();
-        let result = self.factories.create(id, uri)?;
-        self.connection_to_buffer.insert(id, buffer_id);
-        self.buffer_to_connection.insert(buffer_id, id);
-        self.all.push(result);
-        Ok(id)
+        let factory = self.factories.clone();
+        jobs.start(move |ctx| async move {
+            let connection = Mutex::new(factory.create(id, uri)?);
+
+            ctx.run(move |state| {
+                state
+                    .connections
+                    .as_mut()
+                    .unwrap()
+                    .add(buffer_id, connection.into_inner().unwrap());
+                Ok(())
+            })
+        })
     }
 
     /// Returns the associated buffer ID
@@ -111,6 +123,12 @@ impl Connections {
             return RetainAction::Keep;
         });
         any_updated
+    }
+
+    fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
+        self.connection_to_buffer.insert(connection.id(), buffer_id);
+        self.buffer_to_connection.insert(buffer_id, connection.id());
+        self.all.push(connection);
     }
 }
 

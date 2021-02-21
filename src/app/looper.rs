@@ -8,6 +8,8 @@ use crate::{
     input::KeymapContext,
 };
 
+use super::jobs::Jobs;
+
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
     events: UE,
@@ -15,6 +17,7 @@ struct AppKeySource<U: UI, UE: UiEvents> {
 
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
+        self.app.render();
         match self.events.poll_event(duration) {
             Ok(Some(UiEvent::Key(_))) => Ok(true),
             Ok(_) => Ok(false),
@@ -36,8 +39,11 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                     self.app.state.connections = Some(connections);
                 }
 
-                // TODO: poll other main event loop sources?
-                match self.events.poll_event(Duration::from_millis(100))? {
+                // process messages from jobs
+                Jobs::process(&mut self.app.state)?;
+
+                // finally, check for input:
+                match self.events.poll_event(Duration::from_millis(10))? {
                     Some(_) => break,
                     None => {}
                 }
@@ -85,4 +91,7 @@ where
             break;
         }
     }
+
+    // kill any still-running jobs when the user wants to quit:
+    app_keys.state_mut().jobs.cancel_all();
 }

@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use url::Url;
 
 use crate::{
@@ -58,21 +56,9 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .current_winsbuf()
         .append_line(format!("Connecting to {}...", uri));
 
-    let connections = context.state_mut().connections.as_mut().unwrap();
-    let factory = connections.factories.clone();
-    let id = connections.next_id();
-    let job = context.state_mut().jobs.start(move |ctx| async move {
-        let connection = Mutex::new(factory.create(id, uri)?);
-
-        ctx.run(move |state| {
-            state
-                .connections
-                .as_mut()
-                .unwrap()
-                .add(buffer_id, connection.into_inner().unwrap());
-            Ok(())
-        })
-    });
+    let mut connections = context.state_mut().connections.take().unwrap();
+    let job = connections.create_async(&mut context.state_mut().jobs, buffer_id, uri);
+    context.state_mut().connections = Some(connections);
 
     match job.join_interruptably(context) {
         Err(KeyError::Interrupted) => {

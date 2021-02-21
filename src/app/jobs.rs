@@ -47,6 +47,7 @@ impl JobContext {
     }
 }
 
+#[must_use = "If not using with join_interruptably, prefer spawn()"]
 pub struct JobRecord {
     pub id: Id,
     await_channel: mpsc::Receiver<()>,
@@ -99,7 +100,9 @@ impl Jobs {
                 Some(MainThreadAction::OnState(closure)) => closure(state)?,
                 Some(MainThreadAction::Echo(msg)) => state.echo(msg.into()),
 
-                Some(MainThreadAction::JobComplete(id)) => state.jobs.clear(id),
+                Some(MainThreadAction::JobComplete(id)) => {
+                    state.jobs.jobs.remove(&id);
+                }
                 Some(MainThreadAction::Err(e)) => return Err(e.into()),
             };
         }
@@ -122,7 +125,9 @@ impl Jobs {
         }
     }
 
-    pub fn run<T, F>(&mut self, task: T) -> JobRecord
+    /// Start a job, returning ownership of its JobRecord so you can
+    /// interact with it directly.
+    pub fn start<T, F>(&mut self, task: T) -> JobRecord
     where
         T: Send + 'static + FnOnce(JobContext) -> F,
         F: Future<Output = io::Result<()>> + Send + 'static,
@@ -152,21 +157,17 @@ impl Jobs {
         }
     }
 
+    /// Start a job in the background, returning its Id
     #[allow(unused)]
     pub fn spawn<T, F>(&mut self, task: T) -> Id
     where
         T: Send + 'static + FnOnce(JobContext) -> F,
         F: Future<Output = io::Result<()>> + Send + 'static,
     {
-        let job = self.run(task);
+        let job = self.start(task);
         let id = job.id;
         self.jobs.insert(id, job);
 
         return id;
-    }
-
-    /// Used by Process when a Job completes
-    fn clear(&mut self, id: Id) {
-        self.jobs.remove(&id);
     }
 }

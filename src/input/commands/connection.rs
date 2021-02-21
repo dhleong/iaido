@@ -61,7 +61,7 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     let connections = context.state_mut().connections.as_mut().unwrap();
     let factory = connections.factories.clone();
     let id = connections.next_id();
-    let job = context.state_mut().jobs.run(move |ctx| async move {
+    let job = context.state_mut().jobs.start(move |ctx| async move {
         let connection = Mutex::new(factory.create(id, uri)?);
 
         ctx.run(move |state| {

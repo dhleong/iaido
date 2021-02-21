@@ -19,7 +19,7 @@ pub enum MainThreadAction {
     Echo(String),
 
     JobComplete(Id),
-    Err(io::Error),
+    Err(Id),
 }
 
 pub struct JobContext {
@@ -50,15 +50,22 @@ impl JobContext {
 #[must_use = "If not using with join_interruptably, prefer spawn()"]
 pub struct JobRecord {
     pub id: Id,
-    await_channel: mpsc::Receiver<()>,
+    await_channel: mpsc::Receiver<Option<io::Error>>,
     handle: JoinHandle<()>,
 }
 
 impl JobRecord {
+    /// Wait for this Job to finish, returning a KeyResult representing
+    /// the result of the Job. This fn acts like it's blocking input,
+    /// but still allows the UI to redraw and also accepts <ctrl-c> input
+    /// from the user, which triggers a cancellation of this Job, returning
+    /// [`KeyError:Interrupted`] to the caller.
     pub fn join_interruptably<K: KeySource>(&self, keys: &mut K) -> KeyResult {
         loop {
-            if let Ok(_) = self.await_channel.recv_timeout(Duration::from_millis(10)) {
-                return Ok(());
+            match self.await_channel.recv_timeout(Duration::from_millis(10)) {
+                Ok(None) => return Ok(()),
+                Ok(Some(e)) => return Err(e.into()),
+                Err(_) => {} // timeout
             }
 
             if keys.poll_key(Duration::from_millis(10))? {
@@ -105,7 +112,19 @@ impl Jobs {
                 Some(MainThreadAction::JobComplete(id)) => {
                     state.jobs.jobs.remove(&id);
                 }
-                Some(MainThreadAction::Err(e)) => return Err(e.into()),
+                Some(MainThreadAction::Err(id)) => {
+                    match state.jobs.jobs.get_mut(&id) {
+                        Some(job) => {
+                            match job.await_channel.recv() {
+                                Err(_) => {} // already handled
+                                Ok(None) => panic!("Expected an error from job, but got success"),
+                                Ok(Some(e)) => return Err(e.into()),
+                            };
+                        }
+
+                        _ => {} // job 404; ignore (already handled)
+                    };
+                }
             };
         }
 
@@ -137,12 +156,15 @@ impl Jobs {
         let handle = tokio::spawn(async move {
             match task(context).await {
                 Err(e) => {
-                    let _ = to_main.send(MainThreadAction::Err(e));
+                    let _ = to_main.send(MainThreadAction::Err(id));
+                    let _ = to_job.send(Some(e));
                 }
-                _ => {} // success!
+                _ => {
+                    // success!
+                    let _ = to_job.send(None);
+                }
             };
             let _ = to_main.send(MainThreadAction::JobComplete(id));
-            let _ = to_job.send(());
         });
         JobRecord {
             id,

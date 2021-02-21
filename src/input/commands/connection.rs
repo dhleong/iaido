@@ -61,14 +61,24 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     context.state_mut().connections = Some(connections);
 
     match job.join_interruptably(context) {
-        Err(KeyError::Interrupted) => {
-            if let Some(mut win) = context.state_mut().winsbuf_by_id(buffer_id) {
-                win.append_line("Canceled.".into());
-            }
-            Ok(())
-        }
-        Err(e) => Err(e),
         Ok(_) => Ok(()),
+
+        // write the error to the buffer, if possible
+        Err(e) => {
+            if let Some(mut win) = context.state_mut().winsbuf_by_id(buffer_id) {
+                match e {
+                    KeyError::Interrupted => {
+                        win.append_line("Canceled.".into());
+                    }
+                    e => {
+                        win.append_line(format!("Error: {:?}.", e).into());
+                    }
+                }
+                Ok(())
+            } else {
+                Err(e)
+            }
+        }
     }
 }
 

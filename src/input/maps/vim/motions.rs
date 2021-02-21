@@ -1,3 +1,4 @@
+use crate::input::maps::vim::VimKeymapState;
 use crate::input::KeymapContext;
 use crate::vim_tree;
 use crate::{

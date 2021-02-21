@@ -1,6 +1,6 @@
-use super::layout::Layout;
 use super::window::Window;
 use super::{buffers::Buffers, ids::Ids};
+use super::{layout::Layout, FocusDirection};
 use super::{Id, Resizable, Size};
 
 pub struct Tabpage {
@@ -62,6 +62,15 @@ impl Tabpage {
         self.current = id;
 
         id
+    }
+
+    pub fn move_focus(&mut self, direction: FocusDirection) {
+        let prev = self.current;
+        if let Some(next) = self.layout.next_focus(prev, direction) {
+            self.current = next;
+            self.layout.by_id_mut(prev).unwrap().focused = false;
+            self.layout.by_id_mut(next).unwrap().focused = true;
+        }
     }
 }
 

@@ -1,10 +1,19 @@
 use genawaiter::{sync::gen, yield_};
 
-use super::{window::Window, Id, Resizable, Size};
+use super::{window::Window, FocusDirection, Id, Resizable, Size};
 
 pub enum LayoutEntry {
     Window(Box<Window>),
     Layout(Box<Layout>),
+}
+
+impl LayoutEntry {
+    fn contains_window(&self, win_id: Id) -> bool {
+        match self {
+            &LayoutEntry::Window(ref win) => win.id == win_id,
+            &LayoutEntry::Layout(ref lyt) => lyt.by_id(win_id).is_some(),
+        }
+    }
 }
 
 pub enum LayoutDirection {
@@ -96,6 +105,63 @@ impl Layout {
         )
     }
 
+    pub fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id> {
+        if let Some(index) = self
+            .entries
+            .iter()
+            .position(|entry| entry.contains_window(current_id))
+        {
+            if let LayoutEntry::Layout(ref lyt) = self.entries.get(index).unwrap() {
+                if let Some(next) = lyt.next_focus(current_id, direction) {
+                    return Some(next);
+                }
+            }
+
+            let mut next_index = index;
+            loop {
+                next_index = match direction {
+                    FocusDirection::Up | FocusDirection::Left => {
+                        if next_index == 0 {
+                            return None;
+                        }
+
+                        next_index - 1
+                    }
+                    FocusDirection::Down | FocusDirection::Right => {
+                        if next_index == self.entries.len() - 1 {
+                            return None;
+                        }
+
+                        next_index + 1
+                    }
+                };
+
+                if let Some(id) = match self.entries.get(next_index).unwrap() {
+                    &LayoutEntry::Layout(ref lyt) => lyt.first_focus(direction),
+                    &LayoutEntry::Window(ref win) => Some(win.id),
+                } {
+                    return Some(id);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn first_focus(&self, direction: FocusDirection) -> Option<Id> {
+        if let Some(entry) = match direction {
+            FocusDirection::Up | FocusDirection::Left => self.entries.last(),
+            FocusDirection::Right | FocusDirection::Down => self.entries.first(),
+        } {
+            match entry {
+                &LayoutEntry::Layout(ref lyt) => lyt.first_focus(direction),
+                &LayoutEntry::Window(ref win) => Some(win.id),
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn split(&mut self, win: Box<Window>) {
         self.entries.push(LayoutEntry::Window(win));
         self.resize(self.size())
@@ -148,6 +214,46 @@ impl Resizable for Layout {
                 LayoutEntry::Window(win) => win.resize(available),
                 LayoutEntry::Layout(lyt) => lyt.resize(available),
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(test)]
+    mod move_focus {
+        use super::*;
+
+        #[test]
+        fn up_in_vertical() {
+            let mut layout = Layout::vertical();
+            layout.split(Box::new(Window::new(0, 0)));
+            layout.split(Box::new(Window::new(1, 1)));
+            layout.split(Box::new(Window::new(2, 2)));
+            assert_eq!(Some(1), layout.next_focus(2, FocusDirection::Up));
+            assert_eq!(Some(0), layout.next_focus(1, FocusDirection::Up));
+            assert_eq!(None, layout.next_focus(0, FocusDirection::Up));
+        }
+
+        #[test]
+        fn up_past_nested() {
+            let mut layout = Layout::vertical();
+            let mut a = Layout::horizontal();
+            a.split(Box::new(Window::new(0, 0)));
+            let mut b = Layout::horizontal();
+            b.split(Box::new(Window::new(1, 1)));
+            let mut c = Layout::horizontal();
+            c.split(Box::new(Window::new(2, 2)));
+
+            layout.entries.push(LayoutEntry::Layout(Box::new(a)));
+            layout.entries.push(LayoutEntry::Layout(Box::new(b)));
+            layout.entries.push(LayoutEntry::Layout(Box::new(c)));
+
+            assert_eq!(Some(1), layout.next_focus(2, FocusDirection::Up));
+            assert_eq!(Some(0), layout.next_focus(1, FocusDirection::Up));
+            assert_eq!(None, layout.next_focus(0, FocusDirection::Up));
         }
     }
 }

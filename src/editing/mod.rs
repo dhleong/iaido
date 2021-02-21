@@ -77,3 +77,11 @@ pub trait HasId {
 pub trait Resizable {
     fn resize(&mut self, new_size: Size);
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FocusDirection {
+    Up,
+    Right,
+    Left,
+    Down,
+}

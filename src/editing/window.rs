@@ -26,11 +26,15 @@ pub struct Window {
 
 impl Window {
     pub fn new(id: Id, buffer_id: Id) -> Self {
+        Window::with_focused(id, buffer_id, true)
+    }
+
+    pub fn with_focused(id: Id, buffer_id: Id, focused: bool) -> Self {
         Self {
             id,
             buffer: buffer_id,
             size: Size { w: 0, h: 0 },
-            focused: true,
+            focused,
             inserting: false,
             cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,

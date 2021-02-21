@@ -175,7 +175,10 @@ impl Keymap for VimKeymap {
 macro_rules! vim_branches {
     // base case:
     ($root:ident ->) => {
-        use crate::input::maps::vim::VimKeymapState;
+        // NOTE: including these here is convenient, but
+        // breaks completion; best to just copy these imports:
+        // use crate::input::maps::vim::VimKeymapState;
+        // use crate::input::KeymapContext;
     };
 
     // normal keymap:

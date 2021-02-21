@@ -1,3 +1,5 @@
+mod window;
+
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::vim_tree;
 use crate::{
@@ -76,6 +78,7 @@ pub fn vim_normal_mode() -> VimMode {
         },
 
     } + cmd_mode_access()
+        + window::mappings()
         + vim_standard_motions()
         + vim_linewise_motions();
 

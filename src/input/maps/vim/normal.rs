@@ -1,12 +1,12 @@
 mod window;
 
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
-use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::Motion,
 };
+use crate::{key_handler, vim_tree};
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
@@ -62,8 +62,26 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         },
 
+        "c" => operator |ctx, motion| {
+            ctx.state_mut().current_buffer_mut().delete_range(motion);
+            ctx.state_mut().current_window_mut().cursor = motion.0;
+            ctx.state_mut().current_window_mut().set_inserting(true);
+            Ok(())
+        },
+        "C" => |ctx| {
+            let range = ToLineEndMotion.range(ctx.state());
+            ctx.state_mut().current_buffer_mut().delete_range(range);
+            ctx.state_mut().current_window_mut().set_inserting(true);
+            Ok(())
+        },
+
         "d" => operator |ctx, motion| {
             ctx.state_mut().current_buffer_mut().delete_range(motion);
+            Ok(())
+        },
+        "D" => |ctx| {
+            let range = ToLineEndMotion.range(ctx.state());
+            ctx.state_mut().current_buffer_mut().delete_range(range);
             Ok(())
         },
 
@@ -82,5 +100,10 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_standard_motions()
         + vim_linewise_motions();
 
-    VimMode::new("n", mappings)
+    VimMode::new("n", mappings).on_default(key_handler!(
+        VimKeymapState | ?mut ctx | {
+            ctx.keymap.reset();
+            Ok(())
+        }
+    ))
 }

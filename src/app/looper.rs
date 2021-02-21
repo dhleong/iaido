@@ -17,6 +17,7 @@ struct AppKeySource<U: UI, UE: UiEvents> {
 
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
+        self.app.render();
         match self.events.poll_event(duration) {
             Ok(Some(UiEvent::Key(_))) => Ok(true),
             Ok(_) => Ok(false),

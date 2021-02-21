@@ -1,10 +1,10 @@
-use std::{collections::HashMap, future::Future, io};
+use std::{collections::HashMap, future::Future, io, time::Duration};
 
 use std::sync::mpsc;
 
 use tokio::task::JoinHandle;
 
-use crate::{app, editing::{Id, ids::Ids}};
+use crate::{app, editing::{Id, ids::Ids}, input::{Key, KeyError, KeySource, maps::KeyResult}};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -30,6 +30,7 @@ impl JobContext {
         self.send(MainThreadAction::OnState(Box::new(on_state)))
     }
 
+    #[allow(unused)]
     pub fn echo(&self, message: String) -> io::Result<()> {
         self.send(MainThreadAction::Echo(message))
     }
@@ -42,9 +43,30 @@ impl JobContext {
     }
 }
 
-struct JobRecord {
+pub struct JobRecord {
     pub id: Id,
+    await_channel: mpsc::Receiver<()>,
     handle: JoinHandle<()>,
+}
+
+impl JobRecord {
+    pub fn join_interruptably<K: KeySource>(&self, keys: &mut K) -> KeyResult {
+        loop {
+            if let Ok(_) = self.await_channel.recv_timeout(Duration::from_millis(10)) {
+                return Ok(());
+            }
+
+            if keys.poll_key(Duration::from_millis(10))? {
+                match keys.next_key()? {
+                    Some(key) if key == Key::from("c-c") => {
+                        self.handle.abort();
+                        return Err(KeyError::Interrupted);
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 pub struct Jobs {
@@ -96,7 +118,7 @@ impl Jobs {
         }
     }
 
-    pub fn spawn<T, F>(&mut self, task: T) -> Id
+    pub fn run<T, F>(&mut self, task: T) -> JobRecord
     where
         T: Send + 'static + FnOnce(JobContext) -> F,
         F: Future<Output = io::Result<()>> + Send + 'static
@@ -104,6 +126,8 @@ impl Jobs {
         let id = self.ids.next();
         let to_main = self.to_main.clone();
         let context = JobContext { to_main: to_main.clone() };
+
+        let (to_job, await_channel) = mpsc::channel();
 
         let handle = tokio::spawn(async move {
             match task(context).await {
@@ -113,12 +137,24 @@ impl Jobs {
                 _ => {} // success!
             };
             let _ = to_main.send(MainThreadAction::JobComplete(id));
+            let _ = to_job.send(());
         });
-
-        self.jobs.insert(id, JobRecord {
+JobRecord {
             id,
             handle,
-        });
+            await_channel,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn spawn<T, F>(&mut self, task: T) -> Id
+    where
+        T: Send + 'static + FnOnce(JobContext) -> F,
+        F: Future<Output = io::Result<()>> + Send + 'static
+    {
+        let job = self.run(task);
+        let id = job.id;
+        self.jobs.insert(id, job);
 
         return id;
     }

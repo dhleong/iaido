@@ -5,7 +5,7 @@ use url::Url;
 use crate::{
     declare_commands,
     editing::source::BufferSource,
-    input::{maps::KeyResult, KeymapContext},
+    input::{maps::KeyResult, KeyError, KeymapContext},
 };
 
 use super::CommandHandlerContext;
@@ -65,18 +65,25 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
             .unwrap();
     let factory = connections.factories.clone();
     let id = connections.next_id();
-    context.state_mut().jobs.spawn(move |ctx| async move {
-        ctx.echo("Connecting...".into())?;
+    let job = context.state_mut().jobs.run(move |ctx| async move {
         let connection = Mutex::new(factory.create(id, uri)?);
 
         ctx.run(move |state| {
             state.connections.as_mut().unwrap().add(buffer_id, connection.into_inner().unwrap());
-            state.echo("Connected!".into());
             Ok(())
         })
     });
 
-    Ok(())
+    match job.join_interruptably(context) {
+        Err(KeyError::Interrupted) => {
+            if let Some(mut win) = context.state_mut().winsbuf_by_id(buffer_id) {
+                win.append_line("Canceled.".into());
+            }
+            Ok(())
+        }
+        Err(e) => Err(e),
+        Ok(_) => Ok(())
+    }
 }
 
 fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {

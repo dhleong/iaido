@@ -1,3 +1,4 @@
+pub mod colors;
 pub mod connection;
 pub mod core;
 pub mod file;
@@ -6,7 +7,7 @@ pub mod registry;
 use std::time::Duration;
 
 use self::{
-    connection::declare_connection, core::declare_core, file::declare_file,
+    colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
     registry::CommandRegistry,
 };
 
@@ -71,6 +72,7 @@ impl KeySource for CommandHandlerContext<'_> {
 
 pub fn create_builtin_commands() -> CommandRegistry {
     let mut registry = CommandRegistry::default();
+    declare_colors(&mut registry);
     declare_connection(&mut registry);
     declare_file(&mut registry);
 

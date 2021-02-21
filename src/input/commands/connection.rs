@@ -58,18 +58,18 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .current_winsbuf()
         .append_line(format!("Connecting to {}...", uri));
 
-    let connections =  context
-            .state_mut()
-            .connections
-            .as_mut()
-            .unwrap();
+    let connections = context.state_mut().connections.as_mut().unwrap();
     let factory = connections.factories.clone();
     let id = connections.next_id();
     let job = context.state_mut().jobs.run(move |ctx| async move {
         let connection = Mutex::new(factory.create(id, uri)?);
 
         ctx.run(move |state| {
-            state.connections.as_mut().unwrap().add(buffer_id, connection.into_inner().unwrap());
+            state
+                .connections
+                .as_mut()
+                .unwrap()
+                .add(buffer_id, connection.into_inner().unwrap());
             Ok(())
         })
     });
@@ -82,7 +82,7 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
             Ok(())
         }
         Err(e) => Err(e),
-        Ok(_) => Ok(())
+        Ok(_) => Ok(()),
     }
 }
 

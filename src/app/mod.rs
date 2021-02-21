@@ -3,6 +3,7 @@ pub mod jobs;
 pub mod looper;
 pub mod prompt;
 pub mod state;
+pub mod widgets;
 pub mod winsbuf;
 
 use crate::ui::UI;

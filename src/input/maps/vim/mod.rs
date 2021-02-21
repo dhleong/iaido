@@ -10,6 +10,7 @@ use normal::vim_normal_mode;
 use tree::KeyTreeNode;
 
 use crate::{
+    app::widgets::Widget,
     editing::motion::MotionRange,
     input::{Key, KeyError, Keymap, KeymapContext},
 };
@@ -63,6 +64,7 @@ pub struct VimKeymapState {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
+    keys_buffer: Vec<Key>,
 }
 
 impl Default for VimKeymapState {
@@ -71,6 +73,7 @@ impl Default for VimKeymapState {
             pending_linewise_operator_key: None,
             operator_fn: None,
             mode_stack: VimModeStack::default(),
+            keys_buffer: Vec::default(),
         }
     }
 }
@@ -83,6 +86,7 @@ impl VimKeymapState {
     fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
+        self.keys_buffer.clear();
     }
 }
 
@@ -90,6 +94,16 @@ impl VimKeymapState {
 
 pub struct VimKeymap {
     keymap: VimKeymapState,
+}
+
+impl VimKeymap {
+    fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
+        context.state_mut().keymap_widget = Some(Widget::Spread(vec![
+            Widget::Space,
+            Widget::Space,
+            Widget::Literal(render_keys_buffer(&self.keymap.keys_buffer).into()),
+        ]));
+    }
 }
 
 impl Default for VimKeymap {
@@ -102,13 +116,21 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
-        let (mode, mode_from_stack) = if let Some(mode) = self.keymap.mode_stack.take_top() {
-            (mode, true)
-        } else if context.state().current_window().inserting {
-            (vim_insert_mode(), false)
-        } else {
-            (vim_normal_mode(), false)
-        };
+        let (mode, mode_from_stack, show_keys) =
+            if let Some(mode) = self.keymap.mode_stack.take_top() {
+                context.state_mut().keymap_widget = None;
+                (mode, true, false)
+            } else if context.state().current_window().inserting {
+                context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
+                (vim_insert_mode(), false, false)
+            } else {
+                self.render_keys_buffer(context);
+                (vim_normal_mode(), false, true)
+            };
+
+        if !show_keys && !self.keymap.keys_buffer.is_empty() {
+            self.keymap.keys_buffer.clear();
+        }
 
         let mut current = &mode.mappings;
         let mut at_root = true;
@@ -116,8 +138,9 @@ impl Keymap for VimKeymap {
 
         loop {
             if let Some(key) = context.next_key()? {
-                // useful for testing:
-                // context.state_mut().echo(format!("{:?}", key).into());
+                if show_keys {
+                    self.keymap.keys_buffer.push(key.clone());
+                }
 
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
@@ -132,6 +155,10 @@ impl Keymap for VimKeymap {
                         // deeper into the tree
                         current = next;
                         at_root = false;
+
+                        if show_keys {
+                            self.render_keys_buffer(context);
+                        }
                     }
                 } else if at_root {
                     // use the default mapping, if any
@@ -167,6 +194,14 @@ impl Keymap for VimKeymap {
 
         result
     }
+}
+
+fn render_keys_buffer(keys: &Vec<Key>) -> String {
+    let mut s = String::default();
+    for k in keys {
+        k.write_str(&mut s);
+    }
+    return s;
 }
 
 // ======= Tree-building macros ===========================

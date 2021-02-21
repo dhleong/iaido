@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, winsbuf::WinsBuf};
+use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, widgets::Widget, winsbuf::WinsBuf};
 
 pub struct AppState {
     pub running: bool,
@@ -26,6 +26,8 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
+
+    pub keymap_widget: Option<Widget>,
 
     // Connections should generally be available, but is an
     // Option so callers may temporarily take ownership of it
@@ -176,6 +178,7 @@ impl Default for AppState {
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
+            keymap_widget: None,
             connections: Some(Connections::default()),
             jobs: Jobs::new(),
         };

@@ -17,6 +17,31 @@ impl Key {
     pub fn new(code: KeyCode, modifiers: KeyModifiers) -> Self {
         Self { code, modifiers }
     }
+
+    pub fn write_str(&self, dest: &mut String) {
+        let opened = if self.modifiers != KeyModifiers::NONE {
+            dest.push('<');
+            true
+        } else {
+            false
+        };
+
+        if self.modifiers.contains(KeyModifiers::CONTROL) {
+            dest.push_str("c-");
+        }
+        if self.modifiers.contains(KeyModifiers::ALT) {
+            dest.push_str("m-");
+        }
+
+        match self.code {
+            KeyCode::Char(ch) => dest.push(ch),
+            code => dest.push_str(format!("{:?}", code).as_str()),
+        };
+
+        if opened {
+            dest.push('>');
+        }
+    }
 }
 
 impl From<KeyCode> for Key {

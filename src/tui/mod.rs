@@ -1,4 +1,5 @@
 use crate::{
+    app::widgets::Widget,
     editing::{self, Resizable, Size},
     ui::UI,
 };
@@ -74,6 +75,20 @@ impl Tui {
         // prompt
         self.render_prompt(app, &mut display);
 
+        // render any active keymap widget
+        if let Some(w) = &app.keymap_widget {
+            self.render_widget(
+                w,
+                Rect {
+                    x: 0,
+                    y: display.buffer.area.height - 1,
+                    width: display.buffer.area.width,
+                    height: 1,
+                },
+                &mut display,
+            );
+        }
+
         self.render_display(display)
     }
 
@@ -103,6 +118,30 @@ impl Tui {
             h: echo_height,
         });
         win.render(&mut context);
+    }
+
+    fn render_widget(&mut self, widget: &Widget, area: Rect, display: &mut Display) {
+        match widget {
+            &Widget::Space => {}
+            &Widget::Spread(ref children) => {
+                if !children.is_empty() {
+                    let each_width = area.width / (children.len() as u16);
+                    let mut child_area = Rect {
+                        x: 0,
+                        width: each_width,
+                        ..area
+                    };
+                    for child in children {
+                        self.render_widget(child, child_area, display);
+                        child_area.x += each_width;
+                    }
+                }
+            }
+
+            &Widget::Literal(ref text) => {
+                display.buffer.set_spans(area.x, area.y, text, area.width);
+            }
+        }
     }
 
     fn render_prompt(&mut self, app: &mut crate::app::State, display: &mut Display) {

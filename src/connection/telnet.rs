@@ -15,6 +15,11 @@ pub struct TelnetConnection {
     pipeline: AnsiPipeline,
 }
 
+/// NOTE: this `unsafe` is probably a terrible idea, but *should* be
+/// fine. We use this *only once* to move the Connection's thread after a
+/// successful connection and before any reads or writes. The Telnet
+/// lib does not appear to use any thread local state, and TcpStream
+/// has try_clone so... *should be* fine.
 unsafe impl Send for TelnetConnection {}
 
 impl Connection for TelnetConnection {

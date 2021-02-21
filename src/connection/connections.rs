@@ -22,7 +22,7 @@ pub struct Connections {
     // be associated with ONLY ONE Buffer above (IE: the buffer it
     // writes to)
     buffer_to_connection: HashMap<Id, Id>,
-    pub factories: ConnectionFactories,
+    factories: ConnectionFactories,
 }
 
 impl Default for Connections {

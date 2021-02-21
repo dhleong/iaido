@@ -92,9 +92,11 @@ impl Jobs {
         }
     }
 
+    /// Process messages from Jobs meant to be handled on the main thread.
+    /// This should probably be called in looper.
     pub fn process(state: &mut app::State) -> io::Result<()> {
         for _ in 0..MAX_TASKS_PER_TICK {
-            match state.jobs.process_once()? {
+            match state.jobs.next_action()? {
                 None => return Ok(()),
 
                 Some(MainThreadAction::OnState(closure)) => closure(state)?,
@@ -115,14 +117,6 @@ impl Jobs {
             record.handle.abort();
         }
         self.jobs.clear();
-    }
-
-    pub fn process_once(&mut self) -> io::Result<Option<MainThreadAction>> {
-        match self.from_job.try_recv() {
-            Ok(action) => Ok(Some(action)),
-            Err(mpsc::TryRecvError::Empty) => Ok(None),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
-        }
     }
 
     /// Start a job, returning ownership of its JobRecord so you can
@@ -169,5 +163,13 @@ impl Jobs {
         self.jobs.insert(id, job);
 
         return id;
+    }
+
+    fn next_action(&mut self) -> io::Result<Option<MainThreadAction>> {
+        match self.from_job.try_recv() {
+            Ok(action) => Ok(Some(action)),
+            Err(mpsc::TryRecvError::Empty) => Ok(None),
+            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+        }
     }
 }

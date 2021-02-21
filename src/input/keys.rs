@@ -39,6 +39,12 @@ fn parse_key(s: &str) -> Result<Key, KeyParseError> {
         return Ok(s.chars().next().unwrap().into());
     }
 
+    let s = if s.starts_with("<") && s.ends_with(">") {
+        &s[1..s.len() - 1]
+    } else {
+        s
+    };
+
     let mut modifiers = KeyModifiers::empty();
     let mut code = KeyCode::Char('\0');
 

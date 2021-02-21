@@ -58,7 +58,7 @@ impl JobRecord {
 
             if keys.poll_key(Duration::from_millis(10))? {
                 match keys.next_key()? {
-                    Some(key) if key == Key::from("c-c") => {
+                    Some(key) if key == Key::from("<c-c>") => {
                         self.handle.abort();
                         return Err(KeyError::Interrupted);
                     },

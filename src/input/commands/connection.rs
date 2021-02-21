@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use url::Url;
 
 use crate::{
@@ -56,16 +58,22 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .current_winsbuf()
         .append_line(format!("Connecting to {}...", uri));
 
-    let connections = context
+    let connections =  context
             .state_mut()
             .connections
             .as_mut()
-            .unwrap().factories.clone();
+            .unwrap();
+    let factory = connections.factories.clone();
+    let id = connections.next_id();
     context.state_mut().jobs.spawn(move |ctx| async move {
         ctx.echo("Connecting...".into())?;
-        connections.create(buffer_id, uri)?;
-        ctx.echo("Connected".into())?;
-        Ok(())
+        let connection = Mutex::new(factory.create(id, uri)?);
+
+        ctx.run(move |state| {
+            state.connections.as_mut().unwrap().add(buffer_id, connection.into_inner().unwrap());
+            state.echo("Connected!".into());
+            Ok(())
+        })
     });
 
     Ok(())

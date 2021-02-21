@@ -16,7 +16,7 @@ pub enum ReadValue {
     Text(TextLine),
 }
 
-pub trait Connection {
+pub trait Connection: Send {
     fn id(&self) -> Id;
     fn read(&mut self) -> io::Result<Option<ReadValue>>;
 }

@@ -53,6 +53,16 @@ impl Connections {
         Ok(id)
     }
 
+    pub fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
+        self.connection_to_buffer.insert(connection.id(), buffer_id);
+        self.buffer_to_connection.insert(buffer_id, connection.id());
+        self.all.push(connection);
+    }
+
+    pub fn next_id(&mut self) -> Id {
+        self.ids.next()
+    }
+
     /// Returns the associated buffer ID
     pub fn disconnect(&mut self, connection_id: Id) -> io::Result<Id> {
         if let Some(index) = self.all.iter().position(|conn| conn.id() == connection_id) {

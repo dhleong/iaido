@@ -7,12 +7,11 @@ mod ui;
 
 use app::looper::app_loop;
 use input::maps::vim::VimKeymap;
-use std::io;
+use std::{io, time::Duration};
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
 
-#[tokio::main]
-async fn main() -> Result<(), io::Error> {
+fn main() -> Result<(), io::Error> {
     let ui = tui::create_ui()?;
     let state = app::State::default();
     let mut app = app::App::new(state, ui);
@@ -47,7 +46,14 @@ async fn main() -> Result<(), io::Error> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    rt.block_on(async {
+        app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
+    });
+
+    // make sure any hanging jobs get killed
+    rt.shutdown_timeout(Duration::from_millis(50));
 
     Ok(())
 }

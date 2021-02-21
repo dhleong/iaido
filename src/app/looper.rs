@@ -8,7 +8,7 @@ use crate::{
     input::KeymapContext,
 };
 
-use super::jobs::MainThreadAction;
+use super::jobs::Jobs;
 
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
@@ -39,12 +39,7 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 }
 
                 // process messages from jobs
-                if let Some(action) = self.app.state.jobs.process()? {
-                    match action {
-                        MainThreadAction::Echo(msg) => self.app.state.echo(msg.into()),
-                        MainThreadAction::Err(e) => return Err(e.into()),
-                    };
-                }
+                Jobs::process(&mut self.app.state)?;
 
                 // finally, check for input:
                 match self.events.poll_event(Duration::from_millis(10))? {
@@ -95,4 +90,7 @@ where
             break;
         }
     }
+
+    // kill any still-running jobs when the user wants to quit:
+    app_keys.state_mut().jobs.cancel_all();
 }

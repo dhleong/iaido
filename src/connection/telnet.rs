@@ -15,6 +15,8 @@ pub struct TelnetConnection {
     pipeline: AnsiPipeline,
 }
 
+unsafe impl Send for TelnetConnection {}
+
 impl Connection for TelnetConnection {
     fn id(&self) -> Id {
         self.id

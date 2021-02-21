@@ -115,6 +115,33 @@ impl Motion for UpLineMotion {
     }
 }
 
+pub struct ToFirstLineMotion;
+impl Motion for ToFirstLineMotion {
+    fn is_linewise(&self) -> bool {
+        true
+    }
+
+    fn destination<T: super::MotionContext>(&self, _: &T) -> CursorPosition {
+        CursorPosition { line: 0, col: 0 }
+    }
+}
+
+pub struct ToLastLineMotion;
+impl Motion for ToLastLineMotion {
+    fn is_linewise(&self) -> bool {
+        true
+    }
+
+    fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
+        let buffer = context.buffer();
+
+        CursorPosition {
+            line: buffer.lines_count().checked_sub(1).unwrap_or(0),
+            col: 0,
+        }
+    }
+}
+
 pub struct LineCrossing<T: Motion> {
     base: T,
 }

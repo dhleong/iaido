@@ -120,21 +120,24 @@ impl Layout {
 
             let mut next_index = index;
             loop {
-                next_index = match direction {
-                    FocusDirection::Up | FocusDirection::Left => {
+                next_index = match (self.direction, direction) {
+                    (LayoutDirection::Vertical, FocusDirection::Up)
+                    | (LayoutDirection::Horizontal, FocusDirection::Left) => {
                         if next_index == 0 {
                             return None;
                         }
 
                         next_index - 1
                     }
-                    FocusDirection::Down | FocusDirection::Right => {
+                    (LayoutDirection::Vertical, FocusDirection::Down)
+                    | (LayoutDirection::Horizontal, FocusDirection::Right) => {
                         if next_index == self.entries.len() - 1 {
                             return None;
                         }
 
                         next_index + 1
                     }
+                    _ => return None,
                 };
 
                 if let Some(id) = match self.entries.get(next_index).unwrap() {
@@ -325,6 +328,32 @@ mod tests {
             assert_eq!(Some(1), layout.next_focus(2, FocusDirection::Up));
             assert_eq!(Some(0), layout.next_focus(1, FocusDirection::Up));
             assert_eq!(None, layout.next_focus(0, FocusDirection::Up));
+        }
+
+        #[test]
+        fn up_from_horizontal() {
+            //    0
+            // -------
+            //  1 | 2
+            let mut container = Layout::vertical();
+            let mut bottom = Layout::horizontal();
+            bottom
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(1, 1))));
+            bottom
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(2, 2))));
+
+            container
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(0, 0))));
+            container
+                .entries
+                .push(LayoutEntry::Layout(Box::new(bottom)));
+
+            assert_eq!(Some(0), container.next_focus(2, FocusDirection::Up));
+            assert_eq!(Some(0), container.next_focus(1, FocusDirection::Up));
+            assert_eq!(None, container.next_focus(0, FocusDirection::Up));
         }
     }
 }

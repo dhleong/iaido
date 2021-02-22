@@ -199,22 +199,23 @@ impl Layout {
             .iter()
             .position(|entry| entry.contains_window(current_id))
         {
-            match self.entries.remove(index) {
+            let replacement = match self.entries.swap_remove(index) {
                 LayoutEntry::Window(old_win) => {
                     new_layout.entries.push(LayoutEntry::Window(old_win));
                     new_layout.entries.push(LayoutEntry::Window(win));
-                    self.entries
-                        .insert(index, LayoutEntry::Layout(Box::new(new_layout)));
-                    return;
+                    LayoutEntry::Layout(Box::new(new_layout))
                 }
 
                 LayoutEntry::Layout(mut lyt) => {
                     // put it back:
                     lyt.vsplit(current_id, win);
-                    self.entries.insert(index, LayoutEntry::Layout(lyt));
-                    return;
+                    LayoutEntry::Layout(lyt)
                 }
-            }
+            };
+
+            let last = self.entries.len() - 1;
+            self.entries.push(replacement);
+            self.entries.swap(index, last);
         }
     }
 

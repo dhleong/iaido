@@ -84,12 +84,31 @@ mod tests {
             Take my love
         "});
         tabpage.tab.hsplit();
-        tabpage.size = Size { w: 12, h: 3 };
+        tabpage.tab.hsplit();
+        tabpage.size = Size { w: 12, h: 5 };
 
         tabpage.render().assert_visual_equals(indoc! {"
             Take my love
             ────────────
             Take my love
+            ────────────
+            Take my love
+        "});
+    }
+
+    #[test]
+    fn horizontal_test() {
+        let mut tabpage = tabpage(indoc! {"
+            Take my love
+        "});
+        tabpage.tab.vsplit();
+        tabpage.tab.vsplit();
+        tabpage.size = Size { w: 14, h: 3 };
+
+        tabpage.render().assert_visual_equals(indoc! {"
+            Take│Take│Take
+            my  │my  │my  
+            love│love│love
         "});
     }
 }

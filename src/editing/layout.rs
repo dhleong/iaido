@@ -207,15 +207,19 @@ impl Layout {
                 }
 
                 LayoutEntry::Layout(mut lyt) => {
-                    // put it back:
-                    lyt.vsplit(current_id, win);
+                    match direction {
+                        LayoutDirection::Horizontal => lyt.vsplit(current_id, win),
+                        LayoutDirection::Vertical => lyt.hsplit(current_id, win),
+                    }
                     LayoutEntry::Layout(lyt)
                 }
             };
 
-            let last = self.entries.len() - 1;
             self.entries.push(replacement);
-            self.entries.swap(index, last);
+            if self.entries.len() > 1 {
+                let last = self.entries.len() - 1;
+                self.entries.swap(index, last);
+            }
         }
     }
 
@@ -258,9 +262,15 @@ impl Resizable for Layout {
         for (i, entry) in &mut self.entries.iter_mut().enumerate() {
             // TODO can/should we try to maintain current ratios?
             let my_extra = if i == 0 { extra } else { 0 };
-            let available = Size {
-                h: primary_split + my_extra,
-                w: self.cross_size,
+            let available = match self.direction {
+                LayoutDirection::Vertical => Size {
+                    h: primary_split + my_extra,
+                    w: self.cross_size,
+                },
+                LayoutDirection::Horizontal => Size {
+                    w: primary_split + my_extra,
+                    h: self.cross_size,
+                },
             };
             match entry {
                 LayoutEntry::Window(win) => win.resize(available),

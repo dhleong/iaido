@@ -163,39 +163,56 @@ impl Layout {
         }
     }
 
-    pub fn split(&mut self, win: Box<Window>) {
-        self.entries.push(LayoutEntry::Window(win));
-        self.resize(self.size())
+    pub fn hsplit(&mut self, current_id: Id, win: Box<Window>) {
+        self.split(
+            current_id,
+            win,
+            LayoutDirection::Vertical,
+            Layout::vertical(),
+        );
     }
 
     pub fn vsplit(&mut self, current_id: Id, win: Box<Window>) {
-        if self.direction == LayoutDirection::Horizontal {
-            self.split(win);
+        self.split(
+            current_id,
+            win,
+            LayoutDirection::Horizontal,
+            Layout::horizontal(),
+        );
+    }
+
+    fn split(
+        &mut self,
+        current_id: Id,
+        win: Box<Window>,
+        direction: LayoutDirection,
+        mut new_layout: Layout,
+    ) {
+        if self.direction == direction {
+            self.entries.push(LayoutEntry::Window(win));
+            self.resize(self.size());
             return;
         }
 
-        loop {
-            if let Some(index) = self
-                .entries
-                .iter()
-                .position(|entry| entry.contains_window(current_id))
-            {
-                match self.entries.remove(index) {
-                    LayoutEntry::Window(old_win) => {
-                        let mut new_layout = Layout::horizontal();
-                        new_layout.entries.push(LayoutEntry::Window(old_win));
-                        new_layout.entries.push(LayoutEntry::Window(win));
-                        self.entries.push(LayoutEntry::Layout(Box::new(new_layout)));
-                        self.entries.swap_remove(index);
-                        return;
-                    }
+        if let Some(index) = self
+            .entries
+            .iter()
+            .position(|entry| entry.contains_window(current_id))
+        {
+            match self.entries.remove(index) {
+                LayoutEntry::Window(old_win) => {
+                    new_layout.entries.push(LayoutEntry::Window(old_win));
+                    new_layout.entries.push(LayoutEntry::Window(win));
+                    self.entries
+                        .insert(index, LayoutEntry::Layout(Box::new(new_layout)));
+                    return;
+                }
 
-                    LayoutEntry::Layout(mut lyt) => {
-                        // put it back:
-                        lyt.vsplit(current_id, win);
-                        self.entries.insert(index, LayoutEntry::Layout(lyt));
-                        return;
-                    }
+                LayoutEntry::Layout(mut lyt) => {
+                    // put it back:
+                    lyt.vsplit(current_id, win);
+                    self.entries.insert(index, LayoutEntry::Layout(lyt));
+                    return;
                 }
             }
         }
@@ -263,9 +280,15 @@ mod tests {
         #[test]
         fn up_in_vertical() {
             let mut layout = Layout::vertical();
-            layout.split(Box::new(Window::new(0, 0)));
-            layout.split(Box::new(Window::new(1, 1)));
-            layout.split(Box::new(Window::new(2, 2)));
+            layout
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(0, 0))));
+            layout
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(1, 1))));
+            layout
+                .entries
+                .push(LayoutEntry::Window(Box::new(Window::new(2, 2))));
             assert_eq!(Some(1), layout.next_focus(2, FocusDirection::Up));
             assert_eq!(Some(0), layout.next_focus(1, FocusDirection::Up));
             assert_eq!(None, layout.next_focus(0, FocusDirection::Up));
@@ -275,11 +298,14 @@ mod tests {
         fn up_past_nested() {
             let mut layout = Layout::vertical();
             let mut a = Layout::horizontal();
-            a.split(Box::new(Window::new(0, 0)));
+            a.entries
+                .push(LayoutEntry::Window(Box::new(Window::new(0, 0))));
             let mut b = Layout::horizontal();
-            b.split(Box::new(Window::new(1, 1)));
+            b.entries
+                .push(LayoutEntry::Window(Box::new(Window::new(1, 1))));
             let mut c = Layout::horizontal();
-            c.split(Box::new(Window::new(2, 2)));
+            c.entries
+                .push(LayoutEntry::Window(Box::new(Window::new(2, 2))));
 
             layout.entries.push(LayoutEntry::Layout(Box::new(a)));
             layout.entries.push(LayoutEntry::Layout(Box::new(b)));

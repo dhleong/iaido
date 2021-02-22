@@ -1,6 +1,6 @@
-use super::window::Window;
 use super::{buffers::Buffers, ids::Ids};
 use super::{layout::Layout, FocusDirection};
+use super::{layout::LayoutEntry, window::Window};
 use super::{Id, Resizable, Size};
 
 pub struct Tabpage {
@@ -18,7 +18,8 @@ impl Tabpage {
         let mut ids = Ids::new();
         let window_id = ids.next();
         let initial = Window::new(window_id, buffers.create().id());
-        layout.split(Box::new(initial));
+        layout.entries.push(LayoutEntry::Window(Box::new(initial)));
+        layout.resize(layout.size());
 
         Self {
             id,
@@ -50,16 +51,16 @@ impl Tabpage {
     }
 
     pub fn hsplit(&mut self) -> Id {
-        // TODO this is not fully complete
         let id: Id = self.ids.next();
 
         let old = self.current_window_mut();
+        let old_id = old.id;
         old.set_focused(false);
 
         let buffer = old.buffer;
         let window = Window::new(id, buffer);
         let boxed = Box::new(window);
-        self.layout.split(boxed);
+        self.layout.hsplit(old_id, boxed);
         self.current = id;
 
         id

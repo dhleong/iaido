@@ -50,6 +50,7 @@ impl Tabpage {
     }
 
     pub fn hsplit(&mut self) -> Id {
+        // TODO this is not fully complete
         let id: Id = self.ids.next();
 
         let old = self.current_window_mut();
@@ -59,6 +60,22 @@ impl Tabpage {
         let window = Window::new(id, buffer);
         let boxed = Box::new(window);
         self.layout.split(boxed);
+        self.current = id;
+
+        id
+    }
+
+    pub fn vsplit(&mut self) -> Id {
+        let id: Id = self.ids.next();
+
+        let old = self.current_window_mut();
+        let old_id = old.id;
+        old.set_focused(false);
+
+        let buffer = old.buffer;
+        let window = Window::new(id, buffer);
+        let boxed = Box::new(window);
+        self.layout.vsplit(old_id, boxed);
         self.current = id;
 
         id

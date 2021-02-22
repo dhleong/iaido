@@ -16,6 +16,7 @@ impl LayoutEntry {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum LayoutDirection {
     Vertical,
     Horizontal,
@@ -165,6 +166,39 @@ impl Layout {
     pub fn split(&mut self, win: Box<Window>) {
         self.entries.push(LayoutEntry::Window(win));
         self.resize(self.size())
+    }
+
+    pub fn vsplit(&mut self, current_id: Id, win: Box<Window>) {
+        if self.direction == LayoutDirection::Horizontal {
+            self.split(win);
+            return;
+        }
+
+        loop {
+            if let Some(index) = self
+                .entries
+                .iter()
+                .position(|entry| entry.contains_window(current_id))
+            {
+                match self.entries.remove(index) {
+                    LayoutEntry::Window(old_win) => {
+                        let mut new_layout = Layout::horizontal();
+                        new_layout.entries.push(LayoutEntry::Window(old_win));
+                        new_layout.entries.push(LayoutEntry::Window(win));
+                        self.entries.push(LayoutEntry::Layout(Box::new(new_layout)));
+                        self.entries.swap_remove(index);
+                        return;
+                    }
+
+                    LayoutEntry::Layout(mut lyt) => {
+                        // put it back:
+                        lyt.vsplit(current_id, win);
+                        self.entries.insert(index, LayoutEntry::Layout(lyt));
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     pub fn size(&self) -> Size {

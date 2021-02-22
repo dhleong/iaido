@@ -3,12 +3,13 @@ pub mod connection;
 pub mod core;
 pub mod file;
 pub mod registry;
+pub mod window;
 
 use std::time::Duration;
 
 use self::{
     colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
-    registry::CommandRegistry,
+    registry::CommandRegistry, window::declare_window,
 };
 
 use super::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
@@ -75,6 +76,7 @@ pub fn create_builtin_commands() -> CommandRegistry {
     declare_colors(&mut registry);
     declare_connection(&mut registry);
     declare_file(&mut registry);
+    declare_window(&mut registry);
 
     declare_core(&mut registry);
     return registry;

@@ -152,7 +152,7 @@ mod tests {
     use super::*;
     use indoc::indoc;
 
-    fn assert_visual_match(buf: MemoryBuffer, s: &'static str) {
+    fn assert_visual_match(buf: &MemoryBuffer, s: &'static str) {
         let actual = buf.to_string();
         let expected = MemoryBuffer {
             id: 0,
@@ -165,6 +165,21 @@ mod tests {
     }
 
     #[cfg(test)]
+    mod get_char {
+        use super::*;
+
+        #[test]
+        fn after_delete_range() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my love land".into());
+            buf.delete_range(((0, 7).into(), (0, 12).into()));
+            assert_visual_match(&buf, "Take my land");
+            assert_eq!(Some(" "), buf.get_char((0, 7).into()));
+            assert_eq!(Some("l"), buf.get_char((0, 8).into()));
+        }
+    }
+
+    #[cfg(test)]
     mod delete_range {
         use super::*;
 
@@ -173,7 +188,7 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
             buf.delete_range(((0, 0).into(), (0, 4).into()));
-            assert_visual_match(buf, " my land");
+            assert_visual_match(&buf, " my land");
         }
 
         #[test]
@@ -181,7 +196,7 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
             buf.delete_range(((0, 0).into(), (0, 12).into()));
-            assert_visual_match(buf, "");
+            assert_visual_match(&buf, "");
         }
 
         #[test]
@@ -195,7 +210,7 @@ mod tests {
                 .into(),
             );
             buf.delete_range(((0, 0).into(), (1, 12).into()));
-            assert_visual_match(buf, "");
+            assert_visual_match(&buf, "");
         }
 
         #[test]
@@ -210,7 +225,7 @@ mod tests {
                 .into(),
             );
             buf.delete_range(((0, 4).into(), (2, 4).into()));
-            assert_visual_match(buf, "Take me where");
+            assert_visual_match(&buf, "Take me where");
         }
     }
 
@@ -223,7 +238,7 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append("my love".into());
             buf.insert((0, 0).into(), "Take ".into());
-            assert_visual_match(buf, "Take my love");
+            assert_visual_match(&buf, "Take my love");
         }
 
         #[test]
@@ -231,7 +246,7 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take love".into());
             buf.insert((0, 4).into(), " my".into());
-            assert_visual_match(buf, "Take my love");
+            assert_visual_match(&buf, "Take my love");
         }
 
         #[test]
@@ -239,14 +254,14 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my".into());
             buf.insert((0, 7).into(), " love".into());
-            assert_visual_match(buf, "Take my love");
+            assert_visual_match(&buf, "Take my love");
         }
 
         #[test]
         fn into_empty() {
             let mut buf = MemoryBuffer::new(0);
             buf.insert((0, 0).into(), "serenity".into());
-            assert_visual_match(buf, "serenity");
+            assert_visual_match(&buf, "serenity");
         }
     }
 
@@ -260,7 +275,7 @@ mod tests {
         fn into_empty() {
             let mut buf = MemoryBuffer::new(0);
             buf.append_value(ReadValue::Text("serenity".into()));
-            assert_visual_match(buf, "serenity");
+            assert_visual_match(&buf, "serenity");
         }
     }
 }

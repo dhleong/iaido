@@ -79,9 +79,8 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {
         let line = self.get(pos.line);
-        let col_offset = pos.col as usize;
+        let mut col_offset = pos.col as usize;
 
-        let mut seen_width = 0;
         let mut current_span = 0;
         loop {
             if current_span >= line.0.len() {
@@ -96,10 +95,10 @@ pub trait Buffer: HasId + Send + Sync {
             }
 
             current_span += 1;
-            seen_width += w;
+            col_offset -= w;
         }
 
-        if seen_width == col_offset {
+        if col_offset == 0 {
             return Some("\n");
         }
 

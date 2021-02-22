@@ -182,6 +182,25 @@ mod tests {
         }
 
         #[test]
+        fn backward_past_span() {
+            let mut ctx = window(indoc! {"
+                Take my love |land
+            "});
+
+            // split up the span by deleting a range:
+            ctx.buffer.delete_range(((0, 7).into(), (0, 12).into()));
+            ctx.window.cursor = (0, 8).into();
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
+            "});
+
+            ctx.motion(WordMotion::backward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take |my land
+            "});
+        }
+
+        #[test]
         fn backward_to_start() {
             let mut ctx = window(indoc! {"
                 Take my lan|d

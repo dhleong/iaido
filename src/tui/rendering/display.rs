@@ -83,6 +83,7 @@ impl std::fmt::Display for Display {
 pub mod tests {
     use crate::editing::motion::tests::window;
     use indoc::indoc;
+    use tui::style::Style;
 
     use super::*;
 
@@ -92,6 +93,7 @@ pub mod tests {
         fn cursor_coords(&self) -> Option<(u16, u16)>;
         fn to_visual_string(&self) -> String;
         fn assert_visual_match(&self, s: &'static str);
+        fn assert_visual_equals(&self, s: &'static str);
     }
 
     impl TestableDisplay for Display {
@@ -157,6 +159,25 @@ pub mod tests {
             let expected_display = Display::of_sized_string(self.size, s);
             assert_eq!(self.size, expected_display.size);
             assert_eq!(self.to_visual_string(), expected_display.to_visual_string());
+        }
+
+        fn assert_visual_equals(&self, s: &'static str) {
+            let mut expected_display = Display::new(self.size);
+            for (i, line) in s.split("\n").enumerate() {
+                if i as u16 == self.size.h && line.is_empty() {
+                    break;
+                }
+
+                expected_display
+                    .buffer
+                    .set_string(0, i as u16, line, Style::default());
+            }
+
+            // TODO support cursor?
+            assert_eq!(
+                self.to_visual_string().replace("|", ""),
+                expected_display.to_visual_string()
+            );
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::declare_commands;
+use crate::{declare_commands, input::KeymapContext};
 
 declare_commands!(declare_core {
     pub fn quit(context) {

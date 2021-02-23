@@ -51,8 +51,10 @@ impl CommandRegistry {
 macro_rules! command_decl {
     // base case:
     ($r:ident ->) => {
-        #[allow(unused_imports)]
-        use crate::input::KeymapContext;
+        // as elsewhere, this import makes things work easier, but
+        // breaks completion for now
+        // #[allow(unused_imports)]
+        // use crate::input::KeymapContext;
     };
 
     // simple case: no special args handling

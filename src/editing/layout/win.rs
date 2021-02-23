@@ -1,3 +1,5 @@
+use genawaiter::{sync::gen, yield_};
+
 use editing::Size;
 
 use crate::editing::{self, window::Window, FocusDirection, Id, Resizable};
@@ -39,18 +41,21 @@ impl Layout for WinLayout {
         &mut self,
         buffer_id: Id,
     ) -> Box<dyn Iterator<Item = &mut Box<Window>> + '_> {
-        if self.window.buffer == buffer_id {
-            Box::new(vec![self.window].iter_mut())
-        } else {
-            Box::new(vec![].iter_mut())
-        }
+        Box::new(
+            gen!({
+                if self.window.buffer == buffer_id {
+                    yield_!(&mut self.window);
+                }
+            })
+            .into_iter(),
+        )
     }
 
-    fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id> {
+    fn next_focus(&self, _current_id: Id, _direction: FocusDirection) -> Option<Id> {
         None
     }
 
-    fn first_focus(&self, direction: FocusDirection) -> Option<Id> {
+    fn first_focus(&self, _direction: FocusDirection) -> Option<Id> {
         Some(self.window.id)
     }
 

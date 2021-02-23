@@ -58,7 +58,7 @@ impl LinearLayout {
             .iter()
             .position(|entry| entry.contains_window(current_id))
         {
-            let mut lyt = self.entries.swap_remove(index);
+            let lyt = self.entries.swap_remove(index);
             let replacement = if let Some(splittable) = lyt.as_splittable() {
                 match direction {
                     LayoutDirection::Horizontal => splittable.vsplit(current_id, win),
@@ -91,7 +91,7 @@ impl Layout for LinearLayout {
     }
 
     fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Window>> {
-        for entry in &self.entries {
+        for entry in &mut self.entries {
             if let Some(win) = entry.by_id_mut(id) {
                 return Some(win);
             }

@@ -111,4 +111,20 @@ mod tests {
             love│love│love
         "});
     }
+
+    #[test]
+    fn split_test() {
+        let mut tabpage = tabpage(indoc! {"
+            Take my love
+        "});
+        tabpage.tab.hsplit();
+        tabpage.tab.vsplit();
+        tabpage.size = Size { w: 14, h: 3 };
+
+        tabpage.render().assert_visual_equals(indoc! {"
+            Take my love
+            ──────────────
+            love   │love
+        "});
+    }
 }

@@ -1,5 +1,6 @@
 use super::Id;
 
+#[derive(Debug, Clone)]
 pub enum BufferSource {
     /// The Buffer is in-memory only
     None,

@@ -40,12 +40,20 @@ impl Default for Connections {
 }
 
 impl Connections {
-    pub fn by_id(&self, id: Id) -> Option<&Box<dyn Connection>> {
-        self.all.iter().find(|conn| conn.id() == id)
-    }
-
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Connection>> {
         self.all.iter_mut().find(|conn| conn.id() == id)
+    }
+
+    pub fn buffer_to_id(&mut self, buffer_id: Id) -> Option<Id> {
+        self.buffer_to_connection.get(&buffer_id).cloned()
+    }
+
+    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut Box<dyn Connection>> {
+        if let Some(conn_id) = self.buffer_to_id(buffer_id) {
+            self.by_id_mut(conn_id)
+        } else {
+            None
+        }
     }
 
     /// Asynchronously create a new connection attached to the given

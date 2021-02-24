@@ -1,6 +1,9 @@
 use super::{buffers::Buffers, ids::Ids};
-use super::{layout::Layout, FocusDirection};
-use super::{layout::LayoutEntry, window::Window};
+use super::{layout::SplitableLayout, window::Window};
+use super::{
+    layout::{Layout, LinearLayout},
+    FocusDirection,
+};
 use super::{Id, Resizable, Size};
 
 pub struct Tabpage {
@@ -8,17 +11,17 @@ pub struct Tabpage {
     ids: Ids,
     current: Id,
     size: Size,
-    pub layout: Layout,
+    pub layout: LinearLayout,
 }
 
 impl Tabpage {
     pub fn new(id: Id, buffers: &mut Buffers, size: Size) -> Self {
-        let mut layout = Layout::vertical();
+        let mut layout = LinearLayout::vertical();
 
         let mut ids = Ids::new();
         let window_id = ids.next();
         let initial = Window::new(window_id, buffers.create().id());
-        layout.entries.push(LayoutEntry::Window(Box::new(initial)));
+        layout.add_window(Box::new(initial));
         layout.resize(layout.size());
 
         Self {

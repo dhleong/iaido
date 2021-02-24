@@ -12,6 +12,8 @@ use crate::{
 
 use super::{Connection, ConnectionFactories};
 
+const DEFAULT_LINES_PER_REDRAW: u16 = 10;
+
 pub struct Connections {
     ids: Ids,
     all: Vec<Box<dyn Connection>>,
@@ -96,12 +98,17 @@ impl Connections {
     pub fn process(&mut self, app: &mut app::State) -> bool {
         let to_buffer = &mut self.connection_to_buffer;
         let mut any_updated = false;
-        let lines_per_redraw = app.current_window().size.h;
         retain(&mut self.all, |conn| {
             let buffer_id = to_buffer[&conn.id()];
             let mut winsbuf = app
                 .winsbuf_by_id(buffer_id)
                 .expect("Could not find buffer for connection");
+            let lines_per_redraw = winsbuf
+                .windows
+                .iter()
+                .map(|win| win.size.h)
+                .max()
+                .unwrap_or(DEFAULT_LINES_PER_REDRAW);
 
             for _ in 0..lines_per_redraw {
                 match conn.read() {

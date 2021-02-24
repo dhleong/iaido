@@ -50,7 +50,8 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     tab.replace_window(tab.current_window().id, Box::new(new_window));
     context
         .state_mut()
-        .current_winsbuf()
+        .winsbuf_by_id(buffer_id)
+        .unwrap()
         .append_line(format!("Connecting to {}...", uri));
 
     let mut connections = context.state_mut().connections.take().unwrap();

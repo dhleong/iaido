@@ -47,7 +47,7 @@ impl LinearLayout {
         self.entries.push(Box::new(WinLayout::new(window)))
     }
 
-    fn index_of_window(&mut self, id: Id) -> Option<usize> {
+    fn index_of_window(&self, id: Id) -> Option<usize> {
         self.entries
             .iter()
             .position(|entry| entry.contains_window(id))
@@ -59,7 +59,7 @@ impl LinearLayout {
         f: impl FnOnce(Box<dyn Layout>) -> Box<dyn Layout>,
     ) {
         if let Some(index) = self.index_of_window(win_id) {
-            let mut lyt = self.entries.swap_remove(index);
+            let lyt = self.entries.swap_remove(index);
             self.entries.push(f(lyt));
             if self.entries.len() > 1 {
                 let last = self.entries.len() - 1;

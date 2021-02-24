@@ -24,6 +24,9 @@ declare_commands!(declare_file {
             &BufferSource::Connection(_) => {
                 return Err(KeyError::NotPermitted("Cannot replace Connection buffer".to_string()));
             },
+            &BufferSource::ConnectionInputForBuffer(_) => {
+                return Err(KeyError::NotPermitted("Cannot replace Connection Input buffer".to_string()));
+            },
             &BufferSource::LocalFile(_) => return Err(KeyError::NotPermitted("Buffer backed by a file".to_string())),
             &BufferSource::None => {}, // continue
         };

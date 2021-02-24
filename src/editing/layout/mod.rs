@@ -2,6 +2,7 @@ use crate::tui::Renderable;
 
 use super::{window::Window, FocusDirection, Id, Resizable, Size};
 
+pub mod conn;
 mod linear;
 pub mod win;
 

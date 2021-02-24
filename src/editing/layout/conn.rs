@@ -30,6 +30,16 @@ impl Layout for ConnLayout {
         }
     }
 
+    fn current_focus(&self) -> Option<Id> {
+        if self.output.focused {
+            Some(self.output.id)
+        } else if self.input.focused {
+            Some(self.input.id)
+        } else {
+            None
+        }
+    }
+
     fn windows_for_buffer(
         &mut self,
         buffer_id: Id,

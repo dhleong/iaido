@@ -19,6 +19,7 @@ pub trait Layout: Renderable + Resizable {
     fn contains_window(&self, win_id: Id) -> bool {
         self.by_id(win_id).is_some()
     }
+    fn current_focus(&self) -> Option<Id>;
     fn windows_for_buffer(
         &mut self,
         buffer_id: Id,

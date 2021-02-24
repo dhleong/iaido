@@ -36,8 +36,13 @@ impl Tabpage {
     pub fn new_connection(&mut self, buffers: &mut Buffers, output_buffer_id: Id) -> ConnLayout {
         let input_buffer = buffers.create_mut();
         input_buffer.set_source(BufferSource::ConnectionInputForBuffer(output_buffer_id));
+
         ConnLayout {
-            output: Box::new(Window::new(self.ids.next(), output_buffer_id)),
+            output: Box::new(Window::with_focused(
+                self.ids.next(),
+                output_buffer_id,
+                false,
+            )),
             input: Box::new(Window::new(self.ids.next(), input_buffer.id())),
         }
     }
@@ -63,6 +68,14 @@ impl Tabpage {
     }
 
     pub fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>) {
+        if self.current == win_id && !layout.contains_window(win_id) {
+            self.current_window_mut().set_focused(false);
+            if let Some(focus) = layout.current_focus() {
+                self.current = focus;
+            } else {
+                panic!("Replacing focused window without any new focus");
+            }
+        }
         self.layout.replace_window(win_id, layout)
     }
 

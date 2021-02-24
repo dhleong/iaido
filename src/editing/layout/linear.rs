@@ -111,6 +111,15 @@ impl Layout for LinearLayout {
         None
     }
 
+    fn current_focus(&self) -> Option<Id> {
+        for entry in &self.entries {
+            if let Some(id) = entry.current_focus() {
+                return Some(id);
+            }
+        }
+        None
+    }
+
     fn windows_for_buffer(
         &mut self,
         buffer_id: Id,

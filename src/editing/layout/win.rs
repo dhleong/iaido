@@ -37,6 +37,14 @@ impl Layout for WinLayout {
         self.window.id == win_id
     }
 
+    fn current_focus(&self) -> Option<Id> {
+        if self.window.focused {
+            Some(self.window.id)
+        } else {
+            None
+        }
+    }
+
     fn windows_for_buffer(
         &mut self,
         buffer_id: Id,

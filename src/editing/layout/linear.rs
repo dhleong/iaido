@@ -36,19 +36,20 @@ impl LinearLayout {
         }
     }
 
+    pub fn with_direction(direction: LayoutDirection) -> Self {
+        match direction {
+            LayoutDirection::Vertical => LinearLayout::vertical(),
+            LayoutDirection::Horizontal => LinearLayout::horizontal(),
+        }
+    }
+
     pub fn add_window(&mut self, window: Box<Window>) {
         self.entries.push(Box::new(WinLayout::new(window)))
     }
 
-    fn split(
-        &mut self,
-        current_id: Id,
-        win: Box<Window>,
-        direction: LayoutDirection,
-        mut new_layout: LinearLayout,
-    ) {
+    fn split(&mut self, current_id: Id, win: Box<Window>, direction: LayoutDirection) {
         if self.direction == direction {
-            self.entries.push(Box::new(WinLayout::new(win)));
+            self.add_window(win);
             self.resize(self.size());
             return;
         }
@@ -58,7 +59,7 @@ impl LinearLayout {
             .iter()
             .position(|entry| entry.contains_window(current_id))
         {
-            let lyt = self.entries.swap_remove(index);
+            let mut lyt = self.entries.swap_remove(index);
             let replacement = if let Some(splittable) = lyt.as_splittable() {
                 match direction {
                     LayoutDirection::Horizontal => splittable.vsplit(current_id, win),
@@ -66,6 +67,7 @@ impl LinearLayout {
                 }
                 lyt
             } else {
+                let mut new_layout = LinearLayout::with_direction(direction);
                 new_layout.entries.push(lyt);
                 new_layout.entries.push(Box::new(WinLayout::new(win)));
                 Box::new(new_layout)
@@ -180,25 +182,19 @@ impl Layout for LinearLayout {
             },
         }
     }
+
+    fn as_splittable(&mut self) -> Option<Box<&mut dyn SplitableLayout>> {
+        Some(Box::new(self))
+    }
 }
 
 impl SplitableLayout for LinearLayout {
     fn hsplit(&mut self, current_id: Id, win: Box<Window>) {
-        self.split(
-            current_id,
-            win,
-            LayoutDirection::Vertical,
-            LinearLayout::vertical(),
-        );
+        self.split(current_id, win, LayoutDirection::Vertical);
     }
 
     fn vsplit(&mut self, current_id: Id, win: Box<Window>) {
-        self.split(
-            current_id,
-            win,
-            LayoutDirection::Horizontal,
-            LinearLayout::horizontal(),
-        );
+        self.split(current_id, win, LayoutDirection::Horizontal);
     }
 }
 

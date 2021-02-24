@@ -60,7 +60,7 @@ impl LinearLayout {
             .position(|entry| entry.contains_window(current_id))
         {
             let mut lyt = self.entries.swap_remove(index);
-            let replacement = if let Some(splittable) = lyt.as_splittable() {
+            let replacement = if let Some(splittable) = lyt.into_splittable() {
                 match direction {
                     LayoutDirection::Horizontal => splittable.vsplit(current_id, win),
                     LayoutDirection::Vertical => splittable.hsplit(current_id, win),
@@ -183,7 +183,7 @@ impl Layout for LinearLayout {
         }
     }
 
-    fn as_splittable(&mut self) -> Option<Box<&mut dyn SplitableLayout>> {
+    fn into_splittable(&mut self) -> Option<Box<&mut dyn SplitableLayout>> {
         Some(Box::new(self))
     }
 }

@@ -1,4 +1,4 @@
-use super::{buffers::Buffers, ids::Ids};
+use super::{buffers::Buffers, ids::Ids, layout::conn::ConnLayout, source::BufferSource};
 use super::{layout::SplitableLayout, window::Window};
 use super::{
     layout::{Layout, LinearLayout},
@@ -33,6 +33,15 @@ impl Tabpage {
         }
     }
 
+    pub fn new_connection(&mut self, buffers: &mut Buffers, output_buffer_id: Id) -> ConnLayout {
+        let input_buffer = buffers.create_mut();
+        input_buffer.set_source(BufferSource::ConnectionInputForBuffer(output_buffer_id));
+        ConnLayout {
+            output: Box::new(Window::new(self.ids.next(), output_buffer_id)),
+            input: Box::new(Window::new(self.ids.next(), input_buffer.id())),
+        }
+    }
+
     pub fn current_window(&self) -> &Box<Window> {
         self.by_id(self.current).unwrap()
     }
@@ -51,6 +60,10 @@ impl Tabpage {
 
     pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {
         self.layout.windows_for_buffer(buffer_id)
+    }
+
+    pub fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>) {
+        self.layout.replace_window(win_id, layout)
     }
 
     pub fn hsplit(&mut self) -> Id {

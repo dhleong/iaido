@@ -1,3 +1,5 @@
+use super::Id;
+
 pub enum BufferSource {
     /// The Buffer is in-memory only
     None,
@@ -9,6 +11,10 @@ pub enum BufferSource {
     /// The Buffer receives its content from a network source; such
     /// buffers MUST be read-only
     Connection(String),
+
+    /// The Buffer is in-memory only, as None, but serves to provide
+    /// input to the Connection in the buffer with the given Id
+    ConnectionInputForBuffer(Id),
 }
 
 impl BufferSource {

@@ -37,20 +37,17 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
 
         _ => {
             // otherwise, create a new buffer for the connection
-            let new_id = context.state_mut().buffers.create().id();
-
-            context
-                .state_mut()
-                .buffers
-                .by_id_mut(new_id)
-                .expect("Couldn't find newly-created buffer")
-                .set_source(BufferSource::Connection(url.to_string()));
-
-            new_id
+            let new = context.state_mut().buffers.create_mut();
+            new.set_source(BufferSource::Connection(url.to_string()));
+            new.id()
         }
     };
 
-    context.state_mut().set_current_window_buffer(buffer_id);
+    let state = context.state_mut();
+    let tab = state.tabpages.current_tab_mut();
+    let new_window = tab.new_connection(&mut state.buffers, buffer_id);
+
+    tab.replace_window(tab.current_window().id, Box::new(new_window));
     context
         .state_mut()
         .current_winsbuf()

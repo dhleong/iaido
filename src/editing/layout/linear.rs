@@ -47,6 +47,27 @@ impl LinearLayout {
         self.entries.push(Box::new(WinLayout::new(window)))
     }
 
+    fn index_of_window(&mut self, id: Id) -> Option<usize> {
+        self.entries
+            .iter()
+            .position(|entry| entry.contains_window(id))
+    }
+
+    fn replace_window_with(
+        &mut self,
+        win_id: Id,
+        f: impl FnOnce(Box<dyn Layout>) -> Box<dyn Layout>,
+    ) {
+        if let Some(index) = self.index_of_window(win_id) {
+            let mut lyt = self.entries.swap_remove(index);
+            self.entries.push(f(lyt));
+            if self.entries.len() > 1 {
+                let last = self.entries.len() - 1;
+                self.entries.swap(index, last);
+            }
+        }
+    }
+
     fn split(&mut self, current_id: Id, win: Box<Window>, direction: LayoutDirection) {
         if self.direction == direction {
             self.add_window(win);
@@ -54,13 +75,8 @@ impl LinearLayout {
             return;
         }
 
-        if let Some(index) = self
-            .entries
-            .iter()
-            .position(|entry| entry.contains_window(current_id))
-        {
-            let mut lyt = self.entries.swap_remove(index);
-            let replacement = if let Some(splittable) = lyt.into_splittable() {
+        self.replace_window_with(current_id, move |mut lyt| {
+            if let Some(splittable) = lyt.into_splittable() {
                 match direction {
                     LayoutDirection::Horizontal => splittable.vsplit(current_id, win),
                     LayoutDirection::Vertical => splittable.hsplit(current_id, win),
@@ -71,14 +87,8 @@ impl LinearLayout {
                 new_layout.entries.push(lyt);
                 new_layout.entries.push(Box::new(WinLayout::new(win)));
                 Box::new(new_layout)
-            };
-
-            self.entries.push(replacement);
-            if self.entries.len() > 1 {
-                let last = self.entries.len() - 1;
-                self.entries.swap(index, last);
             }
-        }
+        });
     }
 }
 
@@ -118,11 +128,7 @@ impl Layout for LinearLayout {
     }
 
     fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id> {
-        if let Some(index) = self
-            .entries
-            .iter()
-            .position(|entry| entry.contains_window(current_id))
-        {
+        if let Some(index) = self.index_of_window(current_id) {
             let lyt = self.entries.get(index).unwrap();
             if let Some(next) = lyt.next_focus(current_id, direction) {
                 return Some(next);
@@ -195,6 +201,17 @@ impl SplitableLayout for LinearLayout {
 
     fn vsplit(&mut self, current_id: Id, win: Box<Window>) {
         self.split(current_id, win, LayoutDirection::Horizontal);
+    }
+
+    fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>) {
+        self.replace_window_with(win_id, |mut lyt| {
+            if let Some(splittable) = lyt.into_splittable() {
+                splittable.replace_window(win_id, layout);
+                lyt
+            } else {
+                layout
+            }
+        })
     }
 }
 

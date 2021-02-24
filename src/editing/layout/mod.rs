@@ -35,4 +35,5 @@ pub trait Layout: Renderable + Resizable {
 pub trait SplitableLayout {
     fn hsplit(&mut self, current_id: Id, win: Box<Window>);
     fn vsplit(&mut self, current_id: Id, win: Box<Window>);
+    fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>);
 }

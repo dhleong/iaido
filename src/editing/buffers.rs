@@ -43,6 +43,15 @@ impl Buffers {
 
         self.all.last_mut().unwrap()
     }
+
+    #[cfg(test)]
+    pub fn replace(&mut self, buffer: Box<dyn Buffer>) -> Box<dyn Buffer> {
+        let id = buffer.id();
+        let index = self.all.iter().position(|b| b.id() == id).unwrap();
+        let old = self.all.swap_remove(index);
+        self.all.push(buffer);
+        old
+    }
 }
 
 impl fmt::Display for Buffers {

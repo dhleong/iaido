@@ -83,13 +83,17 @@ pub trait Motion {
 
 #[cfg(test)]
 pub mod tests {
-    use std::cmp::max;
+    use std::{cmp::max, time::Duration};
 
     use crate::{
+        app,
         editing::{
             buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
         },
-        input::{commands::registry::CommandRegistry, completion::CompletableContext},
+        input::{
+            commands::registry::CommandRegistry, completion::CompletableContext,
+            source::memory::MemoryKeySource, KeySource, Keymap, KeymapContext,
+        },
         tui::{
             rendering::display::tests::TestableDisplay, Display, LayoutContext, RenderContext,
             Renderable,
@@ -97,6 +101,34 @@ pub mod tests {
     };
 
     use super::*;
+
+    struct TestKeymapContext {
+        keys: MemoryKeySource,
+        state: app::State,
+    }
+
+    impl KeymapContext for TestKeymapContext {
+        fn state(&self) -> &app::State {
+            &self.state
+        }
+
+        fn state_mut(&mut self) -> &mut app::State {
+            &mut self.state
+        }
+    }
+
+    impl KeySource for TestKeymapContext {
+        fn poll_key(
+            &mut self,
+            timeout: std::time::Duration,
+        ) -> Result<bool, crate::input::KeyError> {
+            self.keys.poll_key(timeout)
+        }
+
+        fn next_key(&mut self) -> Result<Option<crate::input::Key>, crate::input::KeyError> {
+            self.keys.next_key()
+        }
+    }
 
     pub struct TestWindow {
         pub window: Box<Window>,
@@ -111,6 +143,40 @@ pub mod tests {
 
         pub fn set_inserting(&mut self, inserting: bool) {
             self.window.set_inserting(inserting);
+        }
+
+        pub fn feed_keys<K: Keymap>(mut self, mut keymap: K, keys: &str) -> Self {
+            let key_source = MemoryKeySource::from_keys(keys);
+            let mut state = app::State::default();
+
+            self.buffer = state.buffers.replace(self.buffer);
+
+            let window = state.current_window_mut();
+            window.cursor = self.window.cursor;
+            window.resize(self.window.size);
+
+            let mut context = TestKeymapContext {
+                keys: key_source,
+                state,
+            };
+
+            while let Ok(has_next) = context.poll_key(Duration::from_millis(0)) {
+                if !has_next {
+                    break;
+                }
+                if let Err(e) = keymap.process(&mut context) {
+                    panic!("Error processing {}: {:?}", keys.to_string(), e);
+                }
+            }
+
+            // take back our buffer
+            self.buffer = context.state.buffers.replace(self.buffer);
+
+            self
+        }
+
+        pub fn feed_vim(self, keys: &str) -> Self {
+            self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
         }
 
         pub fn assert_visual_match(&mut self, s: &'static str) {

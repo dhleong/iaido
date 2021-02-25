@@ -107,3 +107,23 @@ pub fn vim_normal_mode() -> VimMode {
         }
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::editing::motion::tests::window;
+    use indoc::indoc;
+
+    #[test]
+    fn dd() {
+        let ctx = window(indoc! {"
+            Take my love
+            |Take my land
+            Take me where
+        "});
+        ctx.feed_vim("dd").assert_visual_match(indoc! {"
+
+            |Take my love
+            Take me where
+        "});
+    }
+}

@@ -88,7 +88,7 @@ pub mod tests {
     use crate::{
         app,
         editing::{
-            buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
+            buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, HasId, Resizable, Size,
         },
         input::{
             commands::registry::CommandRegistry, completion::CompletableContext,
@@ -179,10 +179,16 @@ pub mod tests {
             self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
         }
 
+        /// Assert that this Window visually matches the window that would
+        /// be created if the given string were passed to [`window`].
         pub fn assert_visual_match(&mut self, s: &'static str) {
-            let expected = window(s).render_at_own_size();
+            let mut expected_context = window(s);
+            let expected = expected_context.render_at_own_size();
             let actual = self.render_at_own_size();
-            assert_eq!(actual.to_visual_string(), expected.to_visual_string());
+            assert_eq!(
+                (actual.to_visual_string(), self.window.cursor),
+                (expected.to_visual_string(), expected_context.window.cursor)
+            );
         }
 
         pub fn render(&mut self, display: &mut Display) {
@@ -252,21 +258,43 @@ pub mod tests {
         }
     }
 
+    /// Build a testable Window wrapper based on the visual appearance
+    /// of the provided string `s`. This is the basis for many of our
+    /// tests, enabling clear, visual descriptions of how content should
+    /// appear before and after some action.
+    ///
+    /// A few characters are special within the string:
+    /// `|` - The first pipe character encountered marks where the cursor
+    ///       should appear. If not included, the resulting Window's
+    ///       cursor will be at the "default" position (0, 0)
+    /// `~` - If a line consists only of a single tilde, that line is used
+    ///       only as a visual placeholder to indicate window size, and is
+    ///       not considered part of the backing buffer. This is based on
+    ///       how Vim renders extra space in a window when the end of the
+    ///       buffer is reached.
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
-        for (index, line) in s.split("\n").enumerate() {
+        let mut buffer = MemoryBuffer::new(0);
+        let mut non_buffer_lines = 0;
+
+        for (index, line) in s.lines().enumerate() {
             if let Some(col) = line.find("|") {
-                cursor.line = index;
+                cursor.line = index - non_buffer_lines;
                 cursor.col = col as u16;
-                break;
+            }
+
+            if line == "~" {
+                non_buffer_lines += 1;
+            } else {
+                // NOTE: we we just use TextLines::from, that will
+                // convert an empty line into an empty TextLines vec,
+                // which is incorrect
+                buffer.append(TextLine::from(line.replace("|", "")).into());
             }
         }
 
-        let mut buffer = MemoryBuffer::new(0);
         let mut window = Window::new(0, buffer.id());
-
-        buffer.append(TextLines::raw(s.replace("|", "")));
         window.cursor = cursor;
 
         let height = max(1, s.chars().filter(|ch| *ch == '\n').count());

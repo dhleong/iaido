@@ -121,9 +121,9 @@ mod tests {
             Take me where
         "});
         ctx.feed_vim("dd").assert_visual_match(indoc! {"
-
-            |Take my love
-            Take me where
+            ~
+            Take my love
+            |Take me where
         "});
     }
 }

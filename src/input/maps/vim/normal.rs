@@ -126,4 +126,38 @@ mod tests {
             |Take me where
         "});
     }
+
+    #[cfg(test)]
+    mod capital_d {
+        use super::*;
+
+        #[test]
+        fn deletes_through_end_of_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                Take |my land
+                Take me where
+            "});
+            ctx.feed_vim("D").assert_visual_match(indoc! {"
+                Take my love
+                Take |
+                Take me where
+            "});
+        }
+
+        #[ignore = "TODO"]
+        #[test]
+        fn retains_empty_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("D").assert_visual_match(indoc! {"
+                Take my love
+                |
+                Take me where
+            "});
+        }
+    }
 }

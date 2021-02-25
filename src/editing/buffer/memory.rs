@@ -172,7 +172,7 @@ mod tests {
         fn after_delete_range() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my love land".into());
-            buf.delete_range(((0, 7).into(), (0, 12).into()));
+            buf.delete_range(((0, 7).into(), (0, 12).into()).into());
             assert_visual_match(&buf, "Take my land");
             assert_eq!(Some(" "), buf.get_char((0, 7).into()));
             assert_eq!(Some("l"), buf.get_char((0, 8).into()));
@@ -182,12 +182,13 @@ mod tests {
     #[cfg(test)]
     mod delete_range {
         use super::*;
+        use crate::editing::motion::MotionFlags;
 
         #[test]
         fn from_line_start() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 4).into()));
+            buf.delete_range(((0, 0).into(), (0, 4).into()).into());
             assert_visual_match(&buf, " my land");
         }
 
@@ -195,7 +196,11 @@ mod tests {
         fn full_line() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 12).into()));
+            buf.delete_range(MotionRange(
+                (0, 0).into(),
+                (0, 12).into(),
+                MotionFlags::LINEWISE,
+            ));
             assert_visual_match(&buf, "");
         }
 
@@ -209,7 +214,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 0).into(), (1, 12).into()));
+            buf.delete_range(((0, 0).into(), (1, 12).into()).into());
             assert_visual_match(&buf, "");
         }
 
@@ -224,7 +229,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 4).into(), (2, 4).into()));
+            buf.delete_range(((0, 4).into(), (2, 4).into()).into());
             assert_visual_match(&buf, "Take me where");
         }
     }

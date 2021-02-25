@@ -2,11 +2,29 @@ pub mod char;
 pub mod linewise;
 pub mod word;
 
+use bitflags::bitflags;
+
 use crate::app::bufwin::BufWin;
 
 use super::{window::Window, Buffer, CursorPosition};
 
-pub type MotionRange = (CursorPosition, CursorPosition);
+bitflags! {
+    pub struct MotionFlags: u8 {
+        const NONE = 0;
+        const LINEWISE = 0b01;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
+pub type SimpleMotionRange = (CursorPosition, CursorPosition);
+
+impl From<SimpleMotionRange> for MotionRange {
+    fn from(simple: SimpleMotionRange) -> Self {
+        let (start, end) = simple;
+        MotionRange(start, end, MotionFlags::NONE)
+    }
+}
 
 pub trait MotionContext {
     fn buffer(&self) -> &Box<dyn Buffer>;
@@ -54,18 +72,36 @@ pub trait Motion {
         false
     }
 
+    fn flags(&self) -> MotionFlags {
+        let mut flags = MotionFlags::NONE;
+        if self.is_linewise() {
+            flags |= MotionFlags::LINEWISE;
+        }
+        flags
+    }
+
     fn range<T: MotionContext>(&self, context: &T) -> MotionRange {
         let start = context.cursor();
         let end = self.destination(context);
         let linewise = self.is_linewise();
+        let flags = self.flags();
+
         if linewise && end < start {
-            (end.start_of_line(), start.end_of_line(context.buffer()))
+            MotionRange(
+                end.start_of_line(),
+                start.end_of_line(context.buffer()),
+                flags,
+            )
         } else if linewise {
-            (start.start_of_line(), end.end_of_line(context.buffer()))
+            MotionRange(
+                start.start_of_line(),
+                end.end_of_line(context.buffer()),
+                flags,
+            )
         } else if end < start {
-            (end, start)
+            MotionRange(end, start, flags)
         } else {
-            (start, end)
+            MotionRange(start, end, flags)
         }
     }
 

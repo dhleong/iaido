@@ -115,7 +115,7 @@ pub trait Buffer: HasId + Send + Sync {
     }
 
     fn apply_completion(&mut self, old: &Completion, new: &Completion) {
-        self.delete_range(old.replacement_range());
+        self.delete_range(old.replacement_range().into());
         self.insert(new.start(), new.replacement.clone().into());
     }
 }

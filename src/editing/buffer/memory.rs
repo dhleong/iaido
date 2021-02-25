@@ -1,5 +1,5 @@
 use crate::editing::{
-    motion::MotionRange,
+    motion::{MotionFlags, MotionRange},
     source::BufferSource,
     text::EditableLine,
     text::{TextLine, TextLines},
@@ -53,14 +53,17 @@ impl Buffer for MemoryBuffer {
     }
 
     fn delete_range(&mut self, range: MotionRange) {
-        let CursorPosition {
-            line: first_line,
-            col: first_col,
-        } = range.0;
-        let CursorPosition {
-            line: last_line,
-            col: last_col,
-        } = range.1;
+        let MotionRange(
+            CursorPosition {
+                line: first_line,
+                col: first_col,
+            },
+            CursorPosition {
+                line: last_line,
+                col: last_col,
+            },
+            flags,
+        ) = range;
 
         let ranges = (first_line..=last_line).map(|line_index| {
             if line_index == first_line && line_index == last_line {
@@ -75,6 +78,7 @@ impl Buffer for MemoryBuffer {
             }
         });
 
+        let linewise = first_line < last_line || flags.contains(MotionFlags::LINEWISE);
         let mut consumed_first_line = false;
         let mut consumed_last_line = false;
         let mut line_index = first_line;
@@ -87,7 +91,7 @@ impl Buffer for MemoryBuffer {
                 line.width()
             };
 
-            if start == 0 && end == line.width() {
+            if start == 0 && end == line.width() && linewise {
                 // delete the whole line
                 self.content.lines.remove(line_index);
                 if i == 0 {

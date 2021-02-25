@@ -145,7 +145,6 @@ mod tests {
             "});
         }
 
-        #[ignore = "TODO"]
         #[test]
         fn retains_empty_line() {
             let ctx = window(indoc! {"

@@ -1,10 +1,10 @@
 use std::io;
 
-use crate::editing::source::BufferSource;
 use crate::input::{
     maps::{KeyHandlerContext, KeyResult},
     KeyError, KeymapContext,
 };
+use crate::{connection::ReadValue, editing::source::BufferSource};
 
 /// Send the contents of the current Connection input buffer to
 /// its associated connection (if any)
@@ -21,12 +21,22 @@ pub fn send_current_input_buffer<T>(mut ctx: KeyHandlerContext<T>) -> KeyResult 
             return Err(KeyError::IO(io::ErrorKind::NotConnected.into()));
         };
 
-    ctx.state_mut().current_buffer_mut().clear();
+    let mut sent = false;
+
     if let Some(ref mut conns) = ctx.state_mut().connections {
         if let Some(conn) = conns.by_buffer_id(conn_buffer_id) {
             conn.send(to_send.clone())?;
-            return Ok(());
+            sent = true;
         }
+    }
+
+    if sent {
+        ctx.state_mut().current_buffer_mut().clear();
+        if let Some(mut output) = ctx.state_mut().winsbuf_by_id(conn_buffer_id) {
+            output.append_value(ReadValue::Text(to_send.into()));
+            output.append_value(ReadValue::Newline);
+        }
+        return Ok(());
     }
 
     Err(KeyError::IO(io::ErrorKind::NotConnected.into()))

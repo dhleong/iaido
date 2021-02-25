@@ -104,12 +104,6 @@ impl AppState {
         None
     }
 
-    pub fn current_winsbuf<'a>(&'a mut self) -> WinsBuf<'a> {
-        self.winsbuf_by_id(self.current_buffer().id())
-            .expect("No current buffer!?")
-    }
-
-    /// Unlike BufWin, this will NEVER operate on the prompt window/buffer
     pub fn winsbuf_by_id<'a>(&'a mut self, buffer_id: Id) -> Option<WinsBuf<'a>> {
         if let Some(buffer) = self.buffers.by_id_mut(buffer_id) {
             let windows = self.tabpages.windows_for_buffer(buffer_id);

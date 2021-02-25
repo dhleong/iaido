@@ -26,7 +26,8 @@ impl Connection for TelnetConnection {
     fn id(&self) -> Id {
         self.id
     }
-    fn read(&mut self) -> std::io::Result<Option<ReadValue>> {
+
+    fn read(&mut self) -> io::Result<Option<ReadValue>> {
         match self.telnet.read_nonblocking()? {
             telnet::TelnetEvent::Data(data) => {
                 self.pipeline.feed(&data, data.len());
@@ -42,6 +43,11 @@ impl Connection for TelnetConnection {
         }
         // always attempt to pull ReadValues out of the pipeline
         return Ok(self.pipeline.next());
+    }
+
+    fn write(&mut self, bytes: &[u8]) -> io::Result<()> {
+        self.telnet.write(bytes)?;
+        Ok(())
     }
 }
 

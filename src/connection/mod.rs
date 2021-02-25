@@ -19,6 +19,11 @@ pub enum ReadValue {
 pub trait Connection: Send {
     fn id(&self) -> Id;
     fn read(&mut self) -> io::Result<Option<ReadValue>>;
+    fn write(&mut self, bytes: &[u8]) -> io::Result<()>;
+    fn send(&mut self, text: String) -> io::Result<()> {
+        self.write(text.as_bytes())?;
+        self.write(&vec!['\n' as u8])
+    }
 }
 
 pub trait ConnectionFactory: Send + Sync {

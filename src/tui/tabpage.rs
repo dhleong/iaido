@@ -12,13 +12,14 @@ impl Renderable for Tabpage {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use crate::CursorPosition;
     use tui::layout::Rect;
 
     use crate::{
         app,
         editing::{buffers::Buffers, motion::tests::window, text::TextLines, Resizable, Size},
-        tui::{Display, RenderContext},
+        tui::{Display, LayoutContext, RenderContext},
     };
 
     use super::*;
@@ -72,6 +73,10 @@ mod tests {
                 buffer_override: None,
             };
             self.tab.resize(self.size);
+            self.tab.layout(&mut LayoutContext {
+                buffers: Some(&state.buffers),
+                buffer_override: None,
+            });
             self.tab.render(&mut context);
 
             display
@@ -119,6 +124,7 @@ mod tests {
         "});
         tabpage.tab.hsplit();
         tabpage.tab.vsplit();
+        tabpage.tab.current_window_mut().cursor = CursorPosition { line: 0, col: 11 };
         tabpage.size = Size { w: 14, h: 3 };
 
         tabpage.render().assert_visual_equals(indoc! {"

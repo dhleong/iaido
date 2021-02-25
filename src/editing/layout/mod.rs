@@ -2,6 +2,7 @@ use crate::tui::Renderable;
 
 use super::{window::Window, FocusDirection, Id, Resizable, Size};
 
+pub mod conn;
 mod linear;
 pub mod win;
 
@@ -18,6 +19,7 @@ pub trait Layout: Renderable + Resizable {
     fn contains_window(&self, win_id: Id) -> bool {
         self.by_id(win_id).is_some()
     }
+    fn current_focus(&self) -> Option<Id>;
     fn windows_for_buffer(
         &mut self,
         buffer_id: Id,
@@ -34,4 +36,5 @@ pub trait Layout: Renderable + Resizable {
 pub trait SplitableLayout {
     fn hsplit(&mut self, current_id: Id, win: Box<Window>);
     fn vsplit(&mut self, current_id: Id, win: Box<Window>);
+    fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>);
 }

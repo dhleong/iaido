@@ -1,5 +1,4 @@
 use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
-use crate::input::{completion::state::CompletionState, KeyCode, KeymapContext};
 use crate::{
     editing::motion::{
         char::CharMotion,
@@ -7,6 +6,11 @@ use crate::{
         Motion,
     },
     input::completion::commands::CommandsCompleter,
+    input::maps::actions::connection::send_current_input_buffer,
+};
+use crate::{
+    editing::source::BufferSource,
+    input::{completion::state::CompletionState, KeyCode, KeymapContext},
 };
 use crate::{key_handler, vim_tree};
 
@@ -52,8 +56,8 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
     }
 }
 
-pub fn vim_insert_mode() -> VimMode {
-    let mappings = vim_tree! {
+fn common_insert_mode(extra_mappings: Option<KeyTreeNode>) -> VimMode {
+    let mut mappings = vim_tree! {
         "<esc>" => |ctx| {
             ctx.state_mut().clear_echo();
             ctx.state_mut().current_window_mut().set_inserting(false);
@@ -61,6 +65,10 @@ pub fn vim_insert_mode() -> VimMode {
             Ok(())
          },
     } + vim_insert_mappings();
+
+    if let Some(extra) = extra_mappings {
+        mappings = mappings + extra;
+    }
 
     VimMode::new("i", mappings).on_default(key_handler!(
         VimKeymapState | ctx | {
@@ -73,4 +81,26 @@ pub fn vim_insert_mode() -> VimMode {
             Ok(())
         }
     ))
+}
+
+pub fn vim_standard_insert_mode() -> VimMode {
+    common_insert_mode(None)
+}
+
+pub fn vim_conn_insert_mode() -> VimMode {
+    let mappings = vim_tree! {
+        "<cr>" => |?mut ctx| {
+            send_current_input_buffer(ctx)
+         },
+    };
+
+    common_insert_mode(Some(mappings))
+}
+
+pub fn vim_insert_mode(source: &BufferSource) -> VimMode {
+    match source {
+        BufferSource::ConnectionInputForBuffer(_) => vim_conn_insert_mode(),
+
+        _ => vim_standard_insert_mode(),
+    }
 }

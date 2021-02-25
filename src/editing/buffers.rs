@@ -33,6 +33,16 @@ impl Buffers {
 
         self.all.last().unwrap()
     }
+
+    pub fn create_mut(&mut self) -> &mut Box<dyn Buffer> {
+        let id = self.ids.next();
+        let buffer = MemoryBuffer::new(id);
+        let boxed = Box::new(buffer);
+
+        self.all.push(boxed);
+
+        self.all.last_mut().unwrap()
+    }
 }
 
 impl fmt::Display for Buffers {

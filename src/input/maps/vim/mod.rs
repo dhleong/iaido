@@ -116,13 +116,14 @@ impl Default for VimKeymap {
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
+        let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) =
             if let Some(mode) = self.keymap.mode_stack.take_top() {
                 context.state_mut().keymap_widget = None;
                 (mode, true, false)
             } else if context.state().current_window().inserting {
                 context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
-                (vim_insert_mode(), false, false)
+                (vim_insert_mode(&buffer_source), false, false)
             } else {
                 self.render_keys_buffer(context);
                 (vim_normal_mode(), false, true)
@@ -235,6 +236,17 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState move |$ctx_name| $body));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
+
+    // immutable normal keymap with move:
+    (
+        $root:ident ->
+        $keys:literal =>
+            move |?mut $ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState move |?mut $ctx_name| $body));
         crate::vim_branches! { $root -> $($tail)* }
     };
 

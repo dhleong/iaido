@@ -12,6 +12,8 @@ use crate::{
 
 use super::{Connection, ConnectionFactories};
 
+const DEFAULT_LINES_PER_REDRAW: u16 = 10;
+
 pub struct Connections {
     ids: Ids,
     all: Vec<Box<dyn Connection>>,
@@ -38,12 +40,20 @@ impl Default for Connections {
 }
 
 impl Connections {
-    pub fn by_id(&self, id: Id) -> Option<&Box<dyn Connection>> {
-        self.all.iter().find(|conn| conn.id() == id)
-    }
-
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Connection>> {
         self.all.iter_mut().find(|conn| conn.id() == id)
+    }
+
+    pub fn buffer_to_id(&mut self, buffer_id: Id) -> Option<Id> {
+        self.buffer_to_connection.get(&buffer_id).cloned()
+    }
+
+    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut Box<dyn Connection>> {
+        if let Some(conn_id) = self.buffer_to_id(buffer_id) {
+            self.by_id_mut(conn_id)
+        } else {
+            None
+        }
     }
 
     /// Asynchronously create a new connection attached to the given
@@ -96,12 +106,17 @@ impl Connections {
     pub fn process(&mut self, app: &mut app::State) -> bool {
         let to_buffer = &mut self.connection_to_buffer;
         let mut any_updated = false;
-        let lines_per_redraw = app.current_window().size.h;
         retain(&mut self.all, |conn| {
             let buffer_id = to_buffer[&conn.id()];
             let mut winsbuf = app
                 .winsbuf_by_id(buffer_id)
                 .expect("Could not find buffer for connection");
+            let lines_per_redraw = winsbuf
+                .windows
+                .iter()
+                .map(|win| win.size.h)
+                .max()
+                .unwrap_or(DEFAULT_LINES_PER_REDRAW);
 
             for _ in 0..lines_per_redraw {
                 match conn.read() {

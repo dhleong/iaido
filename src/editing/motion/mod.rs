@@ -205,8 +205,9 @@ pub mod tests {
                 }
             }
 
-            // take back our buffer
+            // take back our buffer; copy over cursor
             self.buffer = context.state.buffers.replace(self.buffer);
+            self.window.cursor = context.state.current_window_mut().cursor;
 
             self
         }

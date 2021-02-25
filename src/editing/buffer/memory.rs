@@ -138,6 +138,12 @@ impl Buffer for MemoryBuffer {
 
         self.content.lines[cursor.line] = new;
     }
+
+    fn insert_lines(&mut self, line_index: usize, text: TextLines) {
+        self.content
+            .lines
+            .splice(line_index..line_index, text.lines);
+    }
 }
 
 impl ToString for MemoryBuffer {

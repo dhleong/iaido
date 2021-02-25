@@ -6,6 +6,11 @@ use crate::input::{
     KeyError, KeymapContext,
 };
 
+/// Send the contents of the current Connection input buffer to
+/// its associated connection (if any)
+///
+/// Returns `io::ErrorKind::NotConnected` if there is no Connection
+/// associated with the current buffer.
 pub fn send_current_input_buffer<T>(mut ctx: KeyHandlerContext<T>) -> KeyResult {
     let buffer = ctx.state().current_buffer();
     let to_send = buffer.get_contents();

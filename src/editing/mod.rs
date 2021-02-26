@@ -1,5 +1,6 @@
 pub mod buffer;
 pub mod buffers;
+pub mod change;
 pub mod ids;
 pub mod layout;
 pub mod motion;

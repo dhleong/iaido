@@ -271,8 +271,7 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
             use crate::editing::motion::Motion;
 
-            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key {
-                $ctx_name.keymap.pending_linewise_operator_key = None;
+            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
                 if pending_key == $keys.into() {
                     // execute linewise action directly:
                     let motion_impl = crate::editing::motion::linewise::FullLineMotion;

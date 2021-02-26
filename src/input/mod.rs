@@ -2,6 +2,7 @@ pub mod commands;
 pub mod completion;
 pub mod keys;
 pub mod maps;
+pub mod source;
 
 use std::{io, time::Duration};
 

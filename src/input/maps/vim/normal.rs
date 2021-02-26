@@ -1,10 +1,11 @@
 mod window;
 
+use crate::editing::text::TextLine;
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
-    editing::motion::Motion,
+    editing::motion::{Motion, MotionFlags, MotionRange},
 };
 use crate::{key_handler, vim_tree};
 
@@ -64,7 +65,15 @@ pub fn vim_normal_mode() -> VimMode {
 
         "c" => operator |ctx, motion| {
             ctx.state_mut().current_buffer_mut().delete_range(motion);
-            ctx.state_mut().current_window_mut().cursor = motion.0;
+
+            let MotionRange(start, _, flags) = motion;
+            ctx.state_mut().current_window_mut().cursor = start;
+
+            if flags.contains(MotionFlags::LINEWISE) {
+                // insert a blank line at the cursor
+                ctx.state_mut().current_buffer_mut().insert_lines(start.line, TextLine::from("").into());
+            }
+
             ctx.state_mut().current_window_mut().set_inserting(true);
             Ok(())
         },
@@ -106,4 +115,90 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         }
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::editing::motion::tests::window;
+    use indoc::indoc;
+
+    #[cfg(test)]
+    mod c {
+        use super::*;
+
+        #[test]
+        fn cc_retains_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("cc").assert_visual_match(indoc! {"
+                Take my love
+                |
+                Take me where
+            "});
+        }
+
+        #[test]
+        fn ck_retains_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("ck").assert_visual_match(indoc! {"
+                ~
+                |
+                Take me where
+            "});
+        }
+    }
+
+    #[test]
+    fn dd() {
+        let ctx = window(indoc! {"
+            Take my love
+            |Take my land
+            Take me where
+        "});
+        ctx.feed_vim("dd").assert_visual_match(indoc! {"
+            ~
+            Take my love
+            |Take me where
+        "});
+    }
+
+    #[cfg(test)]
+    mod capital_d {
+        use super::*;
+
+        #[test]
+        fn deletes_through_end_of_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                Take |my land
+                Take me where
+            "});
+            ctx.feed_vim("D").assert_visual_match(indoc! {"
+                Take my love
+                Take |
+                Take me where
+            "});
+        }
+
+        #[test]
+        fn retains_empty_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("D").assert_visual_match(indoc! {"
+                Take my love
+                |
+                Take me where
+            "});
+        }
+    }
 }

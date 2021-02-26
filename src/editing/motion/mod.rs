@@ -2,11 +2,29 @@ pub mod char;
 pub mod linewise;
 pub mod word;
 
+use bitflags::bitflags;
+
 use crate::app::bufwin::BufWin;
 
 use super::{window::Window, Buffer, CursorPosition};
 
-pub type MotionRange = (CursorPosition, CursorPosition);
+bitflags! {
+    pub struct MotionFlags: u8 {
+        const NONE = 0;
+        const LINEWISE = 0b01;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
+pub type SimpleMotionRange = (CursorPosition, CursorPosition);
+
+impl From<SimpleMotionRange> for MotionRange {
+    fn from(simple: SimpleMotionRange) -> Self {
+        let (start, end) = simple;
+        MotionRange(start, end, MotionFlags::NONE)
+    }
+}
 
 pub trait MotionContext {
     fn buffer(&self) -> &Box<dyn Buffer>;
@@ -54,18 +72,36 @@ pub trait Motion {
         false
     }
 
+    fn flags(&self) -> MotionFlags {
+        let mut flags = MotionFlags::NONE;
+        if self.is_linewise() {
+            flags |= MotionFlags::LINEWISE;
+        }
+        flags
+    }
+
     fn range<T: MotionContext>(&self, context: &T) -> MotionRange {
         let start = context.cursor();
         let end = self.destination(context);
         let linewise = self.is_linewise();
+        let flags = self.flags();
+
         if linewise && end < start {
-            (end.start_of_line(), start.end_of_line(context.buffer()))
+            MotionRange(
+                end.start_of_line(),
+                start.end_of_line(context.buffer()),
+                flags,
+            )
         } else if linewise {
-            (start.start_of_line(), end.end_of_line(context.buffer()))
+            MotionRange(
+                start.start_of_line(),
+                end.end_of_line(context.buffer()),
+                flags,
+            )
         } else if end < start {
-            (end, start)
+            MotionRange(end, start, flags)
         } else {
-            (start, end)
+            MotionRange(start, end, flags)
         }
     }
 
@@ -83,13 +119,17 @@ pub trait Motion {
 
 #[cfg(test)]
 pub mod tests {
-    use std::cmp::max;
+    use std::{cmp::max, time::Duration};
 
     use crate::{
+        app,
         editing::{
-            buffer::MemoryBuffer, text::TextLines, window::Window, Buffer, HasId, Resizable, Size,
+            buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, HasId, Resizable, Size,
         },
-        input::{commands::registry::CommandRegistry, completion::CompletableContext},
+        input::{
+            commands::registry::CommandRegistry, completion::CompletableContext,
+            source::memory::MemoryKeySource, KeySource, Keymap, KeymapContext,
+        },
         tui::{
             rendering::display::tests::TestableDisplay, Display, LayoutContext, RenderContext,
             Renderable,
@@ -97,6 +137,34 @@ pub mod tests {
     };
 
     use super::*;
+
+    struct TestKeymapContext {
+        keys: MemoryKeySource,
+        state: app::State,
+    }
+
+    impl KeymapContext for TestKeymapContext {
+        fn state(&self) -> &app::State {
+            &self.state
+        }
+
+        fn state_mut(&mut self) -> &mut app::State {
+            &mut self.state
+        }
+    }
+
+    impl KeySource for TestKeymapContext {
+        fn poll_key(
+            &mut self,
+            timeout: std::time::Duration,
+        ) -> Result<bool, crate::input::KeyError> {
+            self.keys.poll_key(timeout)
+        }
+
+        fn next_key(&mut self) -> Result<Option<crate::input::Key>, crate::input::KeyError> {
+            self.keys.next_key()
+        }
+    }
 
     pub struct TestWindow {
         pub window: Box<Window>,
@@ -113,10 +181,51 @@ pub mod tests {
             self.window.set_inserting(inserting);
         }
 
+        pub fn feed_keys<K: Keymap>(mut self, mut keymap: K, keys: &str) -> Self {
+            let key_source = MemoryKeySource::from_keys(keys);
+            let mut state = app::State::default();
+
+            self.buffer = state.buffers.replace(self.buffer);
+
+            let window = state.current_window_mut();
+            window.cursor = self.window.cursor;
+            window.resize(self.window.size);
+
+            let mut context = TestKeymapContext {
+                keys: key_source,
+                state,
+            };
+
+            while let Ok(has_next) = context.poll_key(Duration::from_millis(0)) {
+                if !has_next {
+                    break;
+                }
+                if let Err(e) = keymap.process(&mut context) {
+                    panic!("Error processing {}: {:?}", keys.to_string(), e);
+                }
+            }
+
+            // take back our buffer; copy over cursor
+            self.buffer = context.state.buffers.replace(self.buffer);
+            self.window.cursor = context.state.current_window_mut().cursor;
+
+            self
+        }
+
+        pub fn feed_vim(self, keys: &str) -> Self {
+            self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
+        }
+
+        /// Assert that this Window visually matches the window that would
+        /// be created if the given string were passed to [`window`].
         pub fn assert_visual_match(&mut self, s: &'static str) {
-            let expected = window(s).render_at_own_size();
+            let mut expected_context = window(s);
+            let expected = expected_context.render_at_own_size();
             let actual = self.render_at_own_size();
-            assert_eq!(actual.to_visual_string(), expected.to_visual_string());
+            assert_eq!(
+                (actual.to_visual_string(), self.window.cursor),
+                (expected.to_visual_string(), expected_context.window.cursor)
+            );
         }
 
         pub fn render(&mut self, display: &mut Display) {
@@ -186,21 +295,43 @@ pub mod tests {
         }
     }
 
+    /// Build a testable Window wrapper based on the visual appearance
+    /// of the provided string `s`. This is the basis for many of our
+    /// tests, enabling clear, visual descriptions of how content should
+    /// appear before and after some action.
+    ///
+    /// A few characters are special within the string:
+    /// `|` - The first pipe character encountered marks where the cursor
+    ///       should appear. If not included, the resulting Window's
+    ///       cursor will be at the "default" position (0, 0)
+    /// `~` - If a line consists only of a single tilde, that line is used
+    ///       only as a visual placeholder to indicate window size, and is
+    ///       not considered part of the backing buffer. This is based on
+    ///       how Vim renders extra space in a window when the end of the
+    ///       buffer is reached.
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
-        for (index, line) in s.split("\n").enumerate() {
+        let mut buffer = MemoryBuffer::new(0);
+        let mut non_buffer_lines = 0;
+
+        for (index, line) in s.lines().enumerate() {
             if let Some(col) = line.find("|") {
-                cursor.line = index;
+                cursor.line = index - non_buffer_lines;
                 cursor.col = col as u16;
-                break;
+            }
+
+            if line == "~" {
+                non_buffer_lines += 1;
+            } else {
+                // NOTE: we we just use TextLines::from, that will
+                // convert an empty line into an empty TextLines vec,
+                // which is incorrect
+                buffer.append(TextLine::from(line.replace("|", "")).into());
             }
         }
 
-        let mut buffer = MemoryBuffer::new(0);
         let mut window = Window::new(0, buffer.id());
-
-        buffer.append(TextLines::raw(s.replace("|", "")));
         window.cursor = cursor;
 
         let height = max(1, s.chars().filter(|ch| *ch == '\n').count());

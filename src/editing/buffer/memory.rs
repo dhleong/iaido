@@ -1,5 +1,5 @@
 use crate::editing::{
-    motion::MotionRange,
+    motion::{MotionFlags, MotionRange},
     source::BufferSource,
     text::EditableLine,
     text::{TextLine, TextLines},
@@ -53,14 +53,17 @@ impl Buffer for MemoryBuffer {
     }
 
     fn delete_range(&mut self, range: MotionRange) {
-        let CursorPosition {
-            line: first_line,
-            col: first_col,
-        } = range.0;
-        let CursorPosition {
-            line: last_line,
-            col: last_col,
-        } = range.1;
+        let MotionRange(
+            CursorPosition {
+                line: first_line,
+                col: first_col,
+            },
+            CursorPosition {
+                line: last_line,
+                col: last_col,
+            },
+            flags,
+        ) = range;
 
         let ranges = (first_line..=last_line).map(|line_index| {
             if line_index == first_line && line_index == last_line {
@@ -75,6 +78,7 @@ impl Buffer for MemoryBuffer {
             }
         });
 
+        let linewise = first_line < last_line || flags.contains(MotionFlags::LINEWISE);
         let mut consumed_first_line = false;
         let mut consumed_last_line = false;
         let mut line_index = first_line;
@@ -87,7 +91,7 @@ impl Buffer for MemoryBuffer {
                 line.width()
             };
 
-            if start == 0 && end == line.width() {
+            if start == 0 && end == line.width() && linewise {
                 // delete the whole line
                 self.content.lines.remove(line_index);
                 if i == 0 {
@@ -134,6 +138,12 @@ impl Buffer for MemoryBuffer {
 
         self.content.lines[cursor.line] = new;
     }
+
+    fn insert_lines(&mut self, line_index: usize, text: TextLines) {
+        self.content
+            .lines
+            .splice(line_index..line_index, text.lines);
+    }
 }
 
 impl ToString for MemoryBuffer {
@@ -172,7 +182,7 @@ mod tests {
         fn after_delete_range() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my love land".into());
-            buf.delete_range(((0, 7).into(), (0, 12).into()));
+            buf.delete_range(((0, 7).into(), (0, 12).into()).into());
             assert_visual_match(&buf, "Take my land");
             assert_eq!(Some(" "), buf.get_char((0, 7).into()));
             assert_eq!(Some("l"), buf.get_char((0, 8).into()));
@@ -182,12 +192,13 @@ mod tests {
     #[cfg(test)]
     mod delete_range {
         use super::*;
+        use crate::editing::motion::MotionFlags;
 
         #[test]
         fn from_line_start() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 4).into()));
+            buf.delete_range(((0, 0).into(), (0, 4).into()).into());
             assert_visual_match(&buf, " my land");
         }
 
@@ -195,7 +206,11 @@ mod tests {
         fn full_line() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 12).into()));
+            buf.delete_range(MotionRange(
+                (0, 0).into(),
+                (0, 12).into(),
+                MotionFlags::LINEWISE,
+            ));
             assert_visual_match(&buf, "");
         }
 
@@ -209,7 +224,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 0).into(), (1, 12).into()));
+            buf.delete_range(((0, 0).into(), (1, 12).into()).into());
             assert_visual_match(&buf, "");
         }
 
@@ -224,7 +239,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 4).into(), (2, 4).into()));
+            buf.delete_range(((0, 4).into(), (2, 4).into()).into());
             assert_visual_match(&buf, "Take me where");
         }
     }

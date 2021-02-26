@@ -29,6 +29,7 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn delete_range(&mut self, range: MotionRange);
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
+    fn insert_lines(&mut self, line_index: usize, text: TextLines);
 
     fn append_line(&mut self, text: String) {
         self.append_value(ReadValue::Text(text.into()));
@@ -115,7 +116,7 @@ pub trait Buffer: HasId + Send + Sync {
     }
 
     fn apply_completion(&mut self, old: &Completion, new: &Completion) {
-        self.delete_range(old.replacement_range());
+        self.delete_range(old.replacement_range().into());
         self.insert(new.start(), new.replacement.clone().into());
     }
 }

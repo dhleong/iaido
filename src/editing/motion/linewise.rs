@@ -45,15 +45,12 @@ impl Motion for ToLastLineOfBufferMotion {
 /// Motion that selects the entire current line
 pub struct FullLineMotion;
 impl Motion for FullLineMotion {
-    fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
-        context.cursor().start_of_line()
+    fn is_linewise(&self) -> bool {
+        true
     }
 
-    fn range<T: super::MotionContext>(&self, context: &T) -> super::MotionRange {
-        (
-            context.cursor().start_of_line(),
-            context.cursor().end_of_line(context.buffer()),
-        )
+    fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
+        context.cursor().start_of_line()
     }
 }
 

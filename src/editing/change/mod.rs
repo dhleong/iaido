@@ -34,13 +34,26 @@ impl Change {
         }
     }
 
-    pub fn undo(&self, buffer: &mut Box<dyn Buffer>) {
+    pub fn undo(&self, buffer: &mut Box<dyn Buffer>) -> CursorPosition {
+        let mut cursor = CursorPosition::default();
+
         for action in self.undo_actions.iter().rev() {
-            match action {
-                &UndoAction::DeleteRange(range) => buffer.delete_range(range),
-                &UndoAction::Insert(pos, ref text) => buffer.insert(pos, text.clone()),
-                &UndoAction::InsertLines(pos, ref lines) => buffer.insert_lines(pos, lines.clone()),
+            cursor = match action {
+                &UndoAction::DeleteRange(range) => {
+                    buffer.delete_range(range);
+                    range.0
+                }
+                &UndoAction::Insert(pos, ref text) => {
+                    buffer.insert(pos, text.clone());
+                    pos
+                }
+                &UndoAction::InsertLines(line, ref lines) => {
+                    buffer.insert_lines(line, lines.clone());
+                    CursorPosition { line, col: 0 }
+                }
             };
         }
+
+        cursor
     }
 }

@@ -2,16 +2,11 @@ pub mod manager;
 
 use crate::input::Key;
 
-use super::{
-    motion::MotionRange,
-    text::{TextLine, TextLines},
-    Buffer, CursorPosition,
-};
+use super::{buffer::CopiedRange, motion::MotionRange, Buffer, CursorPosition};
 
 pub enum UndoAction {
     DeleteRange(MotionRange),
-    Insert(CursorPosition, TextLine),
-    InsertLines(usize, TextLines),
+    InsertRange(CursorPosition, CopiedRange),
 }
 
 pub struct Change {
@@ -43,13 +38,9 @@ impl Change {
                     buffer.delete_range(range);
                     range.0
                 }
-                &UndoAction::Insert(pos, ref text) => {
-                    buffer.insert(pos, text.clone());
+                &UndoAction::InsertRange(pos, ref text) => {
+                    buffer.insert_range(pos, text.clone());
                     pos
-                }
-                &UndoAction::InsertLines(line, ref lines) => {
-                    buffer.insert_lines(line, lines.clone());
-                    CursorPosition { line, col: 0 }
                 }
             };
         }

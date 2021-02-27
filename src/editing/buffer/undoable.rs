@@ -9,7 +9,7 @@ use crate::editing::{
     CursorPosition, HasId, Id,
 };
 
-use super::Buffer;
+use super::{Buffer, CopiedRange};
 
 pub struct UndoableBuffer {
     base: Box<dyn Buffer>,
@@ -35,12 +35,14 @@ impl Buffer for UndoableBuffer {
         }
     }
 
-    fn delete_range(&mut self, range: MotionRange) {
+    fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
         self.changes.begin_change(range.0);
-        // TODO this may be tricky to enqueue...
-
-        self.base.delete_range(range);
+        let deleted = self.base.delete_range(range);
+        self.changes
+            .enqueue_undo(UndoAction::InsertRange(range.0, deleted.clone()));
         self.changes.end_change();
+
+        deleted
     }
 
     fn insert(&mut self, cursor: CursorPosition, text: TextLine) {
@@ -80,6 +82,26 @@ impl Buffer for UndoableBuffer {
                 end,
                 MotionFlags::LINEWISE,
             )));
+        self.changes.end_change();
+    }
+
+    fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange) {
+        let end = CursorPosition {
+            line: cursor.line + copied.inserted_lines(),
+            col: copied.text.lines.last().unwrap().width() as u16,
+        };
+        let flags = if copied.is_partial() {
+            MotionFlags::NONE
+        } else {
+            MotionFlags::LINEWISE
+        };
+
+        self.changes.begin_change(cursor);
+
+        self.base.insert_range(cursor, copied);
+
+        self.changes
+            .enqueue_undo(UndoAction::DeleteRange(MotionRange(cursor, end, flags)));
         self.changes.end_change();
     }
 }

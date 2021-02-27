@@ -17,6 +17,21 @@ bitflags! {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
+impl MotionRange {
+    pub fn lines(&self) -> (usize, usize) {
+        let &MotionRange(
+            CursorPosition {
+                line: first_line, ..
+            },
+            CursorPosition {
+                line: last_line, ..
+            },
+            ..,
+        ) = self;
+        (first_line, last_line)
+    }
+}
+
 pub type SimpleMotionRange = (CursorPosition, CursorPosition);
 
 impl From<SimpleMotionRange> for MotionRange {
@@ -113,7 +128,7 @@ pub trait Motion {
 
     fn delete_range<T: MotionContext>(&self, context: &mut T) {
         let range = self.range(context);
-        context.buffer_mut().delete_range(range)
+        context.buffer_mut().delete_range(range);
     }
 }
 

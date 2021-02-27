@@ -10,6 +10,8 @@ pub mod tabpages;
 pub mod text;
 pub mod window;
 
+use std::ops;
+
 pub use buffer::Buffer;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,6 +48,18 @@ impl CursorPosition {
         CursorPosition {
             line: self.line,
             col: line_width as u16,
+        }
+    }
+}
+
+impl ops::Add<(usize, u16)> for CursorPosition {
+    type Output = CursorPosition;
+
+    fn add(self, rhs: (usize, u16)) -> CursorPosition {
+        let (lines, cols) = rhs;
+        Self {
+            line: self.line + lines,
+            col: self.col + cols,
         }
     }
 }

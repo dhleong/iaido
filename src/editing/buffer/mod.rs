@@ -1,5 +1,7 @@
 pub mod memory;
 pub mod undoable;
+mod util;
+
 pub use memory::MemoryBuffer;
 pub use undoable::UndoableBuffer;
 
@@ -13,6 +15,45 @@ use super::{
     text::{EditableLine, TextLine, TextLines},
     CursorPosition, HasId,
 };
+
+#[derive(Clone)]
+pub struct CopiedRange {
+    pub text: TextLines,
+
+    /// If false, the first line of `text` was a partial line copy;
+    /// if true, the whole first line was copied
+    pub leading_newline: bool,
+
+    /// If false, the last line of `text` was a partial line copy
+    pub trailing_newline: bool,
+}
+
+impl Default for CopiedRange {
+    fn default() -> Self {
+        Self {
+            text: TextLines::default(),
+            leading_newline: false,
+            trailing_newline: false,
+        }
+    }
+}
+
+impl CopiedRange {
+    pub fn inserted_lines(&self) -> usize {
+        let mut count = self.text.lines.len();
+        if self.leading_newline {
+            count -= 1;
+        }
+        if self.trailing_newline {
+            count -= 1;
+        }
+        return count;
+    }
+
+    pub fn is_partial(&self) -> bool {
+        !self.leading_newline && !self.trailing_newline
+    }
+}
 
 pub trait Buffer: HasId + Send + Sync {
     fn source(&self) -> &BufferSource;
@@ -28,9 +69,10 @@ pub trait Buffer: HasId + Send + Sync {
     fn clear(&mut self);
     fn get(&self, line_index: usize) -> &TextLine;
 
-    fn delete_range(&mut self, range: MotionRange);
+    fn delete_range(&mut self, range: MotionRange) -> CopiedRange;
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
     fn insert_lines(&mut self, line_index: usize, text: TextLines);
+    fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange);
 
     fn append(&mut self, text: TextLines) {
         self.insert_lines(self.lines_count(), text);

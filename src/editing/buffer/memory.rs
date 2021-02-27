@@ -40,10 +40,6 @@ impl Buffer for MemoryBuffer {
         self.content.height()
     }
 
-    fn append(&mut self, text: TextLines) {
-        self.content.extend(text);
-    }
-
     fn clear(&mut self) {
         self.content.lines.clear();
     }
@@ -140,9 +136,13 @@ impl Buffer for MemoryBuffer {
     }
 
     fn insert_lines(&mut self, line_index: usize, text: TextLines) {
-        self.content
-            .lines
-            .splice(line_index..line_index, text.lines);
+        if line_index == self.lines_count() {
+            self.content.extend(text);
+        } else {
+            self.content
+                .lines
+                .splice(line_index..line_index, text.lines);
+        }
     }
 }
 

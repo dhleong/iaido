@@ -1,5 +1,7 @@
 pub mod memory;
+pub mod undoable;
 pub use memory::MemoryBuffer;
+pub use undoable::UndoableBuffer;
 
 use std::fmt;
 
@@ -23,13 +25,16 @@ pub trait Buffer: HasId + Send + Sync {
     }
 
     fn lines_count(&self) -> usize;
-    fn append(&mut self, text: TextLines);
     fn clear(&mut self);
     fn get(&self, line_index: usize) -> &TextLine;
 
     fn delete_range(&mut self, range: MotionRange);
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
     fn insert_lines(&mut self, line_index: usize, text: TextLines);
+
+    fn append(&mut self, text: TextLines) {
+        self.insert_lines(self.lines_count(), text);
+    }
 
     fn append_line(&mut self, text: String) {
         self.append_value(ReadValue::Text(text.into()));

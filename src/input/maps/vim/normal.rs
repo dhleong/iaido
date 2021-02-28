@@ -107,7 +107,17 @@ pub fn vim_normal_mode() -> VimMode {
         "u" => |ctx| {
             ctx.state_mut().current_bufwin().undo();
             Ok(())
-         },
+        },
+
+        // TODO redo queue for <ctrl-r>
+
+        "." => |ctx| {
+            if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
+                // TODO enqueue keys
+                ctx.state_mut().current_buffer_mut().changes().push(last);
+            }
+            Ok(())
+        },
 
     } + cmd_mode_access()
         + window::mappings()

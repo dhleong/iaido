@@ -17,7 +17,7 @@ impl<'a> BufWin<'a> {
     }
 
     pub fn undo(&mut self) {
-        if let Some(cursor) = self.buffer.change().undo() {
+        if let Some(cursor) = self.buffer.changes().undo() {
             self.window.cursor = cursor;
         }
     }

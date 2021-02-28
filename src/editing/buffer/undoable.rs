@@ -63,7 +63,7 @@ impl Buffer for UndoableBuffer {
         true
     }
 
-    fn change(&mut self) -> ChangeHandler {
+    fn changes(&mut self) -> ChangeHandler {
         ChangeHandler::new(&mut self.base, &mut self.changes)
     }
 
@@ -166,7 +166,7 @@ mod tests {
             buffer.delete_range(((0, 4), (0, 7)).into());
             buffer.assert_visual_match("Take love");
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take my love");
         }
 
@@ -179,7 +179,7 @@ mod tests {
             buffer.delete_range(((0, 4), (1, 7)).into());
             buffer.assert_visual_match("Take");
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match(indoc! {"
                 Take my love
                 Take my
@@ -196,7 +196,7 @@ mod tests {
             buffer.delete_range(((0, 7), (2, 7)).into());
             buffer.assert_visual_match("Take my where");
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match(indoc! {"
                 Take my love
                 Take my land
@@ -220,7 +220,7 @@ mod tests {
             buffer.insert_range((0, 4).into(), range);
             buffer.assert_visual_match("Take my love");
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take love");
         }
 
@@ -239,7 +239,7 @@ mod tests {
                 Take my land
             "});
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take");
         }
 
@@ -260,7 +260,7 @@ mod tests {
                 Take me where
             "});
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take my where");
         }
     }
@@ -277,7 +277,7 @@ mod tests {
             buffer.insert((0, 4).into(), " my".into());
             buffer.assert_visual_match("Take my love");
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take love");
         }
     }
@@ -297,7 +297,7 @@ mod tests {
                 Take my land
             "});
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take my land");
         }
 
@@ -312,7 +312,7 @@ mod tests {
                 Take my land
             "});
 
-            buffer.change().undo();
+            buffer.changes().undo();
             buffer.assert_visual_match("Take my love");
         }
     }

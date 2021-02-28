@@ -93,7 +93,7 @@ pub trait Buffer: HasId + Send + Sync {
     fn can_handle_change(&self) -> bool {
         false
     }
-    fn change(&mut self) -> ChangeHandler {
+    fn changes(&mut self) -> ChangeHandler {
         panic!("This Buffer implementation cannot handle changes");
     }
 

@@ -14,7 +14,7 @@ pub enum UndoAction {
 #[derive(Debug, Clone)]
 pub struct Change {
     /// Where this Change occurred (for redoing, if undone)
-    cursor: CursorPosition,
+    pub cursor: CursorPosition,
 
     /// The Keys that triggered this change
     pub keys: Vec<Key>,

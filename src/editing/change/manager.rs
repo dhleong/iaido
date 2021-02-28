@@ -43,6 +43,10 @@ impl ChangeManager {
             .push(action);
     }
 
+    pub fn push(&mut self, change: Change) {
+        self.undo_stack.push(change);
+    }
+
     pub fn take_last(&mut self) -> Option<Change> {
         self.undo_stack.pop()
     }

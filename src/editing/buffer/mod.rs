@@ -7,7 +7,10 @@ pub use undoable::UndoableBuffer;
 
 use std::fmt;
 
-use crate::{connection::ReadValue, input::completion::Completion};
+use crate::{
+    connection::ReadValue,
+    input::{completion::Completion, Key},
+};
 
 use super::{
     change::handler::ChangeHandler,
@@ -107,6 +110,7 @@ pub trait Buffer: HasId + Send + Sync {
         panic!("This Buffer implementation cannot handle changes");
     }
     fn begin_change(&mut self, _cursor: CursorPosition) {}
+    fn push_change_key(&mut self, _key: Key) {}
     fn end_change(&mut self) {}
 
     //

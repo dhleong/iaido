@@ -1,12 +1,15 @@
 use delegate::delegate;
 use editing::text::TextLines;
 
-use crate::editing::{
-    self,
-    change::{handler::ChangeHandler, manager::ChangeManager, UndoAction},
-    motion::{MotionFlags, MotionRange},
-    text::TextLine,
-    CursorPosition, HasId, Id,
+use crate::{
+    editing::{
+        self,
+        change::{handler::ChangeHandler, manager::ChangeManager, UndoAction},
+        motion::{MotionFlags, MotionRange},
+        text::TextLine,
+        CursorPosition, HasId, Id,
+    },
+    input::Key,
 };
 
 use super::{Buffer, CopiedRange};
@@ -58,6 +61,7 @@ impl Buffer for UndoableBuffer {
     delegate! {
         to self.changes {
             fn begin_change(&mut self, cursor: CursorPosition);
+            fn push_change_key(&mut self, key: Key);
             fn end_change(&mut self);
         }
     }

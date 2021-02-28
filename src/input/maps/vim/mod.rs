@@ -142,6 +142,12 @@ impl Keymap for VimKeymap {
                 if show_keys {
                     self.keymap.keys_buffer.push(key.clone());
                 }
+                if context.state().current_window().inserting {
+                    context
+                        .state_mut()
+                        .current_buffer_mut()
+                        .push_change_key(key);
+                }
 
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers

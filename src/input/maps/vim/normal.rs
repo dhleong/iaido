@@ -53,17 +53,18 @@ fn cmd_mode_access() -> KeyTreeNode {
 pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
         "a" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("a");
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());
             Ok(())
         },
         "A" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("A");
             ToLineEndMotion.apply_cursor(ctx.state_mut());
             Ok(())
         },
 
         "c" => operator |ctx, motion| {
+            ctx.state_mut().current_bufwin().begin_insert_change("c");
             ctx.state_mut().current_buffer_mut().delete_range(motion);
 
             let MotionRange(start, _, flags) = motion;
@@ -74,10 +75,10 @@ pub fn vim_normal_mode() -> VimMode {
                 ctx.state_mut().current_buffer_mut().insert_lines(start.line, TextLine::from("").into());
             }
 
-            ctx.state_mut().current_window_mut().set_inserting(true);
             Ok(())
         },
         "C" => |ctx| {
+            ctx.state_mut().current_bufwin().begin_insert_change("C");
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
             ctx.state_mut().current_window_mut().set_inserting(true);
@@ -95,11 +96,11 @@ pub fn vim_normal_mode() -> VimMode {
         },
 
         "i" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("i");
             Ok(())
         },
         "I" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("I");
             ToLineStartMotion.apply_cursor(ctx.state_mut());
             Ok(())
         },

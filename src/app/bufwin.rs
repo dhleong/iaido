@@ -1,4 +1,7 @@
-use crate::editing::{window::Window, Buffer};
+use crate::{
+    editing::{window::Window, Buffer},
+    input::keys::KeysParsable,
+};
 
 /// A BufWin provides convenient mutable access functions on a Window
 /// that require access to its associated buffer
@@ -14,6 +17,14 @@ impl<'a> BufWin<'a> {
 
     pub fn scroll_lines(&mut self, virtual_lines: i32) {
         self.window.scroll_lines(self.buffer, virtual_lines);
+    }
+
+    pub fn begin_insert_change<T: KeysParsable>(&mut self, initial_keys: T) {
+        self.buffer.begin_change(self.window.cursor);
+        for key in initial_keys.into_keys() {
+            self.buffer.push_change_key(key);
+        }
+        self.window.set_inserting(true);
     }
 
     pub fn redo(&mut self) -> bool {

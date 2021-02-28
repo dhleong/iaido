@@ -1,4 +1,4 @@
-use crate::editing::CursorPosition;
+use crate::{editing::CursorPosition, input::Key};
 
 use super::{Change, UndoAction};
 
@@ -28,7 +28,17 @@ impl ChangeManager {
         }
     }
 
+    pub fn push_change_key(&mut self, key: Key) {
+        if let Some(change) = self.current_change.as_mut() {
+            change.keys.push(key);
+        }
+    }
+
     pub fn end_change(&mut self) {
+        if self.change_depth == 0 {
+            panic!("unbalanced end_change; was a begin_change missed when entering insert?");
+        }
+
         self.change_depth -= 1;
         if self.change_depth == 0 {
             if let Some(change) = self.current_change.take() {

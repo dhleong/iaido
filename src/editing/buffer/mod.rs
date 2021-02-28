@@ -39,15 +39,26 @@ impl Default for CopiedRange {
 }
 
 impl CopiedRange {
-    pub fn inserted_lines(&self) -> usize {
-        let mut count = self.text.lines.len();
+    pub fn end_position(&self, start: CursorPosition) -> CursorPosition {
+        if self.text.lines.is_empty() {
+            return start;
+        }
+
+        let mut count = self.text.lines.len().checked_sub(1).unwrap_or(0);
         if self.leading_newline {
-            count -= 1;
+            count += 1;
         }
-        if self.trailing_newline {
-            count -= 1;
-        }
-        return count;
+
+        let last_width = self.text.lines.last().unwrap().width() as u16;
+        let end = CursorPosition {
+            line: start.line + count,
+            col: if count == 0 {
+                start.col + last_width
+            } else {
+                last_width
+            },
+        };
+        return end;
     }
 
     pub fn is_partial(&self) -> bool {
@@ -171,5 +182,111 @@ pub trait Buffer: HasId + Send + Sync {
 impl fmt::Display for dyn Buffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Buffer#{}]", self.id())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(test)]
+    mod copied_range {
+        use super::*;
+
+        #[cfg(test)]
+        mod end_position {
+            use super::*;
+
+            #[test]
+            fn single_line_partial() {
+                let range = CopiedRange {
+                    text: "my ".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 0, col: 10 }
+                );
+            }
+
+            #[test]
+            fn two_line_partial() {
+                let range = CopiedRange {
+                    text: "my love\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 1, col: 4 }
+                );
+            }
+
+            #[test]
+            fn multi_line_partial() {
+                let range = CopiedRange {
+                    text: "my love\nTake my land\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 2, col: 4 }
+                );
+            }
+
+            #[test]
+            fn leading_newline() {
+                let range = CopiedRange {
+                    text: "Take my land".into(),
+                    leading_newline: true,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 1, col: 12 }
+                );
+            }
+
+            #[test]
+            fn trailing_newline() {
+                let range = CopiedRange {
+                    text: " my land".into(),
+                    leading_newline: false,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 0, col: 12 }
+                );
+            }
+
+            #[test]
+            fn trailing_newline_plus_partial() {
+                let range = CopiedRange {
+                    text: " my love\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 1, col: 4 }
+                );
+            }
+
+            #[test]
+            fn trailing_and_leading() {
+                let range = CopiedRange {
+                    text: "Take my land\nTake...".into(),
+                    leading_newline: true,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 2, col: 7 }
+                );
+            }
+        }
     }
 }

@@ -95,10 +95,7 @@ impl Buffer for UndoableBuffer {
     }
 
     fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange) {
-        let end = CursorPosition {
-            line: cursor.line + copied.inserted_lines(),
-            col: copied.text.lines.last().unwrap().width() as u16,
-        };
+        let end = copied.end_position(cursor);
         let flags = if copied.is_partial() {
             MotionFlags::NONE
         } else {
@@ -165,6 +162,100 @@ mod tests {
                 Take my love
                 Take my
             "});
+        }
+
+        #[test]
+        fn undo_multiline_partial() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+                Take my land
+                Take me where
+            "});
+            buffer.delete_range(((0, 7), (2, 7)).into());
+            assert_visual_match(&buffer, "Take my where");
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+                Take me where
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod insert_range {
+        use super::*;
+
+        use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
+
+        #[test]
+        fn undo_single_partial() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+            "});
+            let range = buffer.delete_range(((0, 4), (0, 7)).into());
+            assert_visual_match(&buffer, "Take love");
+
+            buffer.insert_range((0, 4).into(), range);
+            assert_visual_match(&buffer, "Take my love");
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take love");
+        }
+
+        #[test]
+        fn undo_partial_plus_full_line_insert() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+                Take my land
+            "});
+            let range = buffer.delete_range(((0, 4), (1, 12)).into());
+            assert_visual_match(&buffer, "Take");
+
+            buffer.insert_range((0, 4).into(), range);
+            assert_visual_match(
+                &buffer,
+                indoc! {"
+                    Take my love
+                    Take my land
+                "},
+            );
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take");
+        }
+
+        #[test]
+        fn undo_multiline_partial() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+                Take my land
+                Take me where
+            "});
+            let range = buffer.delete_range(((0, 7), (2, 7)).into());
+            assert_visual_match(&buffer, "Take my where");
+
+            buffer.insert_range((0, 7).into(), range);
+            assert_visual_match(
+                &buffer,
+                indoc! {"
+                    Take my love
+                    Take my land
+                    Take me where
+                "},
+            );
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take my where");
         }
     }
 }

@@ -122,19 +122,12 @@ impl Buffer for UndoableBuffer {
     }
 
     fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange) {
-        let end = copied.end_position(cursor);
-        let flags = if copied.is_partial() {
-            MotionFlags::NONE
-        } else {
-            MotionFlags::LINEWISE
-        };
-
         self.changes.begin_change(cursor);
 
+        self.changes
+            .enqueue_undo(UndoAction::DeleteRange(copied.motion_range(cursor)));
         self.base.insert_range(cursor, copied);
 
-        self.changes
-            .enqueue_undo(UndoAction::DeleteRange(MotionRange(cursor, end, flags)));
         self.changes.end_change();
     }
 }

@@ -32,22 +32,30 @@ impl Change {
         }
     }
 
-    pub fn undo(&self, buffer: &mut Box<dyn Buffer>) -> CursorPosition {
+    /// Returns a Change for redoing this undo; the keys for the new
+    /// Change are copied from this one
+    pub fn undo(&self, buffer: &mut Box<dyn Buffer>) -> Change {
         let mut cursor = CursorPosition::default();
+        let mut undo_actions = Vec::default();
 
         for action in self.undo_actions.iter().rev() {
             cursor = match action {
                 &UndoAction::DeleteRange(range) => {
-                    buffer.delete_range(range);
+                    undo_actions.push(UndoAction::InsertRange(range.0, buffer.delete_range(range)));
                     range.0
                 }
                 &UndoAction::InsertRange(pos, ref text) => {
+                    undo_actions.push(UndoAction::DeleteRange(text.motion_range(pos)));
                     buffer.insert_range(pos, text.clone());
                     pos
                 }
             };
         }
 
-        cursor
+        Change {
+            keys: self.keys.clone(),
+            cursor,
+            undo_actions,
+        }
     }
 }

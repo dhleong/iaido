@@ -105,11 +105,23 @@ pub fn vim_normal_mode() -> VimMode {
         },
 
         "u" => |ctx| {
-            ctx.state_mut().current_bufwin().undo();
+            if ctx.state_mut().current_bufwin().undo() {
+                // TODO more info?
+                ctx.state_mut().echo_str("1 change; older");
+            } else {
+                ctx.state_mut().echo_str("Already at oldest change");
+            }
             Ok(())
         },
-
-        // TODO redo queue for <ctrl-r>
+        "<ctrl-r>" => |ctx| {
+            if ctx.state_mut().current_bufwin().redo() {
+                // TODO more info?
+                ctx.state_mut().echo_str("1 change; newer");
+            } else {
+                ctx.state_mut().echo_str("Already at newest change");
+            }
+            Ok(())
+        },
 
         "." => |ctx| {
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {

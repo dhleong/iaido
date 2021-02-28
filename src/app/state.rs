@@ -123,6 +123,10 @@ impl AppState {
         self.echo_buffer.append(text);
     }
 
+    pub fn echo_str(&mut self, text: &'static str) {
+        self.echo(text.into());
+    }
+
     // ======= keymap conveniences ============================
 
     pub fn backspace(&mut self) {

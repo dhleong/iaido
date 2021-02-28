@@ -11,7 +11,7 @@ use crate::{connection::ReadValue, input::completion::Completion};
 
 use super::{
     change::handler::ChangeHandler,
-    motion::MotionRange,
+    motion::{MotionFlags, MotionRange},
     source::BufferSource,
     text::{EditableLine, TextLine, TextLines},
     CursorPosition, HasId,
@@ -60,6 +60,16 @@ impl CopiedRange {
             },
         };
         return end;
+    }
+
+    pub fn motion_range(&self, start: CursorPosition) -> MotionRange {
+        let end = self.end_position(start);
+        let flags = if self.is_partial() {
+            MotionFlags::NONE
+        } else {
+            MotionFlags::LINEWISE
+        };
+        MotionRange(start, end, flags)
     }
 
     pub fn is_partial(&self) -> bool {

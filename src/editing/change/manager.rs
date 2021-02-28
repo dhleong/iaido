@@ -6,6 +6,7 @@ pub struct ChangeManager {
     change_depth: u16,
     current_change: Option<Change>,
     undo_stack: Vec<Change>,
+    redo_stack: Vec<Change>,
 }
 
 impl Default for ChangeManager {
@@ -14,6 +15,7 @@ impl Default for ChangeManager {
             change_depth: 0,
             current_change: None,
             undo_stack: Vec::default(),
+            redo_stack: Vec::default(),
         }
     }
 }
@@ -32,6 +34,7 @@ impl ChangeManager {
             if let Some(change) = self.current_change.take() {
                 self.undo_stack.push(change);
             }
+            self.redo_stack.clear();
         }
     }
 
@@ -49,5 +52,13 @@ impl ChangeManager {
 
     pub fn take_last(&mut self) -> Option<Change> {
         self.undo_stack.pop()
+    }
+
+    pub fn push_redo(&mut self, change: Change) {
+        self.redo_stack.push(change);
+    }
+
+    pub fn take_last_redo(&mut self) -> Option<Change> {
+        self.redo_stack.pop()
     }
 }

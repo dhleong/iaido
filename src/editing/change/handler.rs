@@ -13,17 +13,31 @@ impl<'a> ChangeHandler<'a> {
         Self { buffer, changes }
     }
 
-    pub fn take_last(&mut self) -> Option<Change> {
-        self.changes.take_last()
-    }
-
     pub fn push(&mut self, change: Change) {
         self.changes.push(change)
     }
 
+    pub fn take_last(&mut self) -> Option<Change> {
+        self.changes.take_last()
+    }
+
     pub fn undo(&mut self) -> Option<CursorPosition> {
         if let Some(change) = self.changes.take_last() {
-            Some(change.undo(self.buffer))
+            let redo = change.undo(self.buffer);
+            let result = Some(redo.cursor);
+            self.changes.push_redo(redo);
+            result
+        } else {
+            None
+        }
+    }
+
+    pub fn redo(&mut self) -> Option<CursorPosition> {
+        if let Some(change) = self.changes.take_last_redo() {
+            let undo = change.undo(self.buffer);
+            let result = Some(undo.cursor);
+            self.changes.push(undo);
+            result
         } else {
             None
         }

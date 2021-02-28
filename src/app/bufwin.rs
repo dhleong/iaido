@@ -16,9 +16,21 @@ impl<'a> BufWin<'a> {
         self.window.scroll_lines(self.buffer, virtual_lines);
     }
 
-    pub fn undo(&mut self) {
+    pub fn redo(&mut self) -> bool {
+        if let Some(cursor) = self.buffer.changes().redo() {
+            self.window.cursor = cursor;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn undo(&mut self) -> bool {
         if let Some(cursor) = self.buffer.changes().undo() {
             self.window.cursor = cursor;
+            true
+        } else {
+            false
         }
     }
 }

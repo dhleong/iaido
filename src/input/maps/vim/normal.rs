@@ -104,6 +104,11 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         },
 
+        "u" => |ctx| {
+            ctx.state_mut().current_bufwin().undo();
+            Ok(())
+         },
+
     } + cmd_mode_access()
         + window::mappings()
         + vim_standard_motions()
@@ -197,6 +202,25 @@ mod tests {
             ctx.feed_vim("D").assert_visual_match(indoc! {"
                 Take my love
                 |
+                Take me where
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod u {
+        use super::*;
+
+        #[test]
+        fn undo_restores_cursor() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("Dku").assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
                 Take me where
             "});
         }

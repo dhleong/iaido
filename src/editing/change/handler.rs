@@ -1,4 +1,4 @@
-use crate::editing::Buffer;
+use crate::editing::{Buffer, CursorPosition};
 
 use super::manager::ChangeManager;
 
@@ -13,9 +13,11 @@ impl<'a> ChangeHandler<'a> {
         Self { buffer, changes }
     }
 
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> Option<CursorPosition> {
         if let Some(change) = self.changes.take_last() {
-            change.undo(self.buffer);
+            Some(change.undo(self.buffer))
+        } else {
+            None
         }
     }
 }

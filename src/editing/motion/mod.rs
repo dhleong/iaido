@@ -301,7 +301,7 @@ pub mod tests {
         }
 
         fn bufwin(&mut self) -> BufWin {
-            BufWin::new(&mut self.window, &self.buffer)
+            BufWin::new(&mut self.window, &mut self.buffer)
         }
 
         fn cursor(&self) -> crate::editing::CursorPosition {

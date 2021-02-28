@@ -1,6 +1,10 @@
 use std::fmt;
 
-use super::{buffer::MemoryBuffer, ids::Ids, Buffer, Id};
+use super::{
+    buffer::{MemoryBuffer, UndoableBuffer},
+    ids::Ids,
+    Buffer, Id,
+};
 
 /// Manages all buffers (Hidden or not) in an app
 pub struct Buffers {
@@ -25,23 +29,23 @@ impl Buffers {
     }
 
     pub fn create(&mut self) -> &Box<dyn Buffer> {
-        let id = self.ids.next();
-        let buffer = MemoryBuffer::new(id);
-        let boxed = Box::new(buffer);
-
-        self.all.push(boxed);
-
+        self.create_for_id();
         self.all.last().unwrap()
     }
 
     pub fn create_mut(&mut self) -> &mut Box<dyn Buffer> {
+        self.create_for_id();
+        self.all.last_mut().unwrap()
+    }
+
+    fn create_for_id(&mut self) -> Id {
         let id = self.ids.next();
         let buffer = MemoryBuffer::new(id);
-        let boxed = Box::new(buffer);
+        let boxed = UndoableBuffer::wrap(Box::new(buffer));
 
         self.all.push(boxed);
 
-        self.all.last_mut().unwrap()
+        id
     }
 
     #[cfg(test)]
@@ -49,7 +53,7 @@ impl Buffers {
         let id = buffer.id();
         let index = self.all.iter().position(|b| b.id() == id).unwrap();
         let old = self.all.swap_remove(index);
-        self.all.push(buffer);
+        self.all.push(UndoableBuffer::wrap(buffer));
         old
     }
 }

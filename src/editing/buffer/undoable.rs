@@ -3,7 +3,7 @@ use editing::text::TextLines;
 
 use crate::editing::{
     self,
-    change::{manager::ChangeManager, UndoAction},
+    change::{handler::ChangeHandler, manager::ChangeManager, UndoAction},
     motion::{MotionFlags, MotionRange},
     text::TextLine,
     CursorPosition, HasId, Id,
@@ -14,6 +14,17 @@ use super::{Buffer, CopiedRange};
 pub struct UndoableBuffer {
     base: Box<dyn Buffer>,
     pub changes: ChangeManager,
+}
+
+impl UndoableBuffer {
+    #[allow(unused)]
+    pub fn wrap(base: Box<dyn Buffer>) -> Box<dyn Buffer> {
+        if base.can_handle_change() {
+            base
+        } else {
+            Box::new(UndoableBuffer::from(base))
+        }
+    }
 }
 
 impl From<Box<dyn Buffer>> for UndoableBuffer {
@@ -43,6 +54,22 @@ impl Buffer for UndoableBuffer {
             fn clear(&mut self);
         }
     }
+
+    //
+    // Handle change
+    //
+
+    fn can_handle_change(&self) -> bool {
+        true
+    }
+
+    fn change(&mut self) -> ChangeHandler {
+        ChangeHandler::new(&mut self.base, &mut self.changes)
+    }
+
+    //
+    // Undoable implementations
+    //
 
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
         self.changes.begin_change(range.0);
@@ -114,24 +141,22 @@ impl Buffer for UndoableBuffer {
 
 #[cfg(test)]
 mod tests {
-    use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
+    use crate::editing::buffer::memory::tests::TestableBuffer;
     use crate::editing::buffer::MemoryBuffer;
 
     use super::*;
 
     use indoc::indoc;
 
-    fn buffer(s: &'static str) -> UndoableBuffer {
+    fn buffer(s: &'static str) -> Box<dyn Buffer> {
         let mut buffer: Box<dyn Buffer> = Box::new(MemoryBuffer::new(0));
         buffer.append(s.into());
-        UndoableBuffer::from(buffer)
+        UndoableBuffer::wrap(buffer)
     }
 
     #[cfg(test)]
     mod delete_range {
         use super::*;
-
-        use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
 
         #[test]
         fn undo_delete_within_line() {
@@ -139,12 +164,13 @@ mod tests {
                 Take my love
             "});
             buffer.delete_range(((0, 4), (0, 7)).into());
-            assert_visual_match(&buffer, "Take love");
+            buffer.assert_visual_match("Take love");
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take my love");
+            // let last_change = buffer.changes.take_last().unwrap();
+            // let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            // last_change.undo(&mut boxed);
+            buffer.change().undo();
+            buffer.assert_visual_match("Take my love");
         }
 
         #[test]
@@ -154,12 +180,10 @@ mod tests {
                 Take my
             "});
             buffer.delete_range(((0, 4), (1, 7)).into());
-            assert_visual_match(&buffer, "Take");
+            buffer.assert_visual_match("Take");
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match(indoc! {"
+            buffer.change().undo();
+            buffer.assert_visual_match(indoc! {"
                 Take my love
                 Take my
             "});
@@ -173,12 +197,10 @@ mod tests {
                 Take me where
             "});
             buffer.delete_range(((0, 7), (2, 7)).into());
-            assert_visual_match(&buffer, "Take my where");
+            buffer.assert_visual_match("Take my where");
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match(indoc! {"
+            buffer.change().undo();
+            buffer.assert_visual_match(indoc! {"
                 Take my love
                 Take my land
                 Take me where
@@ -196,15 +218,13 @@ mod tests {
                 Take my love
             "});
             let range = buffer.delete_range(((0, 4), (0, 7)).into());
-            assert_visual_match(&buffer, "Take love");
+            buffer.assert_visual_match("Take love");
 
             buffer.insert_range((0, 4).into(), range);
-            assert_visual_match(&buffer, "Take my love");
+            buffer.assert_visual_match("Take my love");
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take love");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take love");
         }
 
         #[test]
@@ -214,21 +234,16 @@ mod tests {
                 Take my land
             "});
             let range = buffer.delete_range(((0, 4), (1, 12)).into());
-            assert_visual_match(&buffer, "Take");
+            buffer.assert_visual_match("Take");
 
             buffer.insert_range((0, 4).into(), range);
-            assert_visual_match(
-                &buffer,
-                indoc! {"
-                    Take my love
-                    Take my land
-                "},
-            );
+            buffer.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+            "});
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take");
         }
 
         #[test]
@@ -239,22 +254,17 @@ mod tests {
                 Take me where
             "});
             let range = buffer.delete_range(((0, 7), (2, 7)).into());
-            assert_visual_match(&buffer, "Take my where");
+            buffer.assert_visual_match("Take my where");
 
             buffer.insert_range((0, 7).into(), range);
-            assert_visual_match(
-                &buffer,
-                indoc! {"
-                    Take my love
-                    Take my land
-                    Take me where
-                "},
-            );
+            buffer.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+                Take me where
+            "});
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take my where");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take my where");
         }
     }
 
@@ -270,10 +280,8 @@ mod tests {
             buffer.insert((0, 4).into(), " my".into());
             buffer.assert_visual_match("Take my love");
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take love");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take love");
         }
     }
 
@@ -292,10 +300,8 @@ mod tests {
                 Take my land
             "});
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take my land");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take my land");
         }
 
         #[test]
@@ -309,10 +315,8 @@ mod tests {
                 Take my land
             "});
 
-            let last_change = buffer.changes.take_last().unwrap();
-            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            last_change.undo(&mut boxed);
-            boxed.assert_visual_match("Take my love");
+            buffer.change().undo();
+            buffer.assert_visual_match("Take my love");
         }
     }
 }

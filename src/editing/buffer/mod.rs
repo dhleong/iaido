@@ -10,6 +10,7 @@ use std::fmt;
 use crate::{connection::ReadValue, input::completion::Completion};
 
 use super::{
+    change::handler::ChangeHandler,
     motion::MotionRange,
     source::BufferSource,
     text::{EditableLine, TextLine, TextLines},
@@ -67,23 +68,38 @@ impl CopiedRange {
 }
 
 pub trait Buffer: HasId + Send + Sync {
-    fn source(&self) -> &BufferSource;
-    fn set_source(&mut self, source: BufferSource);
-    fn is_read_only(&self) -> bool {
-        match self.source() {
-            BufferSource::Connection(_) => true,
-            _ => false,
-        }
-    }
-
+    // read access
     fn lines_count(&self) -> usize;
-    fn clear(&mut self);
     fn get(&self, line_index: usize) -> &TextLine;
 
+    // source
+    fn source(&self) -> &BufferSource;
+    fn set_source(&mut self, source: BufferSource);
+
+    // undoable mutations
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange;
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
     fn insert_lines(&mut self, line_index: usize, text: TextLines);
     fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange);
+
+    // this is a mutation, but generally not undoable
+    fn clear(&mut self);
+
+    //
+    // Optional
+    //
+
+    // change handling
+    fn can_handle_change(&self) -> bool {
+        false
+    }
+    fn change(&mut self) -> ChangeHandler {
+        panic!("This Buffer implementation cannot handle changes");
+    }
+
+    //
+    // Convenience methods, using the core interface above:
+    //
 
     fn append(&mut self, text: TextLines) {
         self.insert_lines(self.lines_count(), text);
@@ -112,7 +128,6 @@ pub trait Buffer: HasId + Send + Sync {
         };
     }
 
-    // convenience:
     fn checked_get(&self, line_index: usize) -> Option<&TextLine> {
         if !self.is_empty() && line_index < self.lines_count() {
             Some(self.get(line_index))
@@ -134,6 +149,13 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn is_empty(&self) -> bool {
         self.lines_count() == 0
+    }
+
+    fn is_read_only(&self) -> bool {
+        match self.source() {
+            BufferSource::Connection(_) => true,
+            _ => false,
+        }
     }
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {

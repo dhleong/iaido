@@ -1,3 +1,4 @@
+pub mod handler;
 pub mod manager;
 
 use crate::input::Key;

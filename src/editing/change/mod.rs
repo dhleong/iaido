@@ -4,11 +4,13 @@ use crate::input::Key;
 
 use super::{buffer::CopiedRange, motion::MotionRange, Buffer, CursorPosition};
 
+#[derive(Debug, Clone)]
 pub enum UndoAction {
     DeleteRange(MotionRange),
     InsertRange(CursorPosition, CopiedRange),
 }
 
+#[derive(Debug, Clone)]
 pub struct Change {
     /// Where this Change occurred (for redoing, if undone)
     cursor: CursorPosition,

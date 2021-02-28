@@ -133,10 +133,10 @@ mod tests {
     mod delete_range {
         use super::*;
 
-        use crate::editing::buffer::memory::tests::assert_visual_match;
+        use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
 
         #[test]
-        fn undo_within_line() {
+        fn undo_delete_within_line() {
             let mut buffer = buffer(indoc! {"
                 Take my love
             "});
@@ -146,6 +146,25 @@ mod tests {
             let last_change = buffer.changes.take_last().unwrap();
             let mut boxed: Box<dyn Buffer> = Box::new(buffer);
             last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take my love");
+        }
+
+        #[test]
+        fn undo_partial_plus_full_line_delete() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+                Take my
+            "});
+            buffer.delete_range(((0, 4), (1, 7)).into());
+            assert_visual_match(&buffer, "Take");
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match(indoc! {"
+                Take my love
+                Take my
+            "});
         }
     }
 }

@@ -16,7 +16,7 @@ use super::{
     CursorPosition, HasId,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CopiedRange {
     pub text: TextLines,
 

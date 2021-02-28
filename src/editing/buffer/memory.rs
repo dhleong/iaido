@@ -129,6 +129,14 @@ impl Buffer for MemoryBuffer {
         // make one defensively
         let mut start = 0;
         let mut end = copied.text.lines.len();
+        let multiline = end > 1;
+
+        if copied.is_partial() && !multiline {
+            // simple case: single, in-line range
+            self.insert(cursor.into(), copied.text.lines.remove(0).into());
+            return;
+        }
+
         if !copied.trailing_newline {
             // We have to de-splice this line
             let end_of_line = self
@@ -154,7 +162,7 @@ impl Buffer for MemoryBuffer {
             self.insert_lines(cursor.line + start, TextLines::from(lines));
         }
 
-        if !copied.leading_newline && end > start {
+        if !copied.leading_newline {
             self.insert(cursor, copied.text.lines.remove(0));
         }
     }
@@ -165,16 +173,39 @@ pub mod tests {
     use super::*;
     use indoc::indoc;
 
-    pub fn assert_visual_match<T: Buffer>(buf: &T, s: &'static str) {
-        let actual = buf.get_contents();
-        let expected = MemoryBuffer {
-            id: 0,
-            content: s.into(),
-            source: BufferSource::None,
-        }
-        .get_contents();
+    pub trait TestableBuffer {
+        fn assert_visual_match(&self, s: &'static str);
+    }
 
-        assert_eq!(actual, expected);
+    impl TestableBuffer for String {
+        fn assert_visual_match(&self, s: &'static str) {
+            let expected = MemoryBuffer {
+                id: 0,
+                content: s.into(),
+                source: BufferSource::None,
+            }
+            .get_contents();
+
+            assert_eq!(self.clone(), expected);
+        }
+    }
+
+    impl<T: Buffer> TestableBuffer for T {
+        fn assert_visual_match(&self, s: &'static str) {
+            let actual = self.get_contents();
+            actual.assert_visual_match(s);
+        }
+    }
+
+    impl TestableBuffer for Box<dyn Buffer> {
+        fn assert_visual_match(&self, s: &'static str) {
+            let actual = self.get_contents();
+            actual.assert_visual_match(s);
+        }
+    }
+
+    pub fn assert_visual_match<T: Buffer>(buf: &T, s: &'static str) {
+        buf.assert_visual_match(s);
     }
 
     #[cfg(test)]

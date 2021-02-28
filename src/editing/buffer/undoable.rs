@@ -78,8 +78,8 @@ impl Buffer for UndoableBuffer {
             col: 0,
         };
         let end = CursorPosition {
-            line: line_index + text.lines.len(),
-            col: 0,
+            line: line_index + text.lines.len() - 1,
+            col: text.lines[text.lines.len() - 1].width() as u16,
         };
         self.changes.begin_change(start);
 
@@ -114,6 +114,7 @@ impl Buffer for UndoableBuffer {
 
 #[cfg(test)]
 mod tests {
+    use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
     use crate::editing::buffer::MemoryBuffer;
 
     use super::*;
@@ -189,8 +190,6 @@ mod tests {
     mod insert_range {
         use super::*;
 
-        use crate::editing::buffer::memory::tests::{assert_visual_match, TestableBuffer};
-
         #[test]
         fn undo_single_partial() {
             let mut buffer = buffer(indoc! {"
@@ -256,6 +255,64 @@ mod tests {
             let mut boxed: Box<dyn Buffer> = Box::new(buffer);
             last_change.undo(&mut boxed);
             boxed.assert_visual_match("Take my where");
+        }
+    }
+
+    #[cfg(test)]
+    mod insert {
+        use super::*;
+
+        #[test]
+        fn undo_simple() {
+            let mut buffer = buffer(indoc! {"
+                Take love
+            "});
+            buffer.insert((0, 4).into(), " my".into());
+            buffer.assert_visual_match("Take my love");
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take love");
+        }
+    }
+
+    #[cfg(test)]
+    mod insert_lines {
+        use super::*;
+
+        #[test]
+        fn undo_insert_before() {
+            let mut buffer = buffer(indoc! {"
+                Take my land
+            "});
+            buffer.insert_lines(0, "Take my love".into());
+            buffer.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+            "});
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take my land");
+        }
+
+        #[test]
+        fn undo_insert_after() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+            "});
+            buffer.insert_lines(1, "Take my land".into());
+            buffer.assert_visual_match(indoc! {"
+                Take my love
+                Take my land
+            "});
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+            boxed.assert_visual_match("Take my love");
         }
     }
 }

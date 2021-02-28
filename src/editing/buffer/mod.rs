@@ -115,7 +115,7 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn append(&mut self, text: TextLines) {
         self.begin_change(CursorPosition {
-            line: self.lines_count().checked_sub(0).unwrap_or(0),
+            line: self.lines_count().checked_sub(1).unwrap_or(0),
             col: 0,
         });
         self.insert_lines(self.lines_count(), text);

@@ -251,21 +251,28 @@ mod tests {
         #[test]
         fn undo_line_appends() {
             let mut ctx = window("");
+            ctx.window.size = (20, 2).into();
             ctx.buffer.append("Take my love".into());
             ctx.buffer.append("Take my land".into());
             ctx.buffer.append("Take me where".into());
             ctx.window.cursor = (2, 12).into();
 
             ctx = ctx.feed_vim("u");
-            ctx.render_at_own_size();
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+
+            ctx = ctx.feed_vim("u");
+            ctx.assert_visual_match(indoc! {"
+                ~
+                |Take my love
+            "});
 
             ctx = ctx.feed_vim("u");
             ctx.render_at_own_size();
 
-            ctx = ctx.feed_vim("u");
-            ctx.render_at_own_size();
-
-            ctx.feed_vim("u").assert_visual_match("");
+            ctx.feed_vim("u").render_at_own_size();
         }
 
         #[test]

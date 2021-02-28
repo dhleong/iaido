@@ -106,18 +106,29 @@ pub trait Buffer: HasId + Send + Sync {
     fn changes(&mut self) -> ChangeHandler {
         panic!("This Buffer implementation cannot handle changes");
     }
+    fn begin_change(&mut self, _cursor: CursorPosition) {}
+    fn end_change(&mut self) {}
 
     //
     // Convenience methods, using the core interface above:
     //
 
     fn append(&mut self, text: TextLines) {
+        self.begin_change(CursorPosition {
+            line: self.lines_count().checked_sub(0).unwrap_or(0),
+            col: 0,
+        });
         self.insert_lines(self.lines_count(), text);
+        self.end_change();
     }
 
     fn append_line(&mut self, text: String) {
+        let line = self.lines_count().checked_sub(1).unwrap_or(0);
+        let col = self.get_line_width(line).unwrap_or(0) as u16;
+        self.begin_change(CursorPosition { line, col });
         self.append_value(ReadValue::Text(text.into()));
         self.append_value(ReadValue::Newline);
+        self.end_change();
     }
 
     fn append_value(&mut self, value: ReadValue) {

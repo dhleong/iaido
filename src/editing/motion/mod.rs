@@ -146,7 +146,10 @@ pub mod tests {
     use crate::{
         app,
         editing::{
-            buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, HasId, Resizable, Size,
+            buffer::{MemoryBuffer, UndoableBuffer},
+            text::TextLine,
+            window::Window,
+            Buffer, Resizable, Size,
         },
         input::{
             commands::registry::CommandRegistry, completion::CompletableContext,
@@ -334,7 +337,7 @@ pub mod tests {
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
-        let mut buffer = MemoryBuffer::new(0);
+        let mut buffer = UndoableBuffer::wrap(Box::new(MemoryBuffer::new(0)));
         let mut non_buffer_lines = 0;
 
         for (index, line) in s.lines().enumerate() {
@@ -364,7 +367,7 @@ pub mod tests {
 
         TestWindow {
             window: Box::new(window),
-            buffer: Box::new(buffer),
+            buffer,
             commands: CommandRegistry::default(),
         }
     }

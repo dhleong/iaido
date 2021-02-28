@@ -18,7 +18,7 @@ impl<'a> BufWin<'a> {
 
     pub fn redo(&mut self) -> bool {
         if let Some(cursor) = self.buffer.changes().redo() {
-            self.window.cursor = cursor;
+            self.window.cursor = self.window.clamp_cursor(self.buffer, cursor);
             true
         } else {
             false
@@ -27,7 +27,7 @@ impl<'a> BufWin<'a> {
 
     pub fn undo(&mut self) -> bool {
         if let Some(cursor) = self.buffer.changes().undo() {
-            self.window.cursor = cursor;
+            self.window.cursor = self.window.clamp_cursor(self.buffer, cursor);
             true
         } else {
             false

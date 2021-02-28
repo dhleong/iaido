@@ -234,6 +234,41 @@ mod tests {
         use super::*;
 
         #[test]
+        fn undo_empty() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.buffer.changes().clear();
+            ctx.feed_vim("u").assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+        }
+
+        #[test]
+        fn undo_line_appends() {
+            let mut ctx = window("");
+            ctx.buffer.append("Take my love".into());
+            ctx.buffer.append("Take my land".into());
+            ctx.buffer.append("Take me where".into());
+            ctx.window.cursor = (2, 12).into();
+
+            ctx = ctx.feed_vim("u");
+            ctx.render_at_own_size();
+
+            ctx = ctx.feed_vim("u");
+            ctx.render_at_own_size();
+
+            ctx = ctx.feed_vim("u");
+            ctx.render_at_own_size();
+
+            ctx.feed_vim("u").assert_visual_match("");
+        }
+
+        #[test]
         fn undo_restores_cursor() {
             let ctx = window(indoc! {"
                 Take my love

@@ -55,6 +55,13 @@ impl Buffer for UndoableBuffer {
         }
     }
 
+    delegate! {
+        to self.changes {
+            fn begin_change(&mut self, cursor: CursorPosition);
+            fn end_change(&mut self);
+        }
+    }
+
     //
     // Handle change
     //
@@ -307,6 +314,24 @@ mod tests {
 
             buffer.changes().undo();
             buffer.assert_visual_match("Take my love");
+        }
+    }
+
+    #[cfg(test)]
+    mod append {
+        use super::*;
+
+        #[test]
+        fn undo_append_to_empty_buffer() {
+            let mut buffer = buffer("");
+            buffer.append("Take my love".into());
+            buffer.assert_visual_match(indoc! {"
+                Take my love
+            "});
+
+            buffer.changes().undo();
+            assert_eq!(buffer.lines_count(), 0);
+            buffer.assert_visual_match("");
         }
     }
 }

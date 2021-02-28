@@ -46,6 +46,14 @@ impl ChangeManager {
             .push(action);
     }
 
+    /// After reading in a file, for example, we should not have
+    /// any undo history
+    pub fn clear(&mut self) {
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+        self.current_change = None;
+    }
+
     pub fn push(&mut self, change: Change) {
         self.undo_stack.push(change);
     }

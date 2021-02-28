@@ -1,3 +1,5 @@
+use delegate::delegate;
+
 use crate::editing::{Buffer, CursorPosition};
 
 use super::{manager::ChangeManager, Change};
@@ -13,12 +15,12 @@ impl<'a> ChangeHandler<'a> {
         Self { buffer, changes }
     }
 
-    pub fn push(&mut self, change: Change) {
-        self.changes.push(change)
-    }
-
-    pub fn take_last(&mut self) -> Option<Change> {
-        self.changes.take_last()
+    delegate! {
+        to self.changes {
+            pub fn clear(&mut self);
+            pub fn push(&mut self, change: Change);
+            pub fn take_last(&mut self) -> Option<Change>;
+        }
     }
 
     pub fn undo(&mut self) -> Option<CursorPosition> {

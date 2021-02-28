@@ -142,12 +142,12 @@ impl Keymap for VimKeymap {
                 if show_keys {
                     self.keymap.keys_buffer.push(key.clone());
                 }
-                if context.state().current_window().inserting {
-                    context
-                        .state_mut()
-                        .current_buffer_mut()
-                        .push_change_key(key);
-                }
+
+                // if there's a change in progress, add the key to it
+                context
+                    .state_mut()
+                    .current_buffer_mut()
+                    .push_change_key(key);
 
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
@@ -277,6 +277,9 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
             use crate::editing::motion::Motion;
 
+            // operators always start a change
+            $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
+
             if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
                 if pending_key == $keys.into() {
                     // execute linewise action directly:
@@ -292,7 +295,11 @@ macro_rules! vim_branches {
             // no pending linewise op; save a closure for motion use:
             $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
             $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
-                $body
+                let operator_fn_result = $body;
+
+                $ctx_name.state_mut().current_buffer_mut().end_change();
+
+                operator_fn_result
             }));
             Ok(())
         }));

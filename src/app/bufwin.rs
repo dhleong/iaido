@@ -19,11 +19,15 @@ impl<'a> BufWin<'a> {
         self.window.scroll_lines(self.buffer, virtual_lines);
     }
 
-    pub fn begin_insert_change<T: KeysParsable>(&mut self, initial_keys: T) {
+    pub fn begin_keys_change<T: KeysParsable>(&mut self, initial_keys: T) {
         self.buffer.begin_change(self.window.cursor);
         for key in initial_keys.into_keys() {
             self.buffer.push_change_key(key);
         }
+    }
+
+    pub fn begin_insert_change<T: KeysParsable>(&mut self, initial_keys: T) {
+        self.begin_keys_change(initial_keys);
         self.window.set_inserting(true);
     }
 

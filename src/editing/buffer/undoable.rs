@@ -166,9 +166,6 @@ mod tests {
             buffer.delete_range(((0, 4), (0, 7)).into());
             buffer.assert_visual_match("Take love");
 
-            // let last_change = buffer.changes.take_last().unwrap();
-            // let mut boxed: Box<dyn Buffer> = Box::new(buffer);
-            // last_change.undo(&mut boxed);
             buffer.change().undo();
             buffer.assert_visual_match("Take my love");
         }

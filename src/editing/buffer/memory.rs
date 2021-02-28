@@ -154,36 +154,25 @@ impl Buffer for MemoryBuffer {
             self.insert_lines(cursor.line + start, TextLines::from(lines));
         }
 
-        if !copied.leading_newline {
+        if !copied.leading_newline && end > start {
             self.insert(cursor, copied.text.lines.remove(0));
         }
     }
 }
 
-impl ToString for MemoryBuffer {
-    fn to_string(&self) -> String {
-        let mut s = String::default();
-        for i in 0..self.lines_count() {
-            s.push_str(self.get(i).to_string().as_str());
-            s.push_str("\n");
-        }
-        return s;
-    }
-}
-
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use indoc::indoc;
 
-    fn assert_visual_match(buf: &MemoryBuffer, s: &'static str) {
-        let actual = buf.to_string();
+    pub fn assert_visual_match<T: Buffer>(buf: &T, s: &'static str) {
+        let actual = buf.get_contents();
         let expected = MemoryBuffer {
             id: 0,
             content: s.into(),
             source: BufferSource::None,
         }
-        .to_string();
+        .get_contents();
 
         assert_eq!(actual, expected);
     }
@@ -196,7 +185,7 @@ mod tests {
         fn after_delete_range() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my love land".into());
-            buf.delete_range(((0, 7).into(), (0, 12).into()).into());
+            buf.delete_range(((0, 7), (0, 12)).into());
             assert_visual_match(&buf, "Take my land");
             assert_eq!(Some(" "), buf.get_char((0, 7).into()));
             assert_eq!(Some("l"), buf.get_char((0, 8).into()));
@@ -212,7 +201,7 @@ mod tests {
         fn from_line_start() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 4).into()).into());
+            buf.delete_range(((0, 0), (0, 4)).into());
             assert_visual_match(&buf, " my land");
         }
 
@@ -238,7 +227,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 0).into(), (1, 12).into()).into());
+            buf.delete_range(((0, 0), (1, 12)).into());
             assert_visual_match(&buf, "");
         }
 
@@ -253,7 +242,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 4).into(), (2, 4).into()).into());
+            buf.delete_range(((0, 4), (2, 4)).into());
             assert_visual_match(&buf, "Take me where");
         }
     }

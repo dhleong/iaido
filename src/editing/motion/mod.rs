@@ -41,6 +41,13 @@ impl From<SimpleMotionRange> for MotionRange {
     }
 }
 
+impl From<((usize, u16), (usize, u16))> for MotionRange {
+    fn from(simple: ((usize, u16), (usize, u16))) -> Self {
+        let (start, end) = simple;
+        MotionRange(start.into(), end.into(), MotionFlags::NONE)
+    }
+}
+
 pub trait MotionContext {
     fn buffer(&self) -> &Box<dyn Buffer>;
     fn buffer_mut(&mut self) -> &mut Box<dyn Buffer>;

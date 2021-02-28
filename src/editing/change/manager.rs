@@ -42,4 +42,8 @@ impl ChangeManager {
             .undo_actions
             .push(action);
     }
+
+    pub fn take_last(&mut self) -> Option<Change> {
+        self.undo_stack.pop()
+    }
 }

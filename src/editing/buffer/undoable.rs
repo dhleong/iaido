@@ -13,7 +13,16 @@ use super::{Buffer, CopiedRange};
 
 pub struct UndoableBuffer {
     base: Box<dyn Buffer>,
-    changes: ChangeManager,
+    pub changes: ChangeManager,
+}
+
+impl From<Box<dyn Buffer>> for UndoableBuffer {
+    fn from(base: Box<dyn Buffer>) -> Self {
+        Self {
+            base,
+            changes: ChangeManager::default(),
+        }
+    }
 }
 
 impl HasId for UndoableBuffer {
@@ -103,5 +112,40 @@ impl Buffer for UndoableBuffer {
         self.changes
             .enqueue_undo(UndoAction::DeleteRange(MotionRange(cursor, end, flags)));
         self.changes.end_change();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::editing::buffer::MemoryBuffer;
+
+    use super::*;
+
+    use indoc::indoc;
+
+    fn buffer(s: &'static str) -> UndoableBuffer {
+        let mut buffer: Box<dyn Buffer> = Box::new(MemoryBuffer::new(0));
+        buffer.append(s.into());
+        UndoableBuffer::from(buffer)
+    }
+
+    #[cfg(test)]
+    mod delete_range {
+        use super::*;
+
+        use crate::editing::buffer::memory::tests::assert_visual_match;
+
+        #[test]
+        fn undo_within_line() {
+            let mut buffer = buffer(indoc! {"
+                Take my love
+            "});
+            buffer.delete_range(((0, 4), (0, 7)).into());
+            assert_visual_match(&buffer, "Take love");
+
+            let last_change = buffer.changes.take_last().unwrap();
+            let mut boxed: Box<dyn Buffer> = Box::new(buffer);
+            last_change.undo(&mut boxed);
+        }
     }
 }

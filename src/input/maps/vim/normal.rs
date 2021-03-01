@@ -53,12 +53,12 @@ fn cmd_mode_access() -> KeyTreeNode {
 pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
         "a" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("a");
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());
             Ok(())
         },
         "A" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("A");
             ToLineEndMotion.apply_cursor(ctx.state_mut());
             Ok(())
         },
@@ -74,10 +74,15 @@ pub fn vim_normal_mode() -> VimMode {
                 ctx.state_mut().current_buffer_mut().insert_lines(start.line, TextLine::from("").into());
             }
 
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            // NOTE: after leaving, we would normally finish the change
+            // BUT we want any text edited as part of insert to be
+            // included, so we "start" a new change that will take over
+            // ownership of the change for all keys in this insert mode
+            ctx.state_mut().current_bufwin().begin_insert_change("");
             Ok(())
         },
         "C" => |ctx| {
+            ctx.state_mut().current_bufwin().begin_insert_change("C");
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
             ctx.state_mut().current_window_mut().set_inserting(true);
@@ -89,18 +94,47 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         },
         "D" => |ctx| {
+            ctx.state_mut().current_bufwin().begin_keys_change("D");
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
+            ctx.state_mut().current_buffer_mut().end_change();
             Ok(())
         },
 
         "i" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("i");
             Ok(())
         },
         "I" => |ctx| {
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            ctx.state_mut().current_bufwin().begin_insert_change("I");
             ToLineStartMotion.apply_cursor(ctx.state_mut());
+            Ok(())
+        },
+
+        "u" => |ctx| {
+            if ctx.state_mut().current_bufwin().undo() {
+                // TODO more info?
+                ctx.state_mut().echo_str("1 change; older");
+            } else {
+                ctx.state_mut().echo_str("Already at oldest change");
+            }
+            Ok(())
+        },
+        "<ctrl-r>" => |ctx| {
+            if ctx.state_mut().current_bufwin().redo() {
+                // TODO more info?
+                ctx.state_mut().echo_str("1 change; newer");
+            } else {
+                ctx.state_mut().echo_str("Already at newest change");
+            }
+            Ok(())
+        },
+
+        "." => |ctx| {
+            if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
+                // TODO enqueue keys
+                ctx.state_mut().current_buffer_mut().changes().push(last);
+            }
             Ok(())
         },
 
@@ -120,6 +154,7 @@ pub fn vim_normal_mode() -> VimMode {
 #[cfg(test)]
 mod tests {
     use crate::editing::motion::tests::window;
+    use crate::input::keys::KeysParsable;
     use indoc::indoc;
 
     #[cfg(test)]
@@ -153,20 +188,55 @@ mod tests {
                 Take me where
             "});
         }
+
+        #[test]
+        fn with_motion_adds_keys_to_change() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx = ctx.feed_vim("cwFarm <esc>");
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                Farm| my land
+            "});
+            let change = ctx.buffer.changes().take_last().unwrap();
+            assert_eq!(change.keys, "cwFarm <esc>".into_keys());
+        }
     }
 
-    #[test]
-    fn dd() {
-        let ctx = window(indoc! {"
-            Take my love
-            |Take my land
-            Take me where
-        "});
-        ctx.feed_vim("dd").assert_visual_match(indoc! {"
-            ~
-            Take my love
-            |Take me where
-        "});
+    #[cfg(test)]
+    mod d {
+        use super::*;
+
+        #[test]
+        fn dd() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("dd").assert_visual_match(indoc! {"
+                ~
+                Take my love
+                |Take me where
+            "});
+        }
+
+        #[test]
+        fn with_motion_adds_keys_to_change() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx = ctx.feed_vim("dw");
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |my land
+            "});
+            let change = ctx.buffer.changes().take_last().unwrap();
+            assert_eq!(change.keys, "dw".into_keys());
+        }
     }
 
     #[cfg(test)]
@@ -197,6 +267,67 @@ mod tests {
             ctx.feed_vim("D").assert_visual_match(indoc! {"
                 Take my love
                 |
+                Take me where
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod u {
+        use super::*;
+
+        #[test]
+        fn undo_empty() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.buffer.changes().clear();
+            ctx.feed_vim("u").assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+        }
+
+        #[test]
+        fn undo_line_appends() {
+            let mut ctx = window("");
+            ctx.window.size = (20, 2).into();
+            ctx.buffer.append("Take my love".into());
+            ctx.buffer.append("Take my land".into());
+            ctx.buffer.append("Take me where".into());
+            ctx.window.cursor = (2, 12).into();
+
+            ctx = ctx.feed_vim("u");
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+
+            ctx = ctx.feed_vim("u");
+            ctx.assert_visual_match(indoc! {"
+                ~
+                |Take my love
+            "});
+
+            ctx = ctx.feed_vim("u");
+            ctx.render_at_own_size();
+
+            ctx.feed_vim("u").render_at_own_size();
+        }
+
+        #[test]
+        fn undo_restores_cursor() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("Dku").assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
                 Take me where
             "});
         }

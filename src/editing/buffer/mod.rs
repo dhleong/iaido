@@ -1,39 +1,138 @@
 pub mod memory;
+pub mod undoable;
+mod util;
+
 pub use memory::MemoryBuffer;
+pub use undoable::UndoableBuffer;
 
 use std::fmt;
 
-use crate::{connection::ReadValue, input::completion::Completion};
+use crate::{
+    connection::ReadValue,
+    input::{completion::Completion, Key},
+};
 
 use super::{
-    motion::MotionRange,
+    change::handler::ChangeHandler,
+    motion::{MotionFlags, MotionRange},
     source::BufferSource,
     text::{EditableLine, TextLine, TextLines},
     CursorPosition, HasId,
 };
 
-pub trait Buffer: HasId + Send + Sync {
-    fn source(&self) -> &BufferSource;
-    fn set_source(&mut self, source: BufferSource);
-    fn is_read_only(&self) -> bool {
-        match self.source() {
-            BufferSource::Connection(_) => true,
-            _ => false,
+#[derive(Debug, Clone)]
+pub struct CopiedRange {
+    pub text: TextLines,
+
+    /// If false, the first line of `text` was a partial line copy;
+    /// if true, the whole first line was copied
+    pub leading_newline: bool,
+
+    /// If false, the last line of `text` was a partial line copy
+    pub trailing_newline: bool,
+}
+
+impl Default for CopiedRange {
+    fn default() -> Self {
+        Self {
+            text: TextLines::default(),
+            leading_newline: false,
+            trailing_newline: false,
         }
     }
+}
 
+impl CopiedRange {
+    pub fn end_position(&self, start: CursorPosition) -> CursorPosition {
+        if self.text.lines.is_empty() {
+            return start;
+        }
+
+        let mut count = self.text.lines.len().checked_sub(1).unwrap_or(0);
+        if self.leading_newline {
+            count += 1;
+        }
+
+        let last_width = self.text.lines.last().unwrap().width() as u16;
+        let end = CursorPosition {
+            line: start.line + count,
+            col: if count == 0 {
+                start.col + last_width
+            } else {
+                last_width
+            },
+        };
+        return end;
+    }
+
+    pub fn motion_range(&self, start: CursorPosition) -> MotionRange {
+        let end = self.end_position(start);
+        let flags = if self.is_partial() {
+            MotionFlags::NONE
+        } else {
+            MotionFlags::LINEWISE
+        };
+        MotionRange(start, end, flags)
+    }
+
+    pub fn is_partial(&self) -> bool {
+        !self.leading_newline && !self.trailing_newline
+    }
+}
+
+pub trait Buffer: HasId + Send + Sync {
+    // read access
     fn lines_count(&self) -> usize;
-    fn append(&mut self, text: TextLines);
-    fn clear(&mut self);
     fn get(&self, line_index: usize) -> &TextLine;
 
-    fn delete_range(&mut self, range: MotionRange);
+    // source
+    fn source(&self) -> &BufferSource;
+    fn set_source(&mut self, source: BufferSource);
+
+    // undoable mutations
+    fn delete_range(&mut self, range: MotionRange) -> CopiedRange;
     fn insert(&mut self, cursor: CursorPosition, text: TextLine);
     fn insert_lines(&mut self, line_index: usize, text: TextLines);
+    fn insert_range(&mut self, cursor: CursorPosition, copied: CopiedRange);
+
+    // this is a mutation, but generally not undoable
+    fn clear(&mut self);
+
+    //
+    // Optional
+    //
+
+    // change handling
+    fn can_handle_change(&self) -> bool {
+        false
+    }
+    fn changes(&mut self) -> ChangeHandler {
+        panic!("This Buffer implementation cannot handle changes");
+    }
+    fn begin_change(&mut self, _cursor: CursorPosition) {}
+    fn push_change_key(&mut self, _key: Key) {}
+    fn end_change(&mut self) {}
+
+    //
+    // Convenience methods, using the core interface above:
+    //
+
+    fn append(&mut self, text: TextLines) {
+        self.begin_change(CursorPosition {
+            line: self.lines_count().checked_sub(1).unwrap_or(0),
+            col: 0,
+        });
+        self.insert_lines(self.lines_count(), text);
+        self.end_change();
+    }
 
     fn append_line(&mut self, text: String) {
+        let line = self.lines_count().checked_sub(1).unwrap_or(0);
+        let col = self.get_line_width(line).unwrap_or(0) as u16;
+        self.begin_change(CursorPosition { line, col });
         self.append_value(ReadValue::Text(text.into()));
         self.append_value(ReadValue::Newline);
+        self.end_change();
     }
 
     fn append_value(&mut self, value: ReadValue) {
@@ -54,7 +153,6 @@ pub trait Buffer: HasId + Send + Sync {
         };
     }
 
-    // convenience:
     fn checked_get(&self, line_index: usize) -> Option<&TextLine> {
         if !self.is_empty() && line_index < self.lines_count() {
             Some(self.get(line_index))
@@ -76,6 +174,13 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn is_empty(&self) -> bool {
         self.lines_count() == 0
+    }
+
+    fn is_read_only(&self) -> bool {
+        match self.source() {
+            BufferSource::Connection(_) => true,
+            _ => false,
+        }
     }
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {
@@ -124,5 +229,111 @@ pub trait Buffer: HasId + Send + Sync {
 impl fmt::Display for dyn Buffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Buffer#{}]", self.id())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(test)]
+    mod copied_range {
+        use super::*;
+
+        #[cfg(test)]
+        mod end_position {
+            use super::*;
+
+            #[test]
+            fn single_line_partial() {
+                let range = CopiedRange {
+                    text: "my ".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 0, col: 10 }
+                );
+            }
+
+            #[test]
+            fn two_line_partial() {
+                let range = CopiedRange {
+                    text: "my love\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 1, col: 4 }
+                );
+            }
+
+            #[test]
+            fn multi_line_partial() {
+                let range = CopiedRange {
+                    text: "my love\nTake my land\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 2, col: 4 }
+                );
+            }
+
+            #[test]
+            fn leading_newline() {
+                let range = CopiedRange {
+                    text: "Take my land".into(),
+                    leading_newline: true,
+                    trailing_newline: false,
+                };
+                assert_eq!(
+                    range.end_position((0, 7).into()),
+                    CursorPosition { line: 1, col: 12 }
+                );
+            }
+
+            #[test]
+            fn trailing_newline() {
+                let range = CopiedRange {
+                    text: " my land".into(),
+                    leading_newline: false,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 0, col: 12 }
+                );
+            }
+
+            #[test]
+            fn trailing_newline_plus_partial() {
+                let range = CopiedRange {
+                    text: " my love\nTake".into(),
+                    leading_newline: false,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 1, col: 4 }
+                );
+            }
+
+            #[test]
+            fn trailing_and_leading() {
+                let range = CopiedRange {
+                    text: "Take my land\nTake...".into(),
+                    leading_newline: true,
+                    trailing_newline: true,
+                };
+                assert_eq!(
+                    range.end_position((0, 4).into()),
+                    CursorPosition { line: 2, col: 7 }
+                );
+            }
+        }
     }
 }

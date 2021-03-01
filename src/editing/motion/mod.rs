@@ -17,12 +17,34 @@ bitflags! {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
+impl MotionRange {
+    pub fn lines(&self) -> (usize, usize) {
+        let &MotionRange(
+            CursorPosition {
+                line: first_line, ..
+            },
+            CursorPosition {
+                line: last_line, ..
+            },
+            ..,
+        ) = self;
+        (first_line, last_line)
+    }
+}
+
 pub type SimpleMotionRange = (CursorPosition, CursorPosition);
 
 impl From<SimpleMotionRange> for MotionRange {
     fn from(simple: SimpleMotionRange) -> Self {
         let (start, end) = simple;
         MotionRange(start, end, MotionFlags::NONE)
+    }
+}
+
+impl From<((usize, u16), (usize, u16))> for MotionRange {
+    fn from(simple: ((usize, u16), (usize, u16))) -> Self {
+        let (start, end) = simple;
+        MotionRange(start.into(), end.into(), MotionFlags::NONE)
     }
 }
 
@@ -113,7 +135,7 @@ pub trait Motion {
 
     fn delete_range<T: MotionContext>(&self, context: &mut T) {
         let range = self.range(context);
-        context.buffer_mut().delete_range(range)
+        context.buffer_mut().delete_range(range);
     }
 }
 
@@ -124,7 +146,10 @@ pub mod tests {
     use crate::{
         app,
         editing::{
-            buffer::MemoryBuffer, text::TextLine, window::Window, Buffer, HasId, Resizable, Size,
+            buffer::{MemoryBuffer, UndoableBuffer},
+            text::TextLine,
+            window::Window,
+            Buffer, HasId, Resizable, Size,
         },
         input::{
             commands::registry::CommandRegistry, completion::CompletableContext,
@@ -279,7 +304,7 @@ pub mod tests {
         }
 
         fn bufwin(&mut self) -> BufWin {
-            BufWin::new(&mut self.window, &self.buffer)
+            BufWin::new(&mut self.window, &mut self.buffer)
         }
 
         fn cursor(&self) -> crate::editing::CursorPosition {
@@ -312,7 +337,7 @@ pub mod tests {
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
-        let mut buffer = MemoryBuffer::new(0);
+        let mut buffer = Box::new(MemoryBuffer::new(0));
         let mut non_buffer_lines = 0;
 
         for (index, line) in s.lines().enumerate() {
@@ -342,7 +367,7 @@ pub mod tests {
 
         TestWindow {
             window: Box::new(window),
-            buffer: Box::new(buffer),
+            buffer: UndoableBuffer::wrap(buffer),
             commands: CommandRegistry::default(),
         }
     }

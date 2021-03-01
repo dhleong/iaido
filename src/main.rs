@@ -38,7 +38,6 @@ fn main() -> Result<(), io::Error> {
 
     if let Some(mut bottom_win) = app.state.bufwin_by_id(bottom_id) {
         bottom_win.scroll_lines(1);
-        bottom_win.window.set_inserting(true);
         bottom_win.window.cursor = CursorPosition { line: 1, col: 0 }
     }
 

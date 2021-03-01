@@ -1,10 +1,12 @@
 use crate::editing::{
-    motion::{MotionFlags, MotionRange},
+    motion::MotionRange,
     source::BufferSource,
     text::EditableLine,
     text::{TextLine, TextLines},
     Buffer, CursorPosition, HasId,
 };
+
+use super::{util::motion_to_line_ranges, CopiedRange};
 
 pub struct MemoryBuffer {
     id: usize,
@@ -40,10 +42,6 @@ impl Buffer for MemoryBuffer {
         self.content.height()
     }
 
-    fn append(&mut self, text: TextLines) {
-        self.content.extend(text);
-    }
-
     fn clear(&mut self) {
         self.content.lines.clear();
     }
@@ -52,57 +50,30 @@ impl Buffer for MemoryBuffer {
         &self.content.lines[line_index]
     }
 
-    fn delete_range(&mut self, range: MotionRange) {
-        let MotionRange(
-            CursorPosition {
-                line: first_line,
-                col: first_col,
-            },
-            CursorPosition {
-                line: last_line,
-                col: last_col,
-            },
-            flags,
-        ) = range;
+    fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
+        let (first_line, last_line) = range.lines();
+        let ranges = motion_to_line_ranges(range);
 
-        let ranges = (first_line..=last_line).map(|line_index| {
-            if line_index == first_line && line_index == last_line {
-                // single line range:
-                (first_col, Some(last_col))
-            } else if line_index == first_line {
-                (first_col, None)
-            } else if line_index == last_line {
-                (0, Some(last_col))
-            } else {
-                (0, None)
-            }
-        });
-
-        let linewise = first_line < last_line || flags.contains(MotionFlags::LINEWISE);
-        let mut consumed_first_line = false;
-        let mut consumed_last_line = false;
+        let mut copy = CopiedRange::default();
         let mut line_index = first_line;
         let last_line_index = last_line - first_line;
-        for (i, (start, optional_end)) in ranges.enumerate() {
-            let line = &self.content.lines[line_index];
-            let end = if let Some(v) = optional_end {
-                v as usize
-            } else {
-                line.width()
-            };
-
-            if start == 0 && end == line.width() && linewise {
+        for (i, range) in ranges.enumerate() {
+            if range.is_whole_line(line_index, self) {
                 // delete the whole line
-                self.content.lines.remove(line_index);
+                copy.text.lines.push(self.content.lines.remove(line_index));
                 if i == 0 {
-                    consumed_first_line = true;
+                    copy.leading_newline = true;
                 }
                 if i == last_line_index {
-                    consumed_last_line = true;
+                    copy.trailing_newline = true;
                 }
             } else {
                 // delete within the line
-                let mut new_line = line.subs(0, start as usize);
+                let (start, end) = range.resolve(line_index, self);
+                let line = &self.content.lines[line_index];
+                copy.text.lines.push(line.subs(start, end));
+
+                let mut new_line = line.subs(0, start);
                 let mut rest = line.subs(end, line.width());
                 new_line.append(&mut rest);
 
@@ -113,12 +84,14 @@ impl Buffer for MemoryBuffer {
 
         // if we did a partial delete on both the first and last lines,
         // they need to be spliced together
-        if last_line > first_line && !consumed_first_line && !consumed_last_line {
+        if last_line > first_line && copy.is_partial() {
             let to_splice_line = &self.content.lines[first_line + 1];
             let mut to_splice = to_splice_line.subs(0, to_splice_line.width());
             self.content.lines[first_line].append(&mut to_splice);
             self.content.lines.remove(first_line + 1);
         }
+
+        return copy;
     }
 
     fn insert(&mut self, cursor: CursorPosition, mut text: TextLine) {
@@ -140,38 +113,99 @@ impl Buffer for MemoryBuffer {
     }
 
     fn insert_lines(&mut self, line_index: usize, text: TextLines) {
-        self.content
-            .lines
-            .splice(line_index..line_index, text.lines);
-    }
-}
-
-impl ToString for MemoryBuffer {
-    fn to_string(&self) -> String {
-        let mut s = String::default();
-        for i in 0..self.lines_count() {
-            s.push_str(self.get(i).to_string().as_str());
-            s.push_str("\n");
+        if line_index == self.lines_count() {
+            self.content.extend(text);
+        } else {
+            self.content
+                .lines
+                .splice(line_index..line_index, text.lines);
         }
-        return s;
+    }
+
+    fn insert_range(&mut self, cursor: CursorPosition, mut copied: CopiedRange) {
+        // NOTE: we insert in reverse order, progressively "popping" off of the end of the vector,
+        // to avoid having to copy. `copied` is probably already a copy, and it's cleaner (I
+        // think?) to just assume the caller has made a copy if necessary than to always have to
+        // make one defensively
+        let mut start = 0;
+        let mut end = copied.text.lines.len();
+        let multiline = end > 1;
+
+        if copied.is_partial() && !multiline {
+            // simple case: single, in-line range
+            self.insert(cursor.into(), copied.text.lines.remove(0).into());
+            return;
+        }
+
+        if !copied.trailing_newline {
+            // We have to de-splice this line
+            let end_of_line = self
+                .get_line_width(cursor.line)
+                .unwrap_or(cursor.col as usize) as u16;
+            let range: MotionRange = (cursor, cursor.with_col(end_of_line)).into();
+            let after_last_line = self.delete_range(range).text;
+            self.insert_lines(cursor.line + 1, after_last_line);
+            self.insert(
+                (cursor.line + 1, 0).into(),
+                copied.text.lines.remove(end - 1).into(),
+            );
+
+            end -= 1;
+        }
+
+        if !copied.leading_newline {
+            start += 1;
+        }
+
+        if end > 0 {
+            let lines: Vec<TextLine> = copied.text.lines.splice(start..end, vec![]).collect();
+            self.insert_lines(cursor.line + start, TextLines::from(lines));
+        }
+
+        if !copied.leading_newline {
+            self.insert(cursor, copied.text.lines.remove(0));
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use indoc::indoc;
 
-    fn assert_visual_match(buf: &MemoryBuffer, s: &'static str) {
-        let actual = buf.to_string();
-        let expected = MemoryBuffer {
-            id: 0,
-            content: s.into(),
-            source: BufferSource::None,
-        }
-        .to_string();
+    pub trait TestableBuffer {
+        fn assert_visual_match(&self, s: &'static str);
+    }
 
-        assert_eq!(actual, expected);
+    impl TestableBuffer for String {
+        fn assert_visual_match(&self, s: &'static str) {
+            let expected = MemoryBuffer {
+                id: 0,
+                content: s.into(),
+                source: BufferSource::None,
+            }
+            .get_contents();
+
+            assert_eq!(self.clone(), expected);
+        }
+    }
+
+    impl<T: Buffer> TestableBuffer for T {
+        fn assert_visual_match(&self, s: &'static str) {
+            let actual = self.get_contents();
+            actual.assert_visual_match(s);
+        }
+    }
+
+    impl TestableBuffer for Box<dyn Buffer> {
+        fn assert_visual_match(&self, s: &'static str) {
+            let actual = self.get_contents();
+            actual.assert_visual_match(s);
+        }
+    }
+
+    pub fn assert_visual_match<T: Buffer>(buf: &T, s: &'static str) {
+        buf.assert_visual_match(s);
     }
 
     #[cfg(test)]
@@ -182,7 +216,7 @@ mod tests {
         fn after_delete_range() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my love land".into());
-            buf.delete_range(((0, 7).into(), (0, 12).into()).into());
+            buf.delete_range(((0, 7), (0, 12)).into());
             assert_visual_match(&buf, "Take my land");
             assert_eq!(Some(" "), buf.get_char((0, 7).into()));
             assert_eq!(Some("l"), buf.get_char((0, 8).into()));
@@ -198,7 +232,7 @@ mod tests {
         fn from_line_start() {
             let mut buf = MemoryBuffer::new(0);
             buf.append("Take my land".into());
-            buf.delete_range(((0, 0).into(), (0, 4).into()).into());
+            buf.delete_range(((0, 0), (0, 4)).into());
             assert_visual_match(&buf, " my land");
         }
 
@@ -224,7 +258,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 0).into(), (1, 12).into()).into());
+            buf.delete_range(((0, 0), (1, 12)).into());
             assert_visual_match(&buf, "");
         }
 
@@ -239,7 +273,7 @@ mod tests {
                 "}
                 .into(),
             );
-            buf.delete_range(((0, 4).into(), (2, 4).into()).into());
+            buf.delete_range(((0, 4), (2, 4)).into());
             assert_visual_match(&buf, "Take me where");
         }
     }
@@ -291,6 +325,56 @@ mod tests {
             let mut buf = MemoryBuffer::new(0);
             buf.append_value(ReadValue::Text("serenity".into()));
             assert_visual_match(&buf, "serenity");
+        }
+    }
+
+    #[cfg(test)]
+    mod insert_range {
+        use super::*;
+
+        #[test]
+        fn neither_leading_nor_trailing() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my stand".into());
+
+            buf.insert_range(
+                (0, 8).into(),
+                CopiedRange {
+                    text: TextLines::raw("love\nTake my land\nTake me where I cannot "),
+                    leading_newline: false,
+                    trailing_newline: false,
+                },
+            );
+
+            assert_visual_match(
+                &buf,
+                indoc! {"
+                    Take my love
+                    Take my land
+                    Take me where I cannot stand
+                "},
+            );
+        }
+
+        #[test]
+        fn lines_into_empty() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.insert_range(
+                (0, 0).into(),
+                CopiedRange {
+                    text: TextLines::raw("Take my love\nTake my land"),
+                    leading_newline: true,
+                    trailing_newline: true,
+                },
+            );
+
+            assert_visual_match(
+                &buf,
+                indoc! {"
+                    Take my love
+                    Take my land
+                "},
+            );
         }
     }
 }

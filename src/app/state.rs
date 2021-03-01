@@ -82,7 +82,7 @@ impl AppState {
 
     pub fn current_bufwin<'a>(&'a mut self) -> BufWin<'a> {
         if self.prompt.window.focused {
-            BufWin::new(&mut self.prompt.window, &self.prompt.buffer)
+            BufWin::new(&mut self.prompt.window, &mut self.prompt.buffer)
         } else {
             let window_id = self.tabpages.current_tab_mut().current_window().id;
             if let Some(bufwin) = self.bufwin_by_id(window_id) {
@@ -96,7 +96,7 @@ impl AppState {
     pub fn bufwin_by_id<'a>(&'a mut self, window_id: usize) -> Option<BufWin<'a>> {
         if let Some(tabpage) = self.tabpages.containing_window_mut(window_id) {
             if let Some(window) = tabpage.by_id_mut(window_id) {
-                if let Some(buffer) = self.buffers.by_id(window.buffer) {
+                if let Some(buffer) = self.buffers.by_id_mut(window.buffer) {
                     return Some(BufWin::new(window, buffer));
                 }
             }
@@ -121,6 +121,10 @@ impl AppState {
 
     pub fn echo(&mut self, text: TextLines) {
         self.echo_buffer.append(text);
+    }
+
+    pub fn echo_str(&mut self, text: &'static str) {
+        self.echo(text.into());
     }
 
     // ======= keymap conveniences ============================

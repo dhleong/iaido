@@ -61,6 +61,7 @@ fn common_insert_mode(extra_mappings: Option<KeyTreeNode>) -> VimMode {
         "<esc>" => |ctx| {
             ctx.state_mut().clear_echo();
             ctx.state_mut().current_window_mut().set_inserting(false);
+            ctx.state_mut().current_buffer_mut().end_change();
             CharMotion::Backward(1).apply_cursor(ctx.state_mut());
             Ok(())
          },

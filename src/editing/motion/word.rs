@@ -188,8 +188,7 @@ mod tests {
             "});
 
             // split up the span by deleting a range:
-            ctx.buffer
-                .delete_range(((0, 7).into(), (0, 12).into()).into());
+            ctx.buffer.delete_range(((0, 7), (0, 12)).into());
             ctx.window.cursor = (0, 8).into();
             ctx.assert_visual_match(indoc! {"
                 Take my |land

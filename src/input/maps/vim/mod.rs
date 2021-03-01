@@ -143,6 +143,12 @@ impl Keymap for VimKeymap {
                     self.keymap.keys_buffer.push(key.clone());
                 }
 
+                // if there's a change in progress, add the key to it
+                context
+                    .state_mut()
+                    .current_buffer_mut()
+                    .push_change_key(key);
+
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
                     if let Some(handler) = next.get_handler() {
@@ -271,22 +277,31 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
             use crate::editing::motion::Motion;
 
+            // operators always start a change
+            $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
+
             if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
-                if pending_key == $keys.into() {
+                let operator_result = if pending_key == $keys.into() {
                     // execute linewise action directly:
                     let motion_impl = crate::editing::motion::linewise::FullLineMotion;
                     let $motion_name = motion_impl.range($ctx_name.state());
-                    return $body;
+                    $body
                 } else {
                     // different pending operator key; abort
-                    return Ok(());
-                }
+                    Ok(())
+                };
+                $ctx_name.state_mut().current_buffer_mut().end_change();
+                return operator_result;
             }
 
             // no pending linewise op; save a closure for motion use:
             $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
             $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
-                $body
+                let operator_fn_result = $body;
+
+                $ctx_name.state_mut().current_buffer_mut().end_change();
+
+                operator_fn_result
             }));
             Ok(())
         }));

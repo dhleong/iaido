@@ -42,13 +42,12 @@ declare_commands!(declare_file {
         context.state_mut().echo(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes).into());
 
         let buffer_id = {
-            let buffer = context.state_mut().buffers.create();
-            buffer.id()
+            let buf = context.state_mut().buffers.create_mut();
+            buf.append(TextLines::from(lines));
+            buf.set_source(BufferSource::LocalFile(full_path_string.to_string()));
+            buf.changes().clear();
+            buf.id()
         };
-
-        let buf = context.state_mut().buffers.by_id_mut(buffer_id).expect("New buffer did not exist");
-        buf.append(TextLines::from(lines));
-        buf.set_source(BufferSource::LocalFile(full_path_string.to_string()));
 
         context.state_mut().set_current_window_buffer(buffer_id);
 

@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use tui::{
     layout::Alignment,
     style::{Color, Style},
@@ -25,6 +27,9 @@ struct RenderableContent<'a> {
     candidate_text: text::Text<'a>,
     inner_height: u16,
 
+    scroll_offset: u16,
+    scrolled_lines: usize,
+
     /// Contains the number of virtual lines rendered per visible line.
     /// line_heights[0] is start.line
     line_heights: Vec<u16>,
@@ -33,9 +38,15 @@ struct RenderableContent<'a> {
 impl<'a> RenderableContent<'a> {
     fn new(window: &Window, buf: &Box<dyn Buffer>) -> Self {
         let count = buf.lines_count();
-        let end = count
-            .checked_sub(window.scrolled_lines as usize)
-            .unwrap_or(0);
+
+        // ensure scrolled_lines isn't excessive (we should always
+        // be able to render at least one line)
+        let scrolled_lines = min(
+            window.scrolled_lines as usize,
+            count.checked_sub(1).unwrap_or(0),
+        );
+
+        let end = count.checked_sub(scrolled_lines).unwrap_or(0);
         let start = end.checked_sub(window.size.h as usize).unwrap_or(0);
 
         let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
@@ -43,9 +54,17 @@ impl<'a> RenderableContent<'a> {
             .iter()
             .map(|line| line.measure_height(window.size.w))
             .collect();
+
+        // make sure we aren't scrolled too far due to an "undo," etc
+        let bottom_height = *line_heights.last().unwrap_or(&0);
+        let scroll_offset = min(
+            bottom_height.checked_sub(1).unwrap_or(0),
+            window.scroll_offset,
+        );
+
         let candidate_text = text::Text::from(lines);
         let text_height: u16 = line_heights.iter().sum();
-        let inner_height = text_height - window.scroll_offset;
+        let inner_height = text_height - scroll_offset;
 
         // NOTE: each line scrolled on Paragraph is a line removed
         // from the TOP of the buffer; our scroll goes backward (IE:
@@ -53,7 +72,7 @@ impl<'a> RenderableContent<'a> {
         // so we invert the scroll_offset to achieve the same effect
         let available_height = window.size.h;
         let scroll = text_height
-            .checked_sub(available_height + window.scroll_offset)
+            .checked_sub(available_height + scroll_offset)
             .unwrap_or(0);
 
         Self {
@@ -67,6 +86,8 @@ impl<'a> RenderableContent<'a> {
             },
             candidate_text,
             inner_height,
+            scroll_offset,
+            scrolled_lines,
             line_heights,
         }
     }
@@ -122,6 +143,9 @@ impl Renderable for Window {
         };
 
         let renderable = RenderableContent::new(self, buf);
+        self.scroll_offset = renderable.scroll_offset;
+        self.scrolled_lines = renderable.scrolled_lines as u32;
+
         let cursor_line = match buf.checked_get(self.cursor.line) {
             Some(line) => line,
             None => return, // nothing we can do
@@ -222,6 +246,7 @@ mod tests {
 
     use crate::tui::rendering::display::tests::TestableDisplay;
     use crate::{app::State, tui::Display};
+    use editing::motion::tests::window;
 
     use indoc::indoc;
 
@@ -527,7 +552,7 @@ mod tests {
 
     #[cfg(test)]
     mod append_value {
-        use crate::{connection::ReadValue, editing::motion::tests::window};
+        use crate::connection::ReadValue;
 
         use super::*;
 
@@ -554,6 +579,29 @@ mod tests {
 
                 |Take my love
                 Take my land
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod scroll_clamping {
+        use super::*;
+
+        #[test]
+        fn excess_offset() {
+            let mut ctx = window("Take my love");
+            ctx.window.scroll_offset = 2;
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
+            "});
+        }
+
+        #[test]
+        fn excess_lines() {
+            let mut ctx = window("Take my love");
+            ctx.window.scrolled_lines = 1;
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
             "});
         }
     }

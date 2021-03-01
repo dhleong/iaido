@@ -61,7 +61,7 @@ where
         let origin = context.cursor();
         let original_line = context.buffer().get(origin.line);
         let mut was_on_boundary =
-            origin.col as usize == original_line.width() || self.is_on_boundary(context, origin);
+            origin.col == original_line.width() || self.is_on_boundary(context, origin);
         let mut cursor = self.step.destination(context);
 
         if cursor < origin {

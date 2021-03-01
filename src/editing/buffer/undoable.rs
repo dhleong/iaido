@@ -96,7 +96,7 @@ impl Buffer for UndoableBuffer {
         self.changes.begin_change(cursor);
         let end = CursorPosition {
             line: cursor.line,
-            col: cursor.col + text.width() as u16,
+            col: cursor.col + text.width(),
         };
 
         self.base.insert(cursor, text);
@@ -117,7 +117,7 @@ impl Buffer for UndoableBuffer {
         };
         let end = CursorPosition {
             line: line_index + text.lines.len() - 1,
-            col: text.lines[text.lines.len() - 1].width() as u16,
+            col: text.lines[text.lines.len() - 1].width(),
         };
         self.changes.begin_change(start);
 

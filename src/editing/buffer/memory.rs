@@ -101,8 +101,8 @@ impl Buffer for MemoryBuffer {
         }
 
         let original = &self.content.lines[cursor.line];
-        let mut before = original.subs(0, cursor.col as usize);
-        let mut after = original.subs(cursor.col as usize, original.width());
+        let mut before = original.subs(0, cursor.col);
+        let mut after = original.subs(cursor.col, original.width());
 
         let mut new = TextLine::default();
         new.append(&mut before);
@@ -139,9 +139,7 @@ impl Buffer for MemoryBuffer {
 
         if !copied.trailing_newline {
             // We have to de-splice this line
-            let end_of_line = self
-                .get_line_width(cursor.line)
-                .unwrap_or(cursor.col as usize) as u16;
+            let end_of_line = self.get_line_width(cursor.line).unwrap_or(cursor.col);
             let range: MotionRange = (cursor, cursor.with_col(end_of_line)).into();
             let after_last_line = self.delete_range(range).text;
             self.insert_lines(cursor.line + 1, after_last_line);

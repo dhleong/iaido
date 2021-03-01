@@ -41,8 +41,8 @@ impl Into<VimMode> for VimPromptConfig {
                     }
 
                     let cursor = ctx.state().current_window().cursor;
-                    if cursor.line == 0 && cursor.col < prompt_len as u16 {
-                        ctx.state_mut().current_window_mut().cursor.col = prompt_len as u16;
+                    if cursor.line == 0 && cursor.col < prompt_len {
+                        ctx.state_mut().current_window_mut().cursor.col = prompt_len;
                     }
 
                     Ok(())

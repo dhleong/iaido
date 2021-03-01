@@ -150,7 +150,7 @@ impl Renderable for Window {
             Some(line) => line,
             None => return, // nothing we can do
         };
-        let (_, cursor_y_offset) = wrap_cursor(cursor_line, self.size.w, self.cursor.col as usize);
+        let (_, cursor_y_offset) = wrap_cursor(cursor_line, self.size.w, self.cursor.col);
 
         if self.cursor.line < renderable.start.line {
             self.scroll_offset = 0;
@@ -200,11 +200,8 @@ impl Renderable for Window {
 
         if self.focused {
             let (x, y) = if buf.lines_count() > 0 {
-                let (cursor_x, cursor_y_offset) = wrap_cursor(
-                    buf.get(self.cursor.line),
-                    area.width,
-                    self.cursor.col as usize,
-                );
+                let (cursor_x, cursor_y_offset) =
+                    wrap_cursor(buf.get(self.cursor.line), area.width, self.cursor.col);
 
                 let cursor_virtual_lines = self
                     .cursor

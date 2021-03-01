@@ -35,7 +35,7 @@ impl Prompt {
         self.window.inserting = true;
         self.window.cursor = CursorPosition {
             line: 0,
-            col: prompt.width() as u16,
+            col: prompt.width(),
         };
         self.buffer.append(prompt.into());
         self.handle_content_change();

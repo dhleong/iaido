@@ -59,7 +59,7 @@ impl<'a, T: CompletableContext> From<&'a mut T> for CompletionContext {
         let bufwin = context.bufwin();
         let line = bufwin.window.cursor.line;
         let text = bufwin.buffer.get(line).to_string();
-        let cursor = bufwin.window.cursor.col as usize;
+        let cursor = bufwin.window.cursor.col;
         Self {
             line_index: line,
             text,
@@ -84,14 +84,14 @@ impl Completion {
     pub fn replacement_end(&self) -> CursorPosition {
         CursorPosition {
             line: self.line_index,
-            col: (self.start + self.replacement.len()) as u16,
+            col: self.start + self.replacement.len(),
         }
     }
 
     pub fn start(&self) -> CursorPosition {
         CursorPosition {
             line: self.line_index,
-            col: self.start as u16,
+            col: self.start,
         }
     }
 }

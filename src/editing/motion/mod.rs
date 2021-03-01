@@ -41,8 +41,8 @@ impl From<SimpleMotionRange> for MotionRange {
     }
 }
 
-impl From<((usize, u16), (usize, u16))> for MotionRange {
-    fn from(simple: ((usize, u16), (usize, u16))) -> Self {
+impl From<((usize, usize), (usize, usize))> for MotionRange {
+    fn from(simple: ((usize, usize), (usize, usize))) -> Self {
         let (start, end) = simple;
         MotionRange(start.into(), end.into(), MotionFlags::NONE)
     }
@@ -343,7 +343,7 @@ pub mod tests {
         for (index, line) in s.lines().enumerate() {
             if let Some(col) = line.find("|") {
                 cursor.line = index - non_buffer_lines;
-                cursor.col = col as u16;
+                cursor.col = col;
             }
 
             if line == "~" {

@@ -25,7 +25,7 @@ pub struct CursorPosition {
     /// Line index within a buffer
     pub line: usize,
     /// Column within a line (NOT the visual column)
-    pub col: u16,
+    pub col: usize,
 }
 
 impl CursorPosition {
@@ -36,7 +36,7 @@ impl CursorPosition {
         }
     }
 
-    pub fn with_col<T: Into<u16>>(&self, col: T) -> CursorPosition {
+    pub fn with_col<T: Into<usize>>(&self, col: T) -> CursorPosition {
         CursorPosition {
             line: self.line,
             col: col.into(),
@@ -47,15 +47,15 @@ impl CursorPosition {
         let line_width = buffer.get(self.line).width();
         CursorPosition {
             line: self.line,
-            col: line_width as u16,
+            col: line_width,
         }
     }
 }
 
-impl ops::Add<(usize, u16)> for CursorPosition {
+impl ops::Add<(usize, usize)> for CursorPosition {
     type Output = CursorPosition;
 
-    fn add(self, rhs: (usize, u16)) -> CursorPosition {
+    fn add(self, rhs: (usize, usize)) -> CursorPosition {
         let (lines, cols) = rhs;
         Self {
             line: self.line + lines,
@@ -70,8 +70,8 @@ impl Default for CursorPosition {
     }
 }
 
-impl From<(usize, u16)> for CursorPosition {
-    fn from((line, col): (usize, u16)) -> Self {
+impl From<(usize, usize)> for CursorPosition {
+    fn from((line, col): (usize, usize)) -> Self {
         Self { line, col }
     }
 }

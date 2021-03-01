@@ -19,13 +19,12 @@ impl Motion for CharMotion {
                     .buffer()
                     .get_line_width(from.line)
                     .expect("Invalid line");
-                from.with_col(min(
-                    end as u16,
-                    from.col.checked_add(step).unwrap_or(end as u16),
-                ))
+                from.with_col(min(end, from.col.checked_add(step as usize).unwrap_or(end)))
             }
 
-            &CharMotion::Backward(step) => from.with_col(from.col.checked_sub(step).unwrap_or(0)),
+            &CharMotion::Backward(step) => {
+                from.with_col(from.col.checked_sub(step as usize).unwrap_or(0))
+            }
         }
     }
 }

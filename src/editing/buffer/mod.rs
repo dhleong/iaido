@@ -53,7 +53,7 @@ impl CopiedRange {
             count += 1;
         }
 
-        let last_width = self.text.lines.last().unwrap().width() as u16;
+        let last_width = self.text.lines.last().unwrap().width();
         let end = CursorPosition {
             line: start.line + count,
             col: if count == 0 {
@@ -128,7 +128,7 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn append_line(&mut self, text: String) {
         let line = self.lines_count().checked_sub(1).unwrap_or(0);
-        let col = self.get_line_width(line).unwrap_or(0) as u16;
+        let col = self.get_line_width(line).unwrap_or(0);
         self.begin_change(CursorPosition { line, col });
         self.append_value(ReadValue::Text(text.into()));
         self.append_value(ReadValue::Newline);
@@ -145,7 +145,7 @@ pub trait Buffer: HasId + Send + Sync {
                 self.insert(
                     CursorPosition {
                         line,
-                        col: self.get_line_width(line).unwrap_or(0) as u16,
+                        col: self.get_line_width(line).unwrap_or(0),
                     },
                     text,
                 );
@@ -185,7 +185,7 @@ pub trait Buffer: HasId + Send + Sync {
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {
         let line = self.get(pos.line);
-        let mut col_offset = pos.col as usize;
+        let mut col_offset = pos.col;
 
         let mut current_span = 0;
         loop {

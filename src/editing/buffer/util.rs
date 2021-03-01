@@ -7,24 +7,24 @@ use super::Buffer;
 
 pub enum LineRange {
     WholeLine,
-    FromCol(u16, bool),
-    ToCol(u16, bool),
-    Precise(u16, u16, bool),
+    FromCol(usize, bool),
+    ToCol(usize, bool),
+    Precise(usize, usize, bool),
 }
 
 impl LineRange {
     pub fn resolve<T: Buffer>(&self, line_index: usize, buffer: &T) -> (usize, usize) {
-        let width = buffer.get_line_width(line_index).unwrap_or(0) as u16;
+        let width = buffer.get_line_width(line_index).unwrap_or(0);
         match self {
-            LineRange::WholeLine => (0, width as usize),
-            &LineRange::FromCol(col, _) => (col as usize, width as usize),
-            &LineRange::ToCol(col, _) => (0, col as usize),
-            &LineRange::Precise(start, end, _) => (start as usize, end as usize),
+            LineRange::WholeLine => (0, width),
+            &LineRange::FromCol(col, _) => (col, width),
+            &LineRange::ToCol(col, _) => (0, col),
+            &LineRange::Precise(start, end, _) => (start, end),
         }
     }
 
     pub fn is_whole_line<T: Buffer>(&self, line_index: usize, buffer: &T) -> bool {
-        let width = buffer.get_line_width(line_index).unwrap_or(0) as u16;
+        let width = buffer.get_line_width(line_index).unwrap_or(0);
         match self {
             LineRange::WholeLine => true,
             &LineRange::FromCol(col, linewise) if col == 0 => linewise,

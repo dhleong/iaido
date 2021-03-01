@@ -76,7 +76,7 @@ impl Motion for DownLineMotion {
         let offset_on_line = start.col;
         let next_line_index = min(end_index, start.line + 1);
         let next_line = buffer.get(next_line_index);
-        let new_col = min(next_line.width() as u16, offset_on_line);
+        let new_col = min(next_line.width(), offset_on_line);
 
         CursorPosition {
             line: next_line_index,
@@ -103,7 +103,7 @@ impl Motion for UpLineMotion {
         let offset_on_line = start.col;
         let next_line_index = start.line.checked_sub(1).unwrap_or(0);
         let next_line = buffer.get(next_line_index);
-        let new_col = min(next_line.width() as u16, offset_on_line);
+        let new_col = min(next_line.width(), offset_on_line);
 
         CursorPosition {
             line: next_line_index,
@@ -160,7 +160,7 @@ impl<T: Motion> Motion for LineCrossing<T> {
         if origin.col == 0 && origin.line > 0 {
             CursorPosition {
                 line: origin.line - 1,
-                col: context.buffer().get_line_width(origin.line - 1).unwrap() as u16,
+                col: context.buffer().get_line_width(origin.line - 1).unwrap(),
             }
         } else if origin.col > 0 && origin.line < context.buffer().lines_count() - 1 {
             CursorPosition {

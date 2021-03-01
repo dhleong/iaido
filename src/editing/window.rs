@@ -171,7 +171,7 @@ impl Window {
 
             CursorPosition {
                 line: cursor.line,
-                col: min(max_index as u16, cursor.col),
+                col: min(max_index, cursor.col),
             }
         } else {
             CursorPosition::default()

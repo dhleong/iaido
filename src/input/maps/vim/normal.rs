@@ -74,7 +74,11 @@ pub fn vim_normal_mode() -> VimMode {
                 ctx.state_mut().current_buffer_mut().insert_lines(start.line, TextLine::from("").into());
             }
 
-            ctx.state_mut().current_window_mut().set_inserting(true);
+            // NOTE: after leaving, we would normally finish the change
+            // BUT we want any text edited as part of insert to be
+            // included, so we "start" a new change that will take over
+            // ownership of the change for all keys in this insert mode
+            ctx.state_mut().current_bufwin().begin_insert_change("");
             Ok(())
         },
         "C" => |ctx| {
@@ -183,6 +187,21 @@ mod tests {
                 |
                 Take me where
             "});
+        }
+
+        #[test]
+        fn with_motion_adds_keys_to_change() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |Take my land
+            "});
+            ctx = ctx.feed_vim("cwFarm <esc>");
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                Farm| my land
+            "});
+            let change = ctx.buffer.changes().take_last().unwrap();
+            assert_eq!(change.keys, "cwFarm <esc>".into_keys());
         }
     }
 

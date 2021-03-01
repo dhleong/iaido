@@ -281,15 +281,17 @@ macro_rules! vim_branches {
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
             if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
-                if pending_key == $keys.into() {
+                let operator_result = if pending_key == $keys.into() {
                     // execute linewise action directly:
                     let motion_impl = crate::editing::motion::linewise::FullLineMotion;
                     let $motion_name = motion_impl.range($ctx_name.state());
-                    return $body;
+                    $body
                 } else {
                     // different pending operator key; abort
-                    return Ok(());
-                }
+                    Ok(())
+                };
+                $ctx_name.state_mut().current_buffer_mut().end_change();
+                return operator_result;
             }
 
             // no pending linewise op; save a closure for motion use:

@@ -6,12 +6,17 @@ mod tui;
 mod ui;
 
 use app::looper::app_loop;
+use backtrace::Backtrace;
 use input::maps::vim::VimKeymap;
-use std::{io, time::Duration};
+use std::{
+    io, panic,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
 
-fn main() -> Result<(), io::Error> {
+fn main_loop() -> io::Result<()> {
     let ui = tui::create_ui()?;
     let state = app::State::default();
     let mut app = app::App::new(state, ui);
@@ -45,14 +50,51 @@ fn main() -> Result<(), io::Error> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
+    app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
+
+    Ok(())
+}
+
+struct PanicData {
+    info: String,
+    trace: Backtrace,
+}
+
+fn main() -> io::Result<()> {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
-    rt.block_on(async {
-        app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
-    });
+    let mutex: Arc<Mutex<Option<PanicData>>> = Arc::new(Mutex::new(None));
+    let panic_lock = Arc::clone(&mutex);
+    panic::set_hook(Box::new(move |info| {
+        let mut lock = panic_lock.lock().unwrap();
+        let trace = Backtrace::new();
+        *lock = Some(PanicData {
+            info: format!("{}", info),
+            trace,
+        });
+    }));
+
+    let result = rt.block_on(async { panic::catch_unwind(main_loop) });
 
     // make sure any hanging jobs get killed
     rt.shutdown_timeout(Duration::from_millis(50));
 
-    Ok(())
+    match result {
+        Ok(Ok(_)) => Ok(()),
+        Ok(e) => e,
+        Err(panic) => {
+            println!();
+
+            let lock = mutex.lock().unwrap();
+            if let Some(ref data) = *lock {
+                println!("PANIC! {:?}", data.info);
+                println!("Backtrace:\n {:?}", data.trace);
+            } else {
+                println!("PANIC! {:?}", panic);
+                println!("(backtrace unavailable)");
+            }
+
+            Err(io::ErrorKind::Other.into())
+        }
+    }
 }

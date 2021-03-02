@@ -21,5 +21,6 @@ impl<T: UI> App<T> {
 
     pub fn render(&mut self) {
         self.ui.render_app(&mut self.state);
+        self.state.clear_echo();
     }
 }

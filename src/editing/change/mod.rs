@@ -61,6 +61,9 @@ impl Change {
 mod tests {
     use super::*;
 
+    use indoc::indoc;
+
+    use crate::editing::buffer::memory::tests::TestableBuffer;
     use crate::editing::buffer::undoable::tests::buffer;
     use crate::editing::motion::MotionFlags;
 
@@ -96,5 +99,10 @@ mod tests {
                 MotionFlags::LINEWISE,
             ))
         );
+
+        buf.assert_visual_match(indoc! {"
+            Take my love
+            Take my land
+        "});
     }
 }

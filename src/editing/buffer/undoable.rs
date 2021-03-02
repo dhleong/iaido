@@ -144,7 +144,7 @@ impl Buffer for UndoableBuffer {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::editing::buffer::memory::tests::TestableBuffer;
     use crate::editing::buffer::MemoryBuffer;
 
@@ -152,7 +152,7 @@ mod tests {
 
     use indoc::indoc;
 
-    fn buffer(s: &'static str) -> Box<dyn Buffer> {
+    pub fn buffer(s: &'static str) -> Box<dyn Buffer> {
         let mut buffer: Box<dyn Buffer> = Box::new(MemoryBuffer::new(0));
         buffer.append(s.into());
         UndoableBuffer::wrap(buffer)

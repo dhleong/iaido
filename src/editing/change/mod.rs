@@ -5,7 +5,7 @@ use crate::input::Key;
 
 use super::{buffer::CopiedRange, motion::MotionRange, Buffer, CursorPosition};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UndoAction {
     DeleteRange(MotionRange),
     InsertRange(CursorPosition, CopiedRange),
@@ -54,5 +54,47 @@ impl Change {
             cursor: self.cursor,
             undo_actions,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::editing::buffer::undoable::tests::buffer;
+    use crate::editing::motion::MotionFlags;
+
+    #[test]
+    fn undo_insert_single_line() {
+        let mut buf = buffer("");
+        buf.append("Take my love".into());
+        buf.append("Take my land".into());
+
+        let change = buf.changes().take_last().unwrap();
+        let mut undo = change.undo(&mut buf);
+        let undo_action = undo.undo_actions.remove(0);
+        assert_eq!(
+            undo_action,
+            UndoAction::InsertRange(
+                (1, 0).into(),
+                CopiedRange {
+                    text: "Take my land".into(),
+                    leading_newline: true,
+                    trailing_newline: true,
+                }
+            )
+        );
+
+        undo.undo_actions.push(undo_action);
+        let mut redo = undo.undo(&mut buf);
+        let redo_action = redo.undo_actions.remove(0);
+        assert_eq!(
+            redo_action,
+            UndoAction::DeleteRange(MotionRange(
+                (1, 0).into(),
+                (1, 12).into(),
+                MotionFlags::LINEWISE,
+            ))
+        );
     }
 }

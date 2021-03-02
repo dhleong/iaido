@@ -55,6 +55,7 @@ impl From<KeyCode> for Key {
 pub enum KeyError {
     IO(io::Error),
     NotPermitted(String),
+    ReadOnlyBuffer,
     Interrupted,
     InvalidInput(String),
     NoSuchCommand(String),

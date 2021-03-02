@@ -277,6 +277,10 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
             use crate::editing::motion::Motion;
 
+            if $ctx_name.state().current_buffer().is_read_only() {
+                return Err(KeyError::ReadOnlyBuffer);
+            }
+
             // operators always start a change
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 

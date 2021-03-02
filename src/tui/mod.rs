@@ -64,13 +64,13 @@ impl Tui {
 
         app.resize(display.size);
 
-        // echo line:
-        self.render_echo(app, &mut display);
-
         // main UI:
         app.tabpages.layout(&LayoutContext::new(&app.buffers));
         app.tabpages
             .render(&mut RenderContext::new(&app, &mut display).with_area(size));
+
+        // echo line(s):
+        self.render_echo(app, &mut display);
 
         // prompt
         self.render_prompt(app, &mut display);
@@ -98,6 +98,9 @@ impl Tui {
         if echo_height == 0 {
             return;
         }
+
+        // make room
+        display.shift_up(echo_height - 1);
 
         let area = Rect {
             x: 0,

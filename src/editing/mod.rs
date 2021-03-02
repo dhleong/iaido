@@ -83,6 +83,25 @@ pub enum Cursor {
     Line(u16, u16),
 }
 
+impl ops::Sub<(u16, u16)> for Cursor {
+    type Output = Cursor;
+
+    fn sub(self, rhs: (u16, u16)) -> Self::Output {
+        let (dx, dy) = rhs;
+        match self {
+            Cursor::None => Cursor::None,
+            Cursor::Block(x, y) => Cursor::Block(
+                x.checked_sub(dx).unwrap_or(0),
+                y.checked_sub(dy).unwrap_or(0),
+            ),
+            Cursor::Line(x, y) => Cursor::Line(
+                x.checked_sub(dx).unwrap_or(0),
+                y.checked_sub(dy).unwrap_or(0),
+            ),
+        }
+    }
+}
+
 pub type Id = usize;
 
 pub trait HasId {

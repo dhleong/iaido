@@ -20,7 +20,7 @@ use super::{
     CursorPosition, HasId,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CopiedRange {
     pub text: TextLines,
 
@@ -49,7 +49,7 @@ impl CopiedRange {
         }
 
         let mut count = self.text.lines.len().checked_sub(1).unwrap_or(0);
-        if self.leading_newline {
+        if self.leading_newline && start.col > 0 {
             count += 1;
         }
 

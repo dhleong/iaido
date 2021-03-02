@@ -365,5 +365,24 @@ mod tests {
                 Take me where
             "});
         }
+
+        #[test]
+        fn undo_redone() {
+            let mut ctx = window(indoc! {"
+                |Take my love
+            "});
+            ctx.buffer.append("Take my land".into());
+            ctx.window.size = (20, 2).into();
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
+                Take my land
+            "});
+
+            println!("feed");
+            ctx.feed_vim("u<ctrl-r>u").assert_visual_match(indoc! {"
+                ~
+                |Take my love
+            "});
+        }
     }
 }

@@ -15,7 +15,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
 impl MotionRange {
     pub fn lines(&self) -> (usize, usize) {

@@ -282,6 +282,7 @@ macro_rules! vim_branches {
             }
 
             // operators always start a change
+            $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
             if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {

@@ -21,6 +21,8 @@ use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, widgets::Widget, winsbuf
 
 pub struct AppState {
     pub running: bool,
+    pub requested_redraw: bool,
+
     pub buffers: Buffers,
     pub tabpages: Tabpages,
     pub echo_buffer: Box<dyn Buffer>,
@@ -113,6 +115,12 @@ impl AppState {
         }
     }
 
+    // ======= redraw =========================================
+
+    pub fn request_redraw(&mut self) {
+        self.requested_redraw = true;
+    }
+
     // ======= echo ===========================================
 
     pub fn clear_echo(&mut self) {
@@ -120,6 +128,10 @@ impl AppState {
     }
 
     pub fn echo(&mut self, text: TextLines) {
+        if self.requested_redraw {
+            self.requested_redraw = false;
+            self.clear_echo();
+        }
         self.echo_buffer.append(text);
     }
 
@@ -171,6 +183,7 @@ impl Default for AppState {
         let tabpages = Tabpages::new(Size { w: 0, h: 0 });
         let mut app = Self {
             running: true,
+            requested_redraw: true,
             buffers,
             tabpages,
             echo_buffer: Box::new(MemoryBuffer::new(0)),

@@ -20,7 +20,13 @@ impl<T: UI> App<T> {
     }
 
     pub fn render(&mut self) {
+        let wanted_redraw = self.state.requested_redraw;
+
         self.ui.render_app(&mut self.state);
-        self.state.clear_echo();
+        self.state.requested_redraw = false;
+
+        if wanted_redraw {
+            self.state.clear_echo();
+        }
     }
 }

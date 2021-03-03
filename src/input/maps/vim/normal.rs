@@ -56,6 +56,7 @@ pub fn vim_normal_mode() -> VimMode {
             if ctx.state().current_buffer().is_read_only() {
                 return Err(KeyError::ReadOnlyBuffer);
             }
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_insert_change("a");
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());
             Ok(())
@@ -64,6 +65,7 @@ pub fn vim_normal_mode() -> VimMode {
             if ctx.state().current_buffer().is_read_only() {
                 return Err(KeyError::ReadOnlyBuffer);
             }
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_insert_change("A");
             ToLineEndMotion.apply_cursor(ctx.state_mut());
             Ok(())
@@ -92,6 +94,7 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_insert_change("C");
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
@@ -108,6 +111,7 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_keys_change("D");
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
@@ -120,6 +124,8 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().clear_echo();
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_insert_change("i");
             Ok(())
         },
@@ -128,6 +134,8 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().clear_echo();
+            ctx.state_mut().request_redraw();
             ctx.state_mut().current_bufwin().begin_insert_change("I");
             ToLineStartMotion.apply_cursor(ctx.state_mut());
             Ok(())
@@ -138,6 +146,7 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().request_redraw();
             if ctx.state_mut().current_bufwin().undo() {
                 // TODO more info?
                 ctx.state_mut().echo_str("1 change; older");
@@ -151,6 +160,7 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().request_redraw();
             if ctx.state_mut().current_bufwin().redo() {
                 // TODO more info?
                 ctx.state_mut().echo_str("1 change; newer");
@@ -165,6 +175,7 @@ pub fn vim_normal_mode() -> VimMode {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
+            ctx.state_mut().request_redraw();
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
                 // TODO enqueue keys
                 ctx.state_mut().current_buffer_mut().changes().push(last);

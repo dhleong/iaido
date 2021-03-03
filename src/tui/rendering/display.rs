@@ -53,6 +53,7 @@ impl Display {
 
         self.buffer.content.drain(0..(lines * self.size.w) as usize);
         self.buffer.resize(self.size.into());
+        self.cursor = self.cursor - (0, lines);
     }
 
     pub fn set_cursor(&mut self, cursor: editing::Cursor) {
@@ -198,12 +199,12 @@ pub mod tests {
     fn shift_up_test() {
         let mut display = Display::of_string(indoc! {"
             Take my love
-            Take my land
+            |Take my land
         "});
         display.shift_up(1);
 
         display.assert_visual_match(indoc! {"
-            Take my land
+            |Take my land
 
         "});
     }

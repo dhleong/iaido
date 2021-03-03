@@ -1,6 +1,7 @@
 mod window;
 
 use crate::editing::text::TextLine;
+use crate::input::KeySource;
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::{
     editing::motion::char::CharMotion,
@@ -178,7 +179,7 @@ pub fn vim_normal_mode() -> VimMode {
 
             ctx.state_mut().request_redraw();
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
-                // TODO enqueue keys
+                ctx.feed_keys(last.keys.clone());
                 ctx.state_mut().current_buffer_mut().changes().push(last);
             }
             Ok(())

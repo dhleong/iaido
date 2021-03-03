@@ -8,6 +8,12 @@ pub struct MemoryKeySource {
 }
 
 impl MemoryKeySource {
+    pub fn empty() -> Self {
+        Self {
+            keys: Vec::default(),
+        }
+    }
+
     #[allow(unused)]
     pub fn from_keys<T: KeysParsable>(keys: T) -> Self {
         MemoryKeySource {
@@ -27,5 +33,9 @@ impl KeySource for MemoryKeySource {
         }
 
         Ok(Some(self.keys.remove(0)))
+    }
+
+    fn feed_keys(&mut self, keys: Vec<Key>) {
+        self.keys.splice(0..0, keys);
     }
 }

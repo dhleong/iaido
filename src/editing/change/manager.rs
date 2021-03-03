@@ -42,9 +42,11 @@ impl ChangeManager {
         self.change_depth -= 1;
         if self.change_depth == 0 {
             if let Some(change) = self.current_change.take() {
-                self.undo_stack.push(change);
+                if !change.undo_actions.is_empty() {
+                    self.undo_stack.push(change);
+                    self.redo_stack.clear();
+                }
             }
-            self.redo_stack.clear();
         }
     }
 

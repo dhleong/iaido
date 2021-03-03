@@ -156,7 +156,7 @@ pub mod tests {
     use std::{cmp::max, time::Duration};
 
     use crate::{
-        app,
+        app, delegate_keysource,
         editing::{
             buffer::{MemoryBuffer, UndoableBuffer},
             text::TextLine,
@@ -191,16 +191,7 @@ pub mod tests {
     }
 
     impl KeySource for TestKeymapContext {
-        fn poll_key(
-            &mut self,
-            timeout: std::time::Duration,
-        ) -> Result<bool, crate::input::KeyError> {
-            self.keys.poll_key(timeout)
-        }
-
-        fn next_key(&mut self) -> Result<Option<crate::input::Key>, crate::input::KeyError> {
-            self.keys.next_key()
-        }
+        delegate_keysource!(keys);
     }
 
     pub struct TestWindow {

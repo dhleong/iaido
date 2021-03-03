@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use crate::delegate_keysource;
+
 use super::{Key, KeyError, KeySource, KeymapContext};
 
 pub mod actions;
@@ -21,12 +23,7 @@ impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {
 }
 
 impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
-    fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
-        self.context.poll_key(timeout)
-    }
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
-        self.context.next_key()
-    }
+    delegate_keysource! { context }
 }
 
 pub type KeyResult = Result<(), KeyError>;

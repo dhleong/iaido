@@ -1,4 +1,5 @@
-use crate::input::{keys::KeysParsable, Key, KeySource};
+use super::KeySource;
+use crate::input::{keys::KeysParsable, Key};
 
 /// A MemoryKeySource provides a fixed sequence of keys
 /// from memory

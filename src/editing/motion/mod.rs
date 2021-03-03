@@ -11,7 +11,8 @@ use super::{window::Window, Buffer, CursorPosition};
 bitflags! {
     pub struct MotionFlags: u8 {
         const NONE = 0;
-        const LINEWISE = 0b01;
+        const LINEWISE  = 0b01;
+        const EXCLUSIVE = 0b10;
     }
 }
 
@@ -90,41 +91,37 @@ impl<'a, T: MotionContext> MotionContext for PositionedMotionContext<'a, T> {
 
 pub trait Motion {
     fn destination<T: MotionContext>(&self, context: &T) -> CursorPosition;
-    fn is_linewise(&self) -> bool {
-        false
-    }
 
     fn flags(&self) -> MotionFlags {
-        let mut flags = MotionFlags::NONE;
-        if self.is_linewise() {
-            flags |= MotionFlags::LINEWISE;
-        }
-        flags
+        MotionFlags::NONE
     }
 
     fn range<T: MotionContext>(&self, context: &T) -> MotionRange {
         let start = context.cursor();
         let end = self.destination(context);
-        let linewise = self.is_linewise();
         let flags = self.flags();
+        let linewise = flags.contains(MotionFlags::LINEWISE);
 
-        if linewise && end < start {
-            MotionRange(
-                end.start_of_line(),
-                start.end_of_line(context.buffer()),
-                flags,
-            )
-        } else if linewise {
-            MotionRange(
-                start.start_of_line(),
-                end.end_of_line(context.buffer()),
-                flags,
-            )
-        } else if end < start {
-            MotionRange(end, start, flags)
-        } else {
-            MotionRange(start, end, flags)
-        }
+        normalize_range(
+            context.buffer(),
+            if linewise && end < start {
+                MotionRange(
+                    end.start_of_line(),
+                    start.end_of_line(context.buffer()),
+                    flags,
+                )
+            } else if linewise {
+                MotionRange(
+                    start.start_of_line(),
+                    end.end_of_line(context.buffer()),
+                    flags,
+                )
+            } else if end < start {
+                MotionRange(end, start, flags)
+            } else {
+                MotionRange(start, end, flags)
+            },
+        )
     }
 
     fn apply_cursor<T: MotionContext>(&self, context: &mut T) {
@@ -136,7 +133,22 @@ pub trait Motion {
     fn delete_range<T: MotionContext>(&self, context: &mut T) {
         let range = self.range(context);
         context.buffer_mut().delete_range(range);
+        context.window_mut().cursor = context.window().clamp_cursor(context.buffer(), range.0);
     }
+}
+
+fn normalize_range(buffer: &Box<dyn Buffer>, range: MotionRange) -> MotionRange {
+    let MotionRange(start, end, flags) = range;
+    if flags.contains(MotionFlags::EXCLUSIVE) && end.line > start.line && end.col == 0 {
+        return MotionRange(
+            start,
+            start.end_of_line(buffer),
+            flags - MotionFlags::EXCLUSIVE,
+        );
+    }
+
+    // default to the original range
+    return range;
 }
 
 #[cfg(test)]

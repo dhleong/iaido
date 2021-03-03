@@ -104,6 +104,7 @@ pub fn vim_normal_mode() -> VimMode {
 
         "d" => operator |ctx, motion| {
             ctx.state_mut().current_buffer_mut().delete_range(motion);
+            ctx.state_mut().current_window_mut().cursor = ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
             Ok(())
         },
         "D" => |ctx| {
@@ -265,6 +266,19 @@ mod tests {
                 ~
                 Take my love
                 |Take me where
+            "});
+        }
+
+        #[test]
+        fn follows_exclusive_line_cross_exception() {
+            // see :help exclusive in vim
+            let ctx = window(indoc! {"
+                Take my |love
+                Take my land
+            "});
+            ctx.feed_vim("dw").assert_visual_match(indoc! {"
+                Take my| 
+                Take my land
             "});
         }
 

@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::editing::CursorPosition;
 
-use super::Motion;
+use super::{Motion, MotionFlags};
 
 /// Motion that moves the cursor to the start of the current line
 pub struct ToLineStartMotion;
@@ -45,8 +45,8 @@ impl Motion for ToLastLineOfBufferMotion {
 /// Motion that selects the entire current line
 pub struct FullLineMotion;
 impl Motion for FullLineMotion {
-    fn is_linewise(&self) -> bool {
-        true
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::LINEWISE
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
@@ -57,8 +57,8 @@ impl Motion for FullLineMotion {
 /// Motion to move down one line
 pub struct DownLineMotion;
 impl Motion for DownLineMotion {
-    fn is_linewise(&self) -> bool {
-        true
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::LINEWISE
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
@@ -88,8 +88,8 @@ impl Motion for DownLineMotion {
 /// Motion to move up one line
 pub struct UpLineMotion;
 impl Motion for UpLineMotion {
-    fn is_linewise(&self) -> bool {
-        true
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::LINEWISE
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
@@ -114,8 +114,8 @@ impl Motion for UpLineMotion {
 
 pub struct ToFirstLineMotion;
 impl Motion for ToFirstLineMotion {
-    fn is_linewise(&self) -> bool {
-        true
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::LINEWISE
     }
 
     fn destination<T: super::MotionContext>(&self, _: &T) -> CursorPosition {
@@ -125,8 +125,8 @@ impl Motion for ToFirstLineMotion {
 
 pub struct ToLastLineMotion;
 impl Motion for ToLastLineMotion {
-    fn is_linewise(&self) -> bool {
-        true
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::LINEWISE
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {

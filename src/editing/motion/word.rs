@@ -1,6 +1,6 @@
 use crate::editing::CursorPosition;
 
-use super::{char::CharMotion, linewise::LineCrossing, Motion};
+use super::{char::CharMotion, linewise::LineCrossing, Motion, MotionFlags};
 
 pub fn is_big_word_boundary(ch: &str) -> bool {
     ch == " "
@@ -53,6 +53,10 @@ impl<T> Motion for WordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::EXCLUSIVE
+    }
+
     fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
         if context.buffer().lines_count() == 0 {
             return context.cursor();

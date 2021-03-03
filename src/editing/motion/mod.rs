@@ -11,7 +11,8 @@ use super::{window::Window, Buffer, CursorPosition};
 bitflags! {
     pub struct MotionFlags: u8 {
         const NONE = 0;
-        const LINEWISE = 0b01;
+        const LINEWISE  = 0b01;
+        const EXCLUSIVE = 0b10;
     }
 }
 
@@ -90,23 +91,16 @@ impl<'a, T: MotionContext> MotionContext for PositionedMotionContext<'a, T> {
 
 pub trait Motion {
     fn destination<T: MotionContext>(&self, context: &T) -> CursorPosition;
-    fn is_linewise(&self) -> bool {
-        false
-    }
 
     fn flags(&self) -> MotionFlags {
-        let mut flags = MotionFlags::NONE;
-        if self.is_linewise() {
-            flags |= MotionFlags::LINEWISE;
-        }
-        flags
+        MotionFlags::NONE
     }
 
     fn range<T: MotionContext>(&self, context: &T) -> MotionRange {
         let start = context.cursor();
         let end = self.destination(context);
-        let linewise = self.is_linewise();
         let flags = self.flags();
+        let linewise = flags.contains(MotionFlags::LINEWISE);
 
         if linewise && end < start {
             MotionRange(

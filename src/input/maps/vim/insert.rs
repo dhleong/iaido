@@ -1,4 +1,4 @@
-use super::{tree::KeyTreeNode, VimKeymapState, VimMode};
+use super::{tree::KeyTreeNode, VimKeymap, VimMode};
 use crate::{
     editing::motion::{
         char::CharMotion,
@@ -72,7 +72,7 @@ fn common_insert_mode(extra_mappings: Option<KeyTreeNode>) -> VimMode {
     }
 
     VimMode::new("i", mappings).on_default(key_handler!(
-        VimKeymapState | ctx | {
+        VimKeymap | ctx | {
             match ctx.key.code {
                 KeyCode::Char(c) => {
                     ctx.state_mut().type_at_cursor(c);

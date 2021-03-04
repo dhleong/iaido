@@ -3,7 +3,7 @@ use std::{io, time::Duration};
 use crossterm::{event::Event, event::KeyCode, event::KeyModifiers, ErrorKind};
 
 use crate::{
-    input::{Key, KeyError, KeySource},
+    input::Key,
     ui::{UiEvent, UiEvents},
 };
 
@@ -93,26 +93,6 @@ impl UiEvents for TuiEvents {
             Ok(Event::Key(key)) => Ok(UiEvent::Key(key.into())),
             Ok(Event::Mouse(_)) => Ok(UiEvent::Redraw),
             Err(e) => Err(wrap_as_io(e)),
-        }
-    }
-}
-
-impl KeySource for TuiEvents {
-    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
-        match self.poll_event(duration) {
-            Ok(Some(UiEvent::Key(_))) => Ok(true),
-            Ok(_) => Ok(false),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
-        loop {
-            match self.next_event() {
-                Ok(UiEvent::Key(key)) => return Ok(Some(key)),
-                Err(e) => return Err(e.into()),
-                _ => {}
-            }
         }
     }
 }

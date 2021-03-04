@@ -7,7 +7,7 @@ use crate::{
     key_handler, vim_tree,
 };
 
-use super::{insert::vim_insert_mappings, tree::KeyTreeNode, VimKeymapState, VimMode};
+use super::{insert::vim_insert_mappings, tree::KeyTreeNode, VimKeymap, VimMode};
 
 pub struct VimPromptConfig {
     pub prompt: String,
@@ -22,7 +22,7 @@ impl Into<VimMode> for VimPromptConfig {
 
         VimMode::new(mode_id.clone(), vim_insert_mappings() + mappings(self))
             .on_default(key_handler!(
-                VimKeymapState | ctx | {
+                VimKeymap | ctx | {
                     match ctx.key.code {
                         KeyCode::Char(c) => {
                             ctx.state_mut().type_at_cursor(c);
@@ -34,7 +34,7 @@ impl Into<VimMode> for VimPromptConfig {
                 }
             ))
             .on_after(key_handler!(
-                VimKeymapState move | ctx | {
+                VimKeymap move | ctx | {
                     let b = &ctx.state().prompt.buffer;
                     if b.is_empty() || !b.get(0).starts_with(&prompt) {
                         ctx.state_mut().prompt.buffer.insert((0, 0).into(), prompt.clone().into());

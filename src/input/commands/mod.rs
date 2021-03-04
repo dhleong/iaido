@@ -7,12 +7,14 @@ pub mod window;
 
 use std::time::Duration;
 
+use crate::delegate_keysource;
+
 use self::{
     colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
     registry::CommandRegistry, window::declare_window,
 };
 
-use super::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
+use super::{maps::KeyResult, KeySource, KeymapContext};
 
 pub type CommandHandler = dyn Fn(&mut CommandHandlerContext<'_>) -> KeyResult;
 
@@ -63,12 +65,7 @@ impl KeymapContext for CommandHandlerContext<'_> {
 }
 
 impl KeySource for CommandHandlerContext<'_> {
-    fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
-        self.context.poll_key(timeout)
-    }
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
-        self.context.next_key()
-    }
+    delegate_keysource!(context);
 }
 
 pub fn create_builtin_commands() -> CommandRegistry {

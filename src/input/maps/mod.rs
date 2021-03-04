@@ -1,14 +1,34 @@
 use std::time::Duration;
 
-use super::{Key, KeyError, KeySource, KeymapContext};
+use crate::delegate_keysource;
+
+use super::{
+    source::memory::MemoryKeySource, Key, KeyError, KeySource, Keymap, KeymapContext,
+    KeymapContextWithKeys,
+};
 
 pub mod actions;
 pub mod vim;
 
 pub struct KeyHandlerContext<'a, T> {
     context: Box<&'a mut dyn KeymapContext>,
-    keymap: &'a mut T,
+    pub keymap: &'a mut T,
     key: Key,
+}
+
+impl<T: Keymap> KeyHandlerContext<'_, T> {
+    fn feed_keys(mut self, keys: Vec<Key>) -> Result<Self, KeyError> {
+        let source = MemoryKeySource::from(keys);
+        let mut context = KeymapContextWithKeys::new(self.context, source);
+
+        while context.keys.poll_key(Duration::from_millis(0))? {
+            self.keymap.process(&mut context)?;
+        }
+
+        self.context = context.base;
+
+        Ok(self)
+    }
 }
 
 impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {
@@ -21,12 +41,7 @@ impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {
 }
 
 impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
-    fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
-        self.context.poll_key(timeout)
-    }
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
-        self.context.next_key()
-    }
+    delegate_keysource! { context }
 }
 
 pub type KeyResult = Result<(), KeyError>;

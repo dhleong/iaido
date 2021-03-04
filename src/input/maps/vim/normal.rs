@@ -1,11 +1,11 @@
 mod window;
 
-use crate::editing::text::TextLine;
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
+    editing::text::TextLine,
 };
 use crate::{key_handler, vim_tree};
 
@@ -13,7 +13,7 @@ use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
     prompt::VimPromptConfig,
     tree::KeyTreeNode,
-    VimKeymapState, VimMode,
+    VimKeymap, VimMode,
 };
 
 fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
@@ -178,8 +178,9 @@ pub fn vim_normal_mode() -> VimMode {
 
             ctx.state_mut().request_redraw();
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
-                // TODO enqueue keys
+                let keys = last.keys.clone();
                 ctx.state_mut().current_buffer_mut().changes().push(last);
+                ctx.feed_keys(keys)?;
             }
             Ok(())
         },
@@ -190,7 +191,7 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_linewise_motions();
 
     VimMode::new("n", mappings).on_default(key_handler!(
-        VimKeymapState | ?mut ctx | {
+        VimKeymap | ?mut ctx | {
             ctx.keymap.reset();
             Ok(())
         }
@@ -403,10 +404,28 @@ mod tests {
                 Take my land
             "});
 
-            println!("feed");
             ctx.feed_vim("u<ctrl-r>u").assert_visual_match(indoc! {"
                 ~
                 |Take my love
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod repeat {
+        use super::*;
+
+        #[test]
+        fn repeat_delete_with_motion() {
+            let mut ctx = window(indoc! {"
+                |Take my love
+            "});
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
+            "});
+
+            ctx.feed_vim("dw..").assert_visual_match(indoc! {"
+                |
             "});
         }
     }

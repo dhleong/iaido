@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use crate::delegate_keysource;
 
-use super::{Key, KeyError, KeySource, KeymapContext};
+use super::{
+    source::memory::MemoryKeySource, Key, KeyError, KeySource, Keymap, KeymapContext,
+    KeymapContextWithKeys,
+};
 
 pub mod actions;
 pub mod vim;
@@ -28,6 +31,17 @@ impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
 
 pub type KeyResult = Result<(), KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
+
+fn feed_keys<T: Keymap>(ctx: KeyHandlerContext<T>, keys: Vec<Key>) -> KeyResult {
+    let source = MemoryKeySource::from(keys);
+    let mut context = KeymapContextWithKeys::new(ctx.context, source);
+
+    while context.keys.poll_key(Duration::from_millis(0))? {
+        ctx.keymap.process(&mut context)?;
+    }
+
+    Ok(())
+}
 
 /// Syntactic sugar for declaring a key handler
 #[macro_export]

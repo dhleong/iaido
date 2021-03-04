@@ -1,18 +1,16 @@
 mod window;
 
-use std::time::Duration;
-
 use crate::input::{
-    commands::CommandHandlerContext, maps::KeyResult, KeyError, KeySource, Keymap, KeymapContext,
-    KeymapContextWithKeys,
+    commands::CommandHandlerContext,
+    maps::{feed_keys, KeyResult},
+    KeyError, KeymapContext,
 };
-use crate::input::{source::memory::MemoryKeySource, Key};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
+    editing::text::TextLine,
 };
-use crate::{editing::text::TextLine, input::maps::KeyHandlerContext};
 use crate::{key_handler, vim_tree};
 
 use super::{
@@ -202,20 +200,6 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         }
     ))
-}
-
-fn feed_keys(ctx: KeyHandlerContext<VimKeymap>, keys: Vec<Key>) -> KeyResult {
-    let source = MemoryKeySource::from(keys);
-
-    let mut context = KeymapContextWithKeys {
-        base: ctx.context,
-        keys: source,
-    };
-    while context.keys.poll_key(Duration::from_millis(0))? {
-        ctx.keymap.process(&mut context)?;
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

@@ -1,10 +1,6 @@
 mod window;
 
-use crate::input::{
-    commands::CommandHandlerContext,
-    maps::{feed_keys, KeyResult},
-    KeyError, KeymapContext,
-};
+use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
@@ -184,7 +180,7 @@ pub fn vim_normal_mode() -> VimMode {
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
                 let keys = last.keys.clone();
                 ctx.state_mut().current_buffer_mut().changes().push(last);
-                feed_keys(ctx, keys)?
+                ctx.feed_keys(keys)?;
             }
             Ok(())
         },

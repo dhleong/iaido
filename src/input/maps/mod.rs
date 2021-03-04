@@ -16,6 +16,21 @@ pub struct KeyHandlerContext<'a, T> {
     key: Key,
 }
 
+impl<T: Keymap> KeyHandlerContext<'_, T> {
+    fn feed_keys(mut self, keys: Vec<Key>) -> Result<Self, KeyError> {
+        let source = MemoryKeySource::from(keys);
+        let mut context = KeymapContextWithKeys::new(self.context, source);
+
+        while context.keys.poll_key(Duration::from_millis(0))? {
+            self.keymap.process(&mut context)?;
+        }
+
+        self.context = context.base;
+
+        Ok(self)
+    }
+}
+
 impl<'a, T> KeymapContext for KeyHandlerContext<'a, T> {
     fn state(&self) -> &crate::app::State {
         self.context.state()
@@ -31,17 +46,6 @@ impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
 
 pub type KeyResult = Result<(), KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
-
-fn feed_keys<T: Keymap>(ctx: KeyHandlerContext<T>, keys: Vec<Key>) -> KeyResult {
-    let source = MemoryKeySource::from(keys);
-    let mut context = KeymapContextWithKeys::new(ctx.context, source);
-
-    while context.keys.poll_key(Duration::from_millis(0))? {
-        ctx.keymap.process(&mut context)?;
-    }
-
-    Ok(())
-}
 
 /// Syntactic sugar for declaring a key handler
 #[macro_export]

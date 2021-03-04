@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::input::{source::memory::MemoryKeySource, Key, KeyError, KeySource, Keymap};
+use crate::input::{Key, KeyError, KeySource, Keymap};
 use crate::ui::{UiEvent, UiEvents, UI};
 use crate::{
     app::{self, App},
@@ -13,16 +13,11 @@ use super::jobs::Jobs;
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
     events: UE,
-    fed: MemoryKeySource,
 }
 
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
         self.app.render();
-
-        if self.fed.poll_key(duration)? {
-            return Ok(true);
-        }
 
         match self.events.poll_event(duration) {
             Ok(Some(UiEvent::Key(_))) => Ok(true),
@@ -32,11 +27,6 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     }
 
     fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
-        // if there are fed keys pending, return those immediately
-        if self.fed.poll_key(Duration::from_millis(0))? {
-            return self.fed.next_key();
-        }
-
         let mut dirty = true;
         loop {
             loop {
@@ -68,10 +58,6 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
             dirty = true;
         }
     }
-
-    fn feed_keys(&mut self, keys: Vec<Key>) {
-        self.fed.feed_keys(keys);
-    }
 }
 
 impl<U: UI, UE: UiEvents> KeymapContext for AppKeySource<U, UE> {
@@ -89,11 +75,7 @@ where
     UE: UiEvents,
     KM: Keymap,
 {
-    let mut app_keys = AppKeySource {
-        app,
-        events,
-        fed: MemoryKeySource::empty(),
-    };
+    let mut app_keys = AppKeySource { app, events };
 
     loop {
         if let Err(e) = map.process(&mut app_keys) {

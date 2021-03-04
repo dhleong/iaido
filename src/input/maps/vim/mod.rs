@@ -19,8 +19,8 @@ use self::mode_stack::VimModeStack;
 
 use super::{KeyHandlerContext, KeyResult};
 
-type KeyHandler = super::KeyHandler<VimKeymapState>;
-type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymapState>, MotionRange) -> KeyResult;
+type KeyHandler = super::KeyHandler<VimKeymap>;
+type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymap>, MotionRange) -> KeyResult;
 
 // ======= modes ==========================================
 
@@ -154,7 +154,7 @@ impl Keymap for VimKeymap {
                     if let Some(handler) = next.get_handler() {
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
-                            keymap: &mut self.keymap,
+                            keymap: self,
                             key,
                         });
                         break;
@@ -172,7 +172,7 @@ impl Keymap for VimKeymap {
                     if let Some(handler) = &mode.default_handler {
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
-                            keymap: &mut self.keymap,
+                            keymap: self,
                             key,
                         });
                         break;
@@ -188,7 +188,7 @@ impl Keymap for VimKeymap {
             if self.keymap.mode_stack.contains(&mode.id) {
                 handler(KeyHandlerContext {
                     context: Box::new(context),
-                    keymap: &mut self.keymap,
+                    keymap: self,
                     key: '\0'.into(),
                 })?;
             }
@@ -230,7 +230,7 @@ macro_rules! vim_branches {
             |$ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| $body));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -241,7 +241,7 @@ macro_rules! vim_branches {
             move |$ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState move |$ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |$ctx_name| $body));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -252,7 +252,7 @@ macro_rules! vim_branches {
             move |?mut $ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState move |?mut $ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |?mut $ctx_name| $body));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -263,7 +263,7 @@ macro_rules! vim_branches {
             |?mut $ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |?mut $ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |?mut $ctx_name| $body));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -274,7 +274,7 @@ macro_rules! vim_branches {
             operator |$ctx_name:ident, $motion_name:ident| $body:expr,
         $($tail:tt)*
     ) => {{
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |$ctx_name| {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
             use crate::editing::motion::Motion;
 
             if $ctx_name.state().current_buffer().is_read_only() {
@@ -285,7 +285,7 @@ macro_rules! vim_branches {
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
-            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
+            if let Some(pending_key) = $ctx_name.keymap.keymap.pending_linewise_operator_key.take() {
                 let operator_result = if pending_key == $keys.into() {
                     // execute linewise action directly:
                     let motion_impl = crate::editing::motion::linewise::FullLineMotion;
@@ -300,8 +300,8 @@ macro_rules! vim_branches {
             }
 
             // no pending linewise op; save a closure for motion use:
-            $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
-            $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
+            $ctx_name.keymap.keymap.pending_linewise_operator_key = Some($keys.into());
+            $ctx_name.keymap.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
                 let operator_fn_result = $body;
 
                 $ctx_name.state_mut().current_buffer_mut().end_change();
@@ -320,21 +320,16 @@ macro_rules! vim_branches {
             motion $factory:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymapState |ctx| {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |ctx| {
             use crate::editing::motion::Motion;
             let motion = $factory;
-            let operator_fn = ctx.keymap.operator_fn.take();
-            ctx.keymap.reset(); // always clear
+            let operator_fn = ctx.keymap.keymap.operator_fn.take();
+            ctx.keymap.keymap.reset(); // always clear
 
             if let Some(op) = operator_fn {
                 // execute pending operator fn
                 let range = motion.range(ctx.state());
-                let subcontext = crate::input::maps::KeyHandlerContext {
-                    context: ctx.context,
-                    keymap: ctx.keymap,
-                    key: ctx.key,
-                };
-                op(subcontext, range)
+                op(ctx, range)
             } else {
                 // no operator fn? just move the cursor
                 motion.apply_cursor(ctx.state_mut());

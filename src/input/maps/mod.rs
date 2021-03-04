@@ -9,7 +9,7 @@ pub mod vim;
 
 pub struct KeyHandlerContext<'a, T> {
     context: Box<&'a mut dyn KeymapContext>,
-    keymap: &'a mut T,
+    pub keymap: &'a mut T,
     key: Key,
 }
 

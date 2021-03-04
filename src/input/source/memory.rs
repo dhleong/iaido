@@ -22,6 +22,12 @@ impl MemoryKeySource {
     }
 }
 
+impl From<Vec<Key>> for MemoryKeySource {
+    fn from(keys: Vec<Key>) -> Self {
+        Self { keys }
+    }
+}
+
 impl KeySource for MemoryKeySource {
     fn poll_key(&mut self, _timeout: std::time::Duration) -> Result<bool, crate::input::KeyError> {
         Ok(!self.keys.is_empty())

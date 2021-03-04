@@ -1,20 +1,25 @@
 mod window;
 
-use crate::editing::text::TextLine;
-use crate::input::KeySource;
-use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
+use std::time::Duration;
+
+use crate::input::{
+    commands::CommandHandlerContext, maps::KeyResult, KeyError, KeySource, Keymap, KeymapContext,
+    KeymapContextWithKeys,
+};
+use crate::input::{source::memory::MemoryKeySource, Key};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
 };
+use crate::{editing::text::TextLine, input::maps::KeyHandlerContext};
 use crate::{key_handler, vim_tree};
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
     prompt::VimPromptConfig,
     tree::KeyTreeNode,
-    VimKeymapState, VimMode,
+    VimKeymap, VimMode,
 };
 
 fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
@@ -41,7 +46,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             ctx.state_mut().clear_echo();
             ctx.state_mut().prompt.activate(":".into());
 
-            ctx.keymap.push_mode(VimPromptConfig{
+            ctx.keymap.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
                 handler: Box::new(handle_command),
                 // TODO autocomplete
@@ -179,8 +184,9 @@ pub fn vim_normal_mode() -> VimMode {
 
             ctx.state_mut().request_redraw();
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {
-                ctx.feed_keys(last.keys.clone());
+                let keys = last.keys.clone();
                 ctx.state_mut().current_buffer_mut().changes().push(last);
+                feed_keys(ctx, keys)?
             }
             Ok(())
         },
@@ -191,11 +197,25 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_linewise_motions();
 
     VimMode::new("n", mappings).on_default(key_handler!(
-        VimKeymapState | ?mut ctx | {
-            ctx.keymap.reset();
+        VimKeymap | ?mut ctx | {
+            ctx.keymap.keymap.reset();
             Ok(())
         }
     ))
+}
+
+fn feed_keys(ctx: KeyHandlerContext<VimKeymap>, keys: Vec<Key>) -> KeyResult {
+    let source = MemoryKeySource::from(keys);
+
+    let mut context = KeymapContextWithKeys {
+        base: ctx.context,
+        keys: source,
+    };
+    while context.keys.poll_key(Duration::from_millis(0))? {
+        ctx.keymap.process(&mut context)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -404,10 +424,28 @@ mod tests {
                 Take my land
             "});
 
-            println!("feed");
             ctx.feed_vim("u<ctrl-r>u").assert_visual_match(indoc! {"
                 ~
                 |Take my love
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod repeat {
+        use super::*;
+
+        #[test]
+        fn repeat_delete_with_motion() {
+            let mut ctx = window(indoc! {"
+                |Take my love
+            "});
+            ctx.assert_visual_match(indoc! {"
+                |Take my love
+            "});
+
+            ctx.feed_vim("dw..").assert_visual_match(indoc! {"
+                |
             "});
         }
     }

@@ -1,4 +1,4 @@
-use crate::input::maps::vim::VimKeymapState;
+use crate::input::maps::vim::VimKeymap;
 use crate::input::maps::{vim::tree::KeyTreeNode, KeyHandlerContext};
 use crate::input::KeymapContext;
 use crate::vim_tree;
@@ -23,7 +23,7 @@ pub fn mappings() -> KeyTreeNode {
     }
 }
 
-fn focus(mut ctx: KeyHandlerContext<VimKeymapState>, direction: FocusDirection) -> KeyResult {
+fn focus(mut ctx: KeyHandlerContext<VimKeymap>, direction: FocusDirection) -> KeyResult {
     ctx.state_mut().current_tab_mut().move_focus(direction);
     Ok(())
 }

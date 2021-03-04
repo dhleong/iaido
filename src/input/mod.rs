@@ -7,6 +7,10 @@ pub mod source;
 pub use source::KeySource;
 
 use std::io;
+use std::time::Duration;
+
+use crate::delegate_keysource;
+use delegate::delegate;
 
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
@@ -78,6 +82,30 @@ impl From<url::ParseError> for KeyError {
 pub trait KeymapContext: KeySource {
     fn state(&self) -> &crate::app::State;
     fn state_mut(&mut self) -> &mut crate::app::State;
+}
+
+pub struct KeymapContextWithKeys<'a, K: KeySource> {
+    base: Box<&'a mut dyn KeymapContext>,
+    keys: K,
+}
+
+impl<'a, K: KeySource> KeymapContextWithKeys<'a, K> {
+    pub fn new(base: Box<&'a mut dyn KeymapContext>, keys: K) -> Self {
+        Self { base, keys }
+    }
+}
+
+impl<'a, K: KeySource> KeymapContext for KeymapContextWithKeys<'a, K> {
+    delegate! {
+        to self.base {
+            fn state(&self) -> &crate::app::State;
+            fn state_mut(&mut self) -> &mut crate::app::State;
+        }
+    }
+}
+
+impl<'a, K: KeySource> KeySource for KeymapContextWithKeys<'a, K> {
+    delegate_keysource!(keys);
 }
 
 pub trait Keymap {

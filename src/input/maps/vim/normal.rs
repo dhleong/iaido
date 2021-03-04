@@ -40,7 +40,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             ctx.state_mut().clear_echo();
             ctx.state_mut().prompt.activate(":".into());
 
-            ctx.keymap.keymap.push_mode(VimPromptConfig{
+            ctx.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
                 handler: Box::new(handle_command),
                 // TODO autocomplete
@@ -192,7 +192,7 @@ pub fn vim_normal_mode() -> VimMode {
 
     VimMode::new("n", mappings).on_default(key_handler!(
         VimKeymap | ?mut ctx | {
-            ctx.keymap.keymap.reset();
+            ctx.keymap.reset();
             Ok(())
         }
     ))

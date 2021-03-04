@@ -55,14 +55,14 @@ fn mappings(config: VimPromptConfig) -> KeyTreeNode {
     let prompt_len = config.prompt.len();
     vim_tree! {
         "<esc>" => |ctx| {
-            ctx.keymap.keymap.mode_stack.pop();
+            ctx.keymap.mode_stack.pop();
             ctx.state_mut().prompt.clear();
             Ok(())
          },
 
          "<cr>" => move |ctx| {
              let input = ctx.state().prompt.buffer.get_contents()[prompt_len..].to_string();
-             ctx.keymap.keymap.mode_stack.pop();
+             ctx.keymap.mode_stack.pop();
              ctx.state_mut().prompt.clear();
 
              // submit to handler

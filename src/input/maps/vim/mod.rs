@@ -58,16 +58,36 @@ impl std::fmt::Debug for VimMode {
     }
 }
 
-// ======= Keymap state ===================================
+// ======= Keymap =========================================
 
-pub struct VimKeymapState {
+pub struct VimKeymap {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
 }
 
-impl Default for VimKeymapState {
+impl VimKeymap {
+    pub fn push_mode(&mut self, mode: VimMode) {
+        self.mode_stack.push(mode);
+    }
+
+    pub fn reset(&mut self) {
+        self.pending_linewise_operator_key = None;
+        self.operator_fn = None;
+        self.keys_buffer.clear();
+    }
+
+    fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
+        context.state_mut().keymap_widget = Some(Widget::Spread(vec![
+            Widget::Space,
+            Widget::Space,
+            Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
+        ]));
+    }
+}
+
+impl Default for VimKeymap {
     fn default() -> Self {
         Self {
             pending_linewise_operator_key: None,
@@ -78,59 +98,22 @@ impl Default for VimKeymapState {
     }
 }
 
-impl VimKeymapState {
-    pub fn push_mode(&mut self, mode: VimMode) {
-        self.mode_stack.push(mode);
-    }
-
-    fn reset(&mut self) {
-        self.pending_linewise_operator_key = None;
-        self.operator_fn = None;
-        self.keys_buffer.clear();
-    }
-}
-
-// ======= Keymap =========================================
-
-pub struct VimKeymap {
-    keymap: VimKeymapState,
-}
-
-impl VimKeymap {
-    fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
-        context.state_mut().keymap_widget = Some(Widget::Spread(vec![
-            Widget::Space,
-            Widget::Space,
-            Widget::Literal(render_keys_buffer(&self.keymap.keys_buffer).into()),
-        ]));
-    }
-}
-
-impl Default for VimKeymap {
-    fn default() -> Self {
-        Self {
-            keymap: Default::default(),
-        }
-    }
-}
-
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buffer_source = context.state().current_buffer().source().clone();
-        let (mode, mode_from_stack, show_keys) =
-            if let Some(mode) = self.keymap.mode_stack.take_top() {
-                context.state_mut().keymap_widget = None;
-                (mode, true, false)
-            } else if context.state().current_window().inserting {
-                context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
-                (vim_insert_mode(&buffer_source), false, false)
-            } else {
-                self.render_keys_buffer(context);
-                (vim_normal_mode(), false, true)
-            };
+        let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
+            context.state_mut().keymap_widget = None;
+            (mode, true, false)
+        } else if context.state().current_window().inserting {
+            context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
+            (vim_insert_mode(&buffer_source), false, false)
+        } else {
+            self.render_keys_buffer(context);
+            (vim_normal_mode(), false, true)
+        };
 
-        if !show_keys && !self.keymap.keys_buffer.is_empty() {
-            self.keymap.keys_buffer.clear();
+        if !show_keys && !self.keys_buffer.is_empty() {
+            self.keys_buffer.clear();
         }
 
         let mut current = &mode.mappings;
@@ -140,7 +123,7 @@ impl Keymap for VimKeymap {
         loop {
             if let Some(key) = context.next_key()? {
                 if show_keys {
-                    self.keymap.keys_buffer.push(key.clone());
+                    self.keys_buffer.push(key.clone());
                 }
 
                 // if there's a change in progress, add the key to it
@@ -185,7 +168,7 @@ impl Keymap for VimKeymap {
         }
 
         if let Some(handler) = &mode.after_handler {
-            if self.keymap.mode_stack.contains(&mode.id) {
+            if self.mode_stack.contains(&mode.id) {
                 handler(KeyHandlerContext {
                     context: Box::new(context),
                     keymap: self,
@@ -196,7 +179,7 @@ impl Keymap for VimKeymap {
 
         if mode_from_stack {
             // return the moved mode value back to the stack...
-            self.keymap.mode_stack.return_top(mode);
+            self.mode_stack.return_top(mode);
         }
 
         result
@@ -285,7 +268,7 @@ macro_rules! vim_branches {
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
-            if let Some(pending_key) = $ctx_name.keymap.keymap.pending_linewise_operator_key.take() {
+            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
                 let operator_result = if pending_key == $keys.into() {
                     // execute linewise action directly:
                     let motion_impl = crate::editing::motion::linewise::FullLineMotion;
@@ -300,8 +283,8 @@ macro_rules! vim_branches {
             }
 
             // no pending linewise op; save a closure for motion use:
-            $ctx_name.keymap.keymap.pending_linewise_operator_key = Some($keys.into());
-            $ctx_name.keymap.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
+            $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
+            $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
                 let operator_fn_result = $body;
 
                 $ctx_name.state_mut().current_buffer_mut().end_change();
@@ -323,8 +306,8 @@ macro_rules! vim_branches {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |ctx| {
             use crate::editing::motion::Motion;
             let motion = $factory;
-            let operator_fn = ctx.keymap.keymap.operator_fn.take();
-            ctx.keymap.keymap.reset(); // always clear
+            let operator_fn = ctx.keymap.operator_fn.take();
+            ctx.keymap.reset(); // always clear
 
             if let Some(op) = operator_fn {
                 // execute pending operator fn

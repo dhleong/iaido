@@ -142,9 +142,7 @@ impl AppState {
     // ======= keymap conveniences ============================
 
     pub fn backspace(&mut self) {
-        let motion = CharMotion::Backward(1);
-        motion.delete_range(self);
-        motion.apply_cursor(self);
+        CharMotion::Backward(1).delete_range(self);
     }
 
     pub fn insert_at_cursor(&mut self, text: TextLine) {

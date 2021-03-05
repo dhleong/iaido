@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::editing::CursorPosition;
 
-use super::{Motion, MotionFlags};
+use super::{DirectionalMotion, Motion, MotionFlags};
 
 /// Motion that moves the cursor to the start of the current line
 pub struct ToLineStartMotion;
@@ -139,17 +139,17 @@ impl Motion for ToLastLineMotion {
     }
 }
 
-pub struct LineCrossing<T: Motion> {
+pub struct LineCrossing<T: DirectionalMotion + Motion> {
     base: T,
 }
 
-impl<T: Motion> LineCrossing<T> {
+impl<T: DirectionalMotion + Motion> LineCrossing<T> {
     pub fn new(base: T) -> Self {
         Self { base }
     }
 }
 
-impl<T: Motion> Motion for LineCrossing<T> {
+impl<T: DirectionalMotion + Motion> Motion for LineCrossing<T> {
     fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
         let origin = context.cursor();
         let base = self.base.destination(context);
@@ -157,15 +157,15 @@ impl<T: Motion> Motion for LineCrossing<T> {
             return base;
         }
 
-        if origin.col == 0 && origin.line > 0 {
-            CursorPosition {
-                line: origin.line - 1,
-                col: context.buffer().get_line_width(origin.line - 1).unwrap(),
-            }
-        } else if origin.col > 0 && origin.line < context.buffer().lines_count() - 1 {
+        if self.base.is_forward() && origin.line < context.buffer().lines_count() - 1 {
             CursorPosition {
                 line: origin.line + 1,
                 col: 0,
+            }
+        } else if !self.base.is_forward() && origin.line > 0 {
+            CursorPosition {
+                line: origin.line - 1,
+                col: context.buffer().get_line_width(origin.line - 1).unwrap(),
             }
         } else {
             base

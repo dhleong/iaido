@@ -6,7 +6,7 @@ use bitflags::bitflags;
 
 use crate::app::bufwin::BufWin;
 
-use super::{window::Window, Buffer, CursorPosition};
+use super::{text::EditableLine, window::Window, Buffer, CursorPosition};
 
 bitflags! {
     pub struct MotionFlags: u8 {
@@ -137,14 +137,33 @@ pub trait Motion {
     }
 }
 
+pub trait DirectionalMotion {
+    fn is_forward(&self) -> bool;
+}
+
 fn normalize_range(buffer: &Box<dyn Buffer>, range: MotionRange) -> MotionRange {
     let MotionRange(start, end, flags) = range;
     if flags.contains(MotionFlags::EXCLUSIVE) && end.line > start.line && end.col == 0 {
-        return MotionRange(
+        // see :help exclusive
+        let mut motion = MotionRange(
             start,
             start.end_of_line(buffer),
             flags - MotionFlags::EXCLUSIVE,
         );
+
+        // if "before the first non-blank in a line" the motion
+        // becomes linewise
+        // see :help exclusive-linewise
+        let first_non_blank_before = buffer
+            .get(start.line)
+            .position(0..(start.col + 1), |c| !char::is_whitespace(c));
+
+        if first_non_blank_before.is_none() {
+            motion.0 = motion.0.start_of_line();
+            motion.2 |= MotionFlags::LINEWISE;
+        }
+
+        return motion;
     }
 
     // default to the original range

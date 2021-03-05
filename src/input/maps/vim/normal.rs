@@ -297,6 +297,20 @@ mod tests {
             let change = ctx.buffer.changes().take_last().unwrap();
             assert_eq!(change.keys, "dw".into_keys());
         }
+
+        #[test]
+        fn dw_deletes_empty_line() {
+            let ctx = window(indoc! {"
+                Take my love
+                |
+                Take my land
+            "});
+            ctx.feed_vim("dw").assert_visual_match(indoc! {"
+                ~
+                Take my love
+                |Take my land
+            "});
+        }
     }
 
     #[cfg(test)]

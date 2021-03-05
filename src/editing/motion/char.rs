@@ -2,12 +2,21 @@ use std::cmp::min;
 
 use crate::editing::CursorPosition;
 
-use super::Motion;
+use super::{DirectionalMotion, Motion};
 
 /// Character-wise column motion
 pub enum CharMotion {
     Forward(u16),
     Backward(u16),
+}
+
+impl DirectionalMotion for CharMotion {
+    fn is_forward(&self) -> bool {
+        match self {
+            &CharMotion::Forward(_) => true,
+            &CharMotion::Backward(_) => false,
+        }
+    }
 }
 
 impl Motion for CharMotion {

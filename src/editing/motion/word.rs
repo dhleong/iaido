@@ -318,5 +318,20 @@ mod tests {
                 |Take my land
             "});
         }
+
+        #[test]
+        fn from_empty_line() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                |
+                Take my land
+            "});
+            ctx.motion(WordMotion::forward_until(is_small_word_boundary));
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+
+                |Take my land
+            "});
+        }
     }
 }

@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, ops::Range};
 
 use tui::text::{Span, Spans, Text};
 
@@ -7,6 +7,11 @@ pub type TextLines = Text<'static>;
 
 pub trait EditableLine {
     fn append(&mut self, other: &mut TextLine);
+    fn position<P: Fn(char) -> bool>(
+        &self,
+        search_range: Range<usize>,
+        predicate: P,
+    ) -> Option<usize>;
     fn subs(&self, start: usize, end: usize) -> Self;
     fn starts_with(&self, s: &String) -> bool;
     fn to_string(&self) -> String;
@@ -15,6 +20,40 @@ pub trait EditableLine {
 impl EditableLine for TextLine {
     fn append(&mut self, other: &mut TextLine) {
         self.0.append(&mut other.0);
+    }
+
+    fn position<P: Fn(char) -> bool>(
+        &self,
+        search_range: Range<usize>,
+        predicate: P,
+    ) -> Option<usize> {
+        // accepting RangeBounds and using assert_len would be nice
+        // here, but it's unstable...
+        let Range { start, end } = search_range;
+        let mut index = 0;
+        for span in &self.0 {
+            if index < start && index + span.content.len() < start {
+                continue;
+            }
+
+            for (i, ch) in span.content.chars().enumerate() {
+                let desti = index + i;
+                if desti < start {
+                    continue;
+                }
+                if desti >= end {
+                    return None;
+                }
+
+                if predicate(ch) {
+                    return Some(desti);
+                }
+            }
+
+            index += span.content.len();
+        }
+
+        None
     }
 
     fn starts_with(&self, s: &String) -> bool {

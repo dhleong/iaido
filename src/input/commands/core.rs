@@ -90,4 +90,27 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn quit_connection_window_test() -> KeyResult {
+        let mut state = crate::app::State::default();
+        let buf_id = state.buffers.create().id();
+        let tab = state.tabpages.current_tab_mut();
+        tab.new_connection(&mut state.buffers, buf_id);
+
+        let mut context = TestKeymapContext {
+            state,
+            keys: MemoryKeySource::from_keys(""),
+        };
+        let mut ctx = CommandHandlerContext {
+            context: Box::new(&mut context),
+            input: "q".to_string(),
+        };
+
+        // NOTE: it should close both the input window and the output
+        quit_window(&mut ctx, HideBufArgs { force: false })?;
+        assert_eq!(ctx.context.state_mut().running, false);
+
+        Ok(())
+    }
 }

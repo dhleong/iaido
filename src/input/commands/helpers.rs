@@ -34,7 +34,7 @@ pub fn buffer_connection_name(context: &CommandHandlerContext, id: Id) -> String
 }
 
 pub fn check_hide_buffer(context: &mut CommandHandlerContext, args: HideBufArgs) -> KeyResult {
-    if !args.force {
+    if args.force {
         return Ok(());
     }
 

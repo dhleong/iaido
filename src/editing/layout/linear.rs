@@ -204,6 +204,24 @@ impl Layout for LinearLayout {
 }
 
 impl SplitableLayout for LinearLayout {
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    fn close_window(&mut self, win_id: Id) {
+        if let Some(idx) = self.index_of_window(win_id) {
+            let mut remove_entry = true;
+            if let Some(splittable) = self.entries[idx].into_splittable() {
+                splittable.close_window(win_id);
+                remove_entry = splittable.len() == 0;
+            }
+
+            if remove_entry {
+                self.entries.remove(idx);
+            }
+        }
+    }
+
     fn hsplit(&mut self, current_id: Id, win: Box<Window>) {
         self.split(current_id, win, LayoutDirection::Vertical);
     }

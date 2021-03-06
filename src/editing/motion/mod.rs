@@ -184,8 +184,10 @@ pub mod tests {
             Buffer, HasId, Resizable, Size,
         },
         input::{
-            commands::registry::CommandRegistry, completion::CompletableContext,
-            source::memory::MemoryKeySource, KeySource, Keymap, KeymapContext,
+            commands::{registry::CommandRegistry, CommandHandlerContext},
+            completion::CompletableContext,
+            source::memory::MemoryKeySource,
+            KeySource, Keymap, KeymapContext,
         },
         tui::{
             rendering::display::tests::TestableDisplay, Display, LayoutContext, RenderContext,
@@ -195,9 +197,28 @@ pub mod tests {
 
     use super::*;
 
-    struct TestKeymapContext {
+    pub struct TestKeymapContext {
         keys: MemoryKeySource,
         state: app::State,
+    }
+
+    impl TestKeymapContext {
+        pub fn empty() -> TestKeymapContext {
+            TestKeymapContext::from_keys("")
+        }
+        pub fn from_keys(keys: &'static str) -> TestKeymapContext {
+            TestKeymapContext {
+                state: app::State::default(),
+                keys: MemoryKeySource::from_keys(keys),
+            }
+        }
+
+        pub fn command_context(&mut self, input: &'static str) -> CommandHandlerContext {
+            CommandHandlerContext {
+                context: Box::new(self),
+                input: input.to_string(),
+            }
+        }
     }
 
     impl KeymapContext for TestKeymapContext {

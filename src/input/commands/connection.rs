@@ -81,21 +81,26 @@ fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
 }
 
 fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {
-    let buffer_id = context.state().current_buffer().id();
-    context
-        .state_mut()
-        .connections
-        .as_mut()
-        .unwrap()
-        .disconnect_buffer(buffer_id)?;
+    if let Some(buffer_id) = context.state().current_buffer().connection_buffer_id() {
+        context
+            .state_mut()
+            .connections
+            .as_mut()
+            .unwrap()
+            .disconnect_buffer(buffer_id)?;
 
-    context
-        .state_mut()
-        .winsbuf_by_id(buffer_id)
-        .expect("Could not find current buffer")
-        .append_line("Disconnected.".into());
+        context
+            .state_mut()
+            .winsbuf_by_id(buffer_id)
+            .expect("Could not find current buffer")
+            .append_line("Disconnected.".into());
 
-    Ok(())
+        Ok(())
+    } else {
+        Err(KeyError::InvalidInput(
+            "No connection for current buffer".to_string(),
+        ))
+    }
 }
 
 #[cfg(test)]

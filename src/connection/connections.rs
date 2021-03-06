@@ -44,7 +44,7 @@ impl Connections {
         self.all.iter_mut().find(|conn| conn.id() == id)
     }
 
-    pub fn buffer_to_id(&mut self, buffer_id: Id) -> Option<Id> {
+    pub fn buffer_to_id(&self, buffer_id: Id) -> Option<Id> {
         self.buffer_to_connection.get(&buffer_id).cloned()
     }
 

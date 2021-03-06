@@ -17,7 +17,7 @@ use super::{
     motion::{MotionFlags, MotionRange},
     source::BufferSource,
     text::{EditableLine, TextLine, TextLines},
-    CursorPosition, HasId,
+    CursorPosition, HasId, Id,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -113,6 +113,11 @@ pub trait Buffer: HasId + Send + Sync {
     fn push_change_key(&mut self, _key: Key) {}
     fn end_change(&mut self) {}
 
+    fn is_modified(&self) -> bool {
+        // TODO
+        false
+    }
+
     //
     // Convenience methods, using the core interface above:
     //
@@ -158,6 +163,14 @@ pub trait Buffer: HasId + Send + Sync {
             Some(self.get(line_index))
         } else {
             None
+        }
+    }
+
+    fn connection_buffer_id(&self) -> Option<Id> {
+        match self.source() {
+            &BufferSource::Connection(_) => Some(self.id()),
+            &BufferSource::ConnectionInputForBuffer(id) => Some(id),
+            _ => None,
         }
     }
 

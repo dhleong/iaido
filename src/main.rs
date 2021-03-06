@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+
 mod app;
 mod connection;
 mod editing;
@@ -14,7 +16,18 @@ use std::{
     time::Duration,
 };
 
-use editing::{motion::linewise::ToLineEndMotion, motion::Motion, CursorPosition};
+use editing::{
+    buffer::MemoryBuffer, ids::BUFFER_ID_LOG, motion::linewise::ToLineEndMotion, motion::Motion,
+    source::BufferSource, Buffer, CursorPosition,
+};
+
+lazy_static! {
+    pub static ref LOG_BUFFER: Box<dyn Buffer> = {
+        let mut buffer = Box::new(MemoryBuffer::new(BUFFER_ID_LOG));
+        buffer.set_source(BufferSource::Log);
+        buffer
+    };
+}
 
 fn main_loop() -> io::Result<()> {
     let ui = tui::create_ui()?;

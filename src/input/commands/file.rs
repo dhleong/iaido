@@ -29,6 +29,7 @@ declare_commands!(declare_file {
             },
             &BufferSource::LocalFile(_) => return Err(KeyError::NotPermitted("Buffer backed by a file".to_string())),
             &BufferSource::None => {}, // continue
+            &BufferSource::Log => {}, // continue
         };
 
         // TODO if the file doesn't exist, we should still be able to edit it

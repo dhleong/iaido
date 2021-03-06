@@ -197,6 +197,7 @@ dependencies = [
  "delegate",
  "genawaiter",
  "indoc",
+ "lazy_static",
  "telnet",
  "tokio",
  "tui",

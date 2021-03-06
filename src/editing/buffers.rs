@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{
     buffer::{MemoryBuffer, UndoableBuffer},
-    ids::Ids,
+    ids::{Ids, BUFFER_ID_LOG},
     Buffer, Id,
 };
 
@@ -15,16 +15,22 @@ pub struct Buffers {
 impl Buffers {
     pub fn new() -> Buffers {
         return Buffers {
-            ids: Ids::new(),
+            ids: Ids::with_first(BUFFER_ID_LOG + 1),
             all: Vec::new(),
         };
     }
 
     pub fn by_id(&self, id: Id) -> Option<&Box<dyn Buffer>> {
+        if id == BUFFER_ID_LOG {
+            return Some(&crate::LOG_BUFFER);
+        }
         self.all.iter().find(|buf| buf.id() == id)
     }
 
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Buffer>> {
+        if id == BUFFER_ID_LOG {
+            return None;
+        }
         self.all.iter_mut().find(|buf| buf.id() == id)
     }
 

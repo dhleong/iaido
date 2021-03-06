@@ -5,6 +5,8 @@ mod input;
 mod tui;
 mod ui;
 
+pub mod log;
+
 use app::looper::app_loop;
 use backtrace::Backtrace;
 use input::maps::vim::VimKeymap;

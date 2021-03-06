@@ -7,7 +7,7 @@ use crate::{
         motion::{Motion, MotionContext},
         tabpage::Tabpage,
         tabpages::Tabpages,
-        text::{TextLine, TextLines},
+        text::{EditableLine, TextLine, TextLines},
         window::Window,
         Buffer, Id, Resizable, Size,
     },
@@ -132,7 +132,15 @@ impl AppState {
             self.requested_redraw = false;
             self.clear_echo();
         }
+
         self.echo_buffer.append(text);
+    }
+
+    pub fn echom(&mut self, text: TextLines) {
+        for line in &text.lines {
+            crate::info!("{}", line.to_string());
+        }
+        self.echo(text);
     }
 
     pub fn echo_str(&mut self, text: &'static str) {

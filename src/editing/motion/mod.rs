@@ -178,6 +178,7 @@ pub mod tests {
         app, delegate_keysource,
         editing::{
             buffer::{MemoryBuffer, UndoableBuffer},
+            ids::FIRST_USER_BUFFER_ID,
             text::TextLine,
             window::Window,
             Buffer, HasId, Resizable, Size,
@@ -359,7 +360,7 @@ pub mod tests {
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
-        let mut buffer = Box::new(MemoryBuffer::new(0));
+        let mut buffer = Box::new(MemoryBuffer::new(FIRST_USER_BUFFER_ID));
         let mut non_buffer_lines = 0;
 
         for (index, line) in s.lines().enumerate() {

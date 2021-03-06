@@ -2,7 +2,8 @@ use std::fmt;
 
 use super::{
     buffer::{MemoryBuffer, UndoableBuffer},
-    ids::Ids,
+    ids::{Ids, BUFFER_ID_LOG, FIRST_USER_BUFFER_ID},
+    source::BufferSource,
     Buffer, Id,
 };
 
@@ -14,10 +15,15 @@ pub struct Buffers {
 
 impl Buffers {
     pub fn new() -> Buffers {
-        return Buffers {
-            ids: Ids::new(),
+        let mut base = Buffers {
+            ids: Ids::with_first(FIRST_USER_BUFFER_ID),
             all: Vec::new(),
         };
+        base.create_with_id(BUFFER_ID_LOG);
+        base.by_id_mut(BUFFER_ID_LOG)
+            .unwrap()
+            .set_source(BufferSource::Log);
+        base
     }
 
     pub fn by_id(&self, id: Id) -> Option<&Box<dyn Buffer>> {
@@ -40,12 +46,16 @@ impl Buffers {
 
     fn create_for_id(&mut self) -> Id {
         let id = self.ids.next();
+        self.create_with_id(id);
+
+        id
+    }
+
+    fn create_with_id(&mut self, id: Id) {
         let buffer = MemoryBuffer::new(id);
         let boxed = UndoableBuffer::wrap(Box::new(buffer));
 
         self.all.push(boxed);
-
-        id
     }
 
     #[cfg(test)]

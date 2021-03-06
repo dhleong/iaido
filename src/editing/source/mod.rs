@@ -5,6 +5,8 @@ pub enum BufferSource {
     /// The Buffer is in-memory only
     None,
 
+    Log,
+
     /// The Buffer was read from or has been written to a file
     /// on disk with the given absolute path
     LocalFile(String),

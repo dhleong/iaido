@@ -127,10 +127,12 @@ impl Keymap for VimKeymap {
                 }
 
                 // if there's a change in progress, add the key to it
-                context
-                    .state_mut()
-                    .current_buffer_mut()
-                    .push_change_key(key);
+                if !context.state().current_buffer().is_read_only() {
+                    context
+                        .state_mut()
+                        .current_buffer_mut()
+                        .push_change_key(key);
+                }
 
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers

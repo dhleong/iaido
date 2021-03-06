@@ -1,14 +1,15 @@
-use crate::input::KeyError;
-use crate::{declare_commands, input::KeymapContext};
+use crate::{
+    declare_commands,
+    input::{KeyError, KeymapContext},
+};
 
 declare_commands!(declare_core {
-    pub fn buffer(context, id: String) {
-        match id.parse::<usize>() {
-            Ok(id) => {
-                context.state_mut().set_current_window_buffer(id);
-                Ok(())
-            },
-            Err(e) => Err(KeyError::InvalidInput(e.to_string())),
+    pub fn buffer(context, id: usize) {
+        if context.state().buffers.by_id(id).is_some() {
+            context.state_mut().set_current_window_buffer(id);
+            Ok(())
+        } else {
+            Err(KeyError::InvalidInput(format!("buffer: {}: Buffer does not exist", id)))
         }
     },
 

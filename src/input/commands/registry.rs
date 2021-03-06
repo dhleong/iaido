@@ -102,6 +102,27 @@ macro_rules! command_decl {
             $($tail)*
         }
     };
+
+    // required usize arg
+    ($r:ident -> pub fn $name:ident($context:ident, $arg:ident: usize) $body:expr, $($tail:tt)*) => {
+        crate::command_decl! { $r ->
+            pub fn $name($context, arg: String) {
+                let $arg = match arg.parse::<usize>() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(crate::input::KeyError::InvalidInput(
+                            format!(
+                                "{}: requires 1 integer argument ({}): {}",
+                                stringify!($name), stringify!($arg), e
+                            )
+                        ));
+                    }
+                };
+                $body
+            },
+            $($tail)*
+        }
+    };
 }
 
 #[macro_export]

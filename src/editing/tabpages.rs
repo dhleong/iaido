@@ -22,9 +22,19 @@ impl Tabpages {
         self.all.len()
     }
 
+    pub fn containing_buffer_mut(&mut self, buffer_id: usize) -> Option<&mut Box<Tabpage>> {
+        for tabpage in &mut self.all {
+            if tabpage.windows_for_buffer(buffer_id).count() > 0 {
+                return Some(tabpage);
+            }
+        }
+
+        None
+    }
+
     pub fn containing_window_mut(&mut self, window_id: usize) -> Option<&mut Box<Tabpage>> {
         for tabpage in &mut self.all {
-            if let Some(_) = tabpage.by_id(window_id) {
+            if tabpage.by_id(window_id).is_some() {
                 return Some(tabpage);
             }
         }
@@ -46,6 +56,10 @@ impl Tabpages {
 
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Tabpage>> {
         self.all.iter_mut().find(|tab| tab.id == id)
+    }
+
+    pub fn has_edit_windows(&self) -> bool {
+        self.all.iter().any(|tab| tab.has_edit_windows())
     }
 
     pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {

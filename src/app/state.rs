@@ -136,15 +136,16 @@ impl AppState {
         self.echo_buffer.append(text);
     }
 
-    pub fn echom(&mut self, text: TextLines) {
-        for line in &text.lines {
-            crate::info!("{}", line.to_string());
-        }
-        self.echo(text);
-    }
-
     pub fn echo_str(&mut self, text: &'static str) {
         self.echo(text.into());
+    }
+
+    pub fn echom<T: Into<TextLines>>(&mut self, text: T) {
+        let lines = text.into();
+        for line in &lines.lines {
+            crate::info!("{}", line.to_string());
+        }
+        self.echo(lines);
     }
 
     // ======= keymap conveniences ============================

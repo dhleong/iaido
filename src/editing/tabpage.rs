@@ -63,8 +63,23 @@ impl Tabpage {
         self.layout.by_id_mut(id)
     }
 
+    pub fn has_edit_windows(&self) -> bool {
+        // TODO ?
+        self.layout.len() > 0
+    }
+
     pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {
         self.layout.windows_for_buffer(buffer_id)
+    }
+
+    pub fn close_window(&mut self, win_id: Id) {
+        self.layout.close_window(win_id);
+        if self.current == win_id {
+            if let Some(next_focus) = self.layout.first_focus(FocusDirection::Down) {
+                self.current = next_focus;
+                self.by_id_mut(next_focus).unwrap().set_focused(true);
+            }
+        }
     }
 
     pub fn replace_window(&mut self, win_id: Id, layout: Box<dyn Layout>) {

@@ -195,9 +195,9 @@ pub mod tests {
 
     use super::*;
 
-    struct TestKeymapContext {
-        keys: MemoryKeySource,
-        state: app::State,
+    pub struct TestKeymapContext {
+        pub keys: MemoryKeySource,
+        pub state: app::State,
     }
 
     impl KeymapContext for TestKeymapContext {

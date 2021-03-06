@@ -13,24 +13,12 @@ use std::fs;
 
 use crate::{declare_commands, input::KeymapContext};
 
+use super::helpers::{check_hide_buffer, HideBufArgs};
 use super::CommandHandlerContext;
 
 declare_commands!(declare_file {
     pub fn edit(context, file_path: String) {
-        // TODO actually, if the buffer is saved or open in another window,
-        // we should be allowed to replace it.
-        let current_source = context.state().current_buffer().source();
-        match current_source {
-            &BufferSource::Connection(_) => {
-                return Err(KeyError::NotPermitted("Cannot replace Connection buffer".to_string()));
-            },
-            &BufferSource::ConnectionInputForBuffer(_) => {
-                return Err(KeyError::NotPermitted("Cannot replace Connection Input buffer".to_string()));
-            },
-            &BufferSource::LocalFile(_) => return Err(KeyError::NotPermitted("Buffer backed by a file".to_string())),
-            &BufferSource::None => {}, // continue
-            &BufferSource::Log => {}, // continue
-        };
+        check_hide_buffer(context, HideBufArgs { force: false })?;
 
         // TODO if the file doesn't exist, we should still be able to edit it
         let full_path = fs::canonicalize(&file_path)?;
@@ -40,7 +28,7 @@ declare_commands!(declare_file {
         let lines_count = lines.len();
 
         let full_path_string = full_path.to_string_lossy();
-        context.state_mut().echom(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes).into());
+        context.state_mut().echom(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes));
 
         let buffer_id = {
             let buf = context.state_mut().buffers.create_mut();
@@ -80,9 +68,10 @@ fn write(context: &mut CommandHandlerContext, path: String) -> KeyResult {
 
     fs::write(&path, content)?;
 
-    context
-        .state_mut()
-        .echom(format!("\"{}\": {}L, {}B written", path, lines_count, bytes,).into());
+    context.state_mut().echom(format!(
+        "\"{}\": {}L, {}B written",
+        path, lines_count, bytes,
+    ));
 
     // if we don't already have a source, set it
     if context.state().current_buffer().source().is_none() {

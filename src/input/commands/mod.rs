@@ -6,6 +6,8 @@ pub mod log;
 pub mod registry;
 pub mod window;
 
+mod helpers;
+
 use std::time::Duration;
 
 use crate::delegate_keysource;

@@ -69,25 +69,15 @@ fn quit_window(context: &mut CommandHandlerContext, args: HideBufArgs) -> KeyRes
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        editing::motion::tests::TestKeymapContext, input::source::memory::MemoryKeySource,
-    };
+    use crate::editing::motion::tests::TestKeymapContext;
 
     use super::*;
 
     #[test]
     fn quit_single_windows_test() -> KeyResult {
-        let mut state = crate::app::State::default();
-        state.current_tab_mut().vsplit();
-
-        let mut context = TestKeymapContext {
-            state,
-            keys: MemoryKeySource::from_keys(""),
-        };
-        let mut ctx = CommandHandlerContext {
-            context: Box::new(&mut context),
-            input: "q".to_string(),
-        };
+        let mut context = TestKeymapContext::empty();
+        let mut ctx = context.command_context("q");
+        ctx.state_mut().current_tab_mut().vsplit();
 
         quit_window(&mut ctx, HideBufArgs { force: false })?;
         assert_eq!(ctx.context.state_mut().running, true);
@@ -101,19 +91,13 @@ mod tests {
 
     #[test]
     fn quit_connection_window_test() -> KeyResult {
-        let mut state = crate::app::State::default();
+        let mut context = TestKeymapContext::empty();
+        let mut ctx = context.command_context("q");
+
+        let state = ctx.state_mut();
         let buf_id = state.buffers.create().id();
         let tab = state.tabpages.current_tab_mut();
         tab.new_connection(&mut state.buffers, buf_id);
-
-        let mut context = TestKeymapContext {
-            state,
-            keys: MemoryKeySource::from_keys(""),
-        };
-        let mut ctx = CommandHandlerContext {
-            context: Box::new(&mut context),
-            input: "q".to_string(),
-        };
 
         // NOTE: it should close both the input window and the output
         quit_window(&mut ctx, HideBufArgs { force: false })?;

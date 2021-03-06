@@ -32,11 +32,19 @@ fn quit_window(context: &mut CommandHandlerContext, args: HideBufArgs) -> KeyRes
 
     if let Some(id) = connection_buffer_id {
         // make sure we disconnect if there are no more windows
-        if context
+        let is_connected = context
             .state_mut()
-            .tabpages
-            .containing_buffer_mut(id)
-            .is_none()
+            .connections
+            .as_mut()
+            .unwrap()
+            .by_buffer_id(id)
+            .is_some();
+        if is_connected
+            && context
+                .state_mut()
+                .tabpages
+                .containing_buffer_mut(id)
+                .is_none()
         {
             let name = buffer_connection_name(context, id);
             context

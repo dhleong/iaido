@@ -2,6 +2,7 @@ pub mod colors;
 pub mod connection;
 pub mod core;
 pub mod file;
+pub mod log;
 pub mod registry;
 pub mod window;
 
@@ -11,7 +12,7 @@ use crate::delegate_keysource;
 
 use self::{
     colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
-    registry::CommandRegistry, window::declare_window,
+    log::declare_log, registry::CommandRegistry, window::declare_window,
 };
 
 use super::{maps::KeyResult, KeySource, KeymapContext};
@@ -71,10 +72,11 @@ impl KeySource for CommandHandlerContext<'_> {
 pub fn create_builtin_commands() -> CommandRegistry {
     let mut registry = CommandRegistry::default();
     declare_colors(&mut registry);
-    declare_connection(&mut registry);
-    declare_file(&mut registry);
+    declare_log(&mut registry);
     declare_window(&mut registry);
 
+    declare_connection(&mut registry);
+    declare_file(&mut registry);
     declare_core(&mut registry);
     return registry;
 }

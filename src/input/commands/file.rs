@@ -40,7 +40,7 @@ declare_commands!(declare_file {
         let lines_count = lines.len();
 
         let full_path_string = full_path.to_string_lossy();
-        context.state_mut().echo(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes).into());
+        context.state_mut().echom(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes).into());
 
         let buffer_id = {
             let buf = context.state_mut().buffers.create_mut();
@@ -82,7 +82,7 @@ fn write(context: &mut CommandHandlerContext, path: String) -> KeyResult {
 
     context
         .state_mut()
-        .echo(format!("\"{}\": {}L, {}B written", path, lines_count, bytes,).into());
+        .echom(format!("\"{}\": {}L, {}B written", path, lines_count, bytes,).into());
 
     // if we don't already have a source, set it
     if context.state().current_buffer().source().is_none() {

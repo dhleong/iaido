@@ -95,6 +95,22 @@ impl Tabpage {
         id
     }
 
+    /// Like hsplit, but always splits at the top-most level
+    pub fn split_bottom(&mut self) -> Id {
+        let id: Id = self.ids.next();
+
+        let old = self.current_window_mut();
+        old.set_focused(false);
+
+        let buffer = old.buffer;
+        let window = Window::new(id, buffer);
+        let boxed = Box::new(window);
+        self.layout.add_window(boxed);
+        self.current = id;
+
+        id
+    }
+
     pub fn vsplit(&mut self) -> Id {
         let id: Id = self.ids.next();
 

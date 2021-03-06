@@ -47,6 +47,10 @@ impl LinearLayout {
         self.entries.push(Box::new(WinLayout::new(window)))
     }
 
+    pub fn insert_window(&mut self, index: usize, window: Box<Window>) {
+        self.entries.insert(index, Box::new(WinLayout::new(window)))
+    }
+
     fn index_of_window(&self, id: Id) -> Option<usize> {
         self.entries
             .iter()
@@ -70,7 +74,11 @@ impl LinearLayout {
 
     fn split(&mut self, current_id: Id, win: Box<Window>, direction: LayoutDirection) {
         if self.direction == direction {
-            self.add_window(win);
+            if let Some(idx) = self.index_of_window(current_id) {
+                self.insert_window(idx, win);
+            } else {
+                self.add_window(win);
+            }
             self.resize(self.size());
             return;
         }
@@ -105,6 +113,15 @@ impl Layout for LinearLayout {
     fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<Window>> {
         for entry in &mut self.entries {
             if let Some(win) = entry.by_id_mut(id) {
+                return Some(win);
+            }
+        }
+        None
+    }
+
+    fn by_id_for_split(&mut self, id: Id) -> Option<&mut Box<Window>> {
+        for entry in &mut self.entries {
+            if let Some(win) = entry.by_id_for_split(id) {
                 return Some(win);
             }
         }

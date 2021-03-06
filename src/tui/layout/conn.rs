@@ -49,16 +49,13 @@ impl Renderable for ConnLayout {
 
 #[cfg(test)]
 mod tests {
-    use crate::tui::rendering::display::tests::TestableDisplay;
-    use crate::tui::tabpage::tests::tabpage;
     use crate::tui::Size;
+    use crate::tui::{rendering::display::tests::TestableDisplay, tabpage::tests::TestableTabpage};
+    use crate::{editing::Id, tui::tabpage::tests::tabpage};
     use indoc::indoc;
 
-    #[test]
-    fn resize_input_to_match_content() {
-        let mut tabpage = tabpage(indoc! {"
-            Take my love
-        "});
+    fn conn_tabpage(output_content: &'static str) -> (TestableTabpage, Id) {
+        let mut tabpage = tabpage(output_content);
 
         let conn = tabpage
             .tab
@@ -69,6 +66,15 @@ mod tests {
         tabpage
             .tab
             .replace_window(tabpage.tab.current_window().id, Box::new(conn));
+
+        (tabpage, input_bufid)
+    }
+
+    #[test]
+    fn resize_input_to_match_content() {
+        let (mut tabpage, input_bufid) = conn_tabpage(indoc! {"
+            Take my love
+        "});
 
         let buffer = tabpage.buffers.by_id_mut(input_bufid).unwrap();
         buffer.append("Take my land; take me where I cannot stand".into());
@@ -81,6 +87,30 @@ mod tests {
             Take my land;
             take me where
             I cannot stand
+        "});
+    }
+
+    #[test]
+    fn split_on_input_splits_output() {
+        let (mut tabpage, input_bufid) = conn_tabpage(indoc! {"
+            Take my love
+            Take my land
+        "});
+
+        let buffer = tabpage.buffers.by_id_mut(input_bufid).unwrap();
+        buffer.append("shiny".into());
+        assert_eq!(tabpage.tab.current_window().buffer, input_bufid);
+
+        tabpage.tab.hsplit();
+
+        tabpage.size = Size { w: 14, h: 6 };
+        tabpage.render().assert_visual_equals(indoc! {"
+
+            Take my love
+            Take my land
+            ──────────────
+            Take my land
+            shiny
         "});
     }
 }

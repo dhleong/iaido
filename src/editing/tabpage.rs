@@ -95,50 +95,41 @@ impl Tabpage {
     }
 
     pub fn hsplit(&mut self) -> Id {
-        let id: Id = self.ids.next();
-
-        let old = self.current_window_mut();
-        let old_id = old.id;
-        old.set_focused(false);
-
-        let buffer = old.buffer;
-        let window = Window::new(id, buffer);
-        let boxed = Box::new(window);
-        self.layout.hsplit(old_id, boxed);
-        self.current = id;
-
-        id
+        self.split_with(|layout, old_id, new_window| {
+            layout.hsplit(old_id, new_window);
+        })
     }
 
     /// Like hsplit, but always splits at the top-most level
     pub fn split_bottom(&mut self) -> Id {
-        let id: Id = self.ids.next();
-
-        let old = self.current_window_mut();
-        old.set_focused(false);
-
-        let buffer = old.buffer;
-        let window = Window::new(id, buffer);
-        let boxed = Box::new(window);
-        self.layout.add_window(boxed);
-        self.current = id;
-
-        id
+        self.split_with(|layout, _, new_window| {
+            layout.add_window(new_window);
+        })
     }
 
     pub fn vsplit(&mut self) -> Id {
+        self.split_with(|layout, old_id, new_window| {
+            layout.vsplit(old_id, new_window);
+        })
+    }
+
+    fn split_with(&mut self, perform: impl FnOnce(&mut LinearLayout, Id, Box<Window>)) -> Id {
         let id: Id = self.ids.next();
 
-        let old = self.current_window_mut();
+        let old = self.window_for_split();
         let old_id = old.id;
+        let old_focused = old.focused;
         old.set_focused(false);
 
         let buffer = old.buffer;
-        let window = Window::new(id, buffer);
+        let window = Window::with_focused(id, buffer, old_focused);
         let boxed = Box::new(window);
-        self.layout.vsplit(old_id, boxed);
-        self.current = id;
 
+        if old_focused {
+            self.current = id;
+        }
+
+        perform(&mut self.layout, old_id, boxed);
         id
     }
 
@@ -149,6 +140,12 @@ impl Tabpage {
             self.layout.by_id_mut(prev).unwrap().focused = false;
             self.layout.by_id_mut(next).unwrap().focused = true;
         }
+    }
+
+    fn window_for_split(&mut self) -> &mut Box<Window> {
+        self.layout
+            .by_id_for_split(self.current)
+            .expect("Couldn't find current window")
     }
 }
 

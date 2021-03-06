@@ -30,6 +30,14 @@ impl Layout for ConnLayout {
         }
     }
 
+    fn by_id_for_split(&mut self, id: Id) -> Option<&mut Box<Window>> {
+        if self.input.id == id || self.output.id == id {
+            Some(&mut self.output)
+        } else {
+            None
+        }
+    }
+
     fn current_focus(&self) -> Option<Id> {
         if self.output.focused {
             Some(self.output.id)

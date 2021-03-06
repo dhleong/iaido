@@ -128,9 +128,9 @@ pub mod tests {
         tabpage.size = Size { w: 14, h: 3 };
 
         tabpage.render().assert_visual_equals(indoc! {"
-            Take my love
-            ──────────────
             love   │love
+            ──────────────
+            Take my love
         "});
     }
 }

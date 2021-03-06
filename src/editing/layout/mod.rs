@@ -28,6 +28,10 @@ pub trait Layout: Renderable + Resizable {
     fn first_focus(&self, direction: FocusDirection) -> Option<Id>;
     fn size(&self) -> Size;
 
+    fn by_id_for_split(&mut self, id: Id) -> Option<&mut Box<Window>> {
+        self.by_id_mut(id)
+    }
+
     fn into_splittable(&mut self) -> Option<Box<&mut dyn SplitableLayout>> {
         None
     }

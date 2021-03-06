@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{
     buffer::{MemoryBuffer, UndoableBuffer},
-    ids::{Ids, BUFFER_ID_LOG},
+    ids::{Ids, BUFFER_ID_LOG, FIRST_USER_BUFFER_ID},
     source::BufferSource,
     Buffer, Id,
 };
@@ -16,7 +16,7 @@ pub struct Buffers {
 impl Buffers {
     pub fn new() -> Buffers {
         let mut base = Buffers {
-            ids: Ids::with_first(BUFFER_ID_LOG + 1),
+            ids: Ids::with_first(FIRST_USER_BUFFER_ID),
             all: Vec::new(),
         };
         base.create_with_id(BUFFER_ID_LOG);

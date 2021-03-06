@@ -1,6 +1,7 @@
 use super::Id;
 
 pub const BUFFER_ID_LOG: Id = 0;
+pub const FIRST_USER_BUFFER_ID: Id = 1;
 
 pub struct Ids {
     next: usize,

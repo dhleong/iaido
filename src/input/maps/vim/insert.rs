@@ -5,7 +5,6 @@ use crate::{
         word::{is_small_word_boundary, WordMotion},
         Motion,
     },
-    input::completion::commands::CommandsCompleter,
     input::maps::actions::connection::send_current_input_buffer,
 };
 use crate::{
@@ -32,10 +31,11 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
         "<tab>" => |ctx| {
             let mut state = if let Some(current_state) = ctx.state_mut().current_window_mut().completion_state.take() {
                 current_state
+            } else if let Some(completer) = ctx.keymap.completer() {
+                CompletionState::new(completer, &mut ctx)
             } else {
-                // TODO get the completer to use from context/window/buffer, probably
-                let c = CommandsCompleter;
-                CompletionState::new(c, &mut ctx)
+                // no completer!
+                return Ok(());
             };
 
             state.apply_next(ctx.state_mut());

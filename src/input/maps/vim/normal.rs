@@ -1,6 +1,11 @@
 mod window;
 
-use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
+use std::rc::Rc;
+
+use crate::input::{
+    commands::CommandHandlerContext, completion::commands::CommandsCompleter, maps::KeyResult,
+    KeyError, KeymapContext,
+};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
@@ -40,7 +45,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             ctx.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
                 handler: Box::new(handle_command),
-                // TODO autocomplete
+                completer: Some(Rc::new(CommandsCompleter)),
             }.into());
             Ok(())
          },

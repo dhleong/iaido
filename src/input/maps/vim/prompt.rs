@@ -1,7 +1,10 @@
+use std::rc::Rc;
+
 use crate::{
     editing::text::EditableLine,
     input::{
         commands::{CommandHandler, CommandHandlerContext},
+        completion::Completer,
         KeyCode, KeymapContext,
     },
     key_handler, vim_tree,
@@ -12,15 +15,18 @@ use super::{insert::vim_insert_mappings, tree::KeyTreeNode, VimKeymap, VimMode};
 pub struct VimPromptConfig {
     pub prompt: String,
     pub handler: Box<CommandHandler>,
+    pub completer: Option<Rc<dyn Completer>>,
 }
 
 impl Into<VimMode> for VimPromptConfig {
-    fn into(self) -> VimMode {
+    fn into(mut self) -> VimMode {
         let prompt = self.prompt.clone();
         let prompt_len = prompt.len();
         let mode_id = format!("prompt:{}", prompt);
+        let completer = self.completer.take();
 
         VimMode::new(mode_id.clone(), vim_insert_mappings() + mappings(self))
+            .with_completer(completer)
             .on_default(key_handler!(
                 VimKeymap | ctx | {
                     match ctx.key.code {

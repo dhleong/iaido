@@ -4,12 +4,9 @@ use crate::input::completion::Completer;
 
 use super::CommandHandler;
 
-pub type CommandCompleter =
-    dyn Completer<Iter = Box<dyn Iterator<Item = crate::input::completion::Completion>>>;
-
 pub struct CommandSpec {
     pub handler: Box<CommandHandler>,
-    pub completer: Option<Box<CommandCompleter>>,
+    pub completer: Option<Box<dyn Completer>>,
 }
 
 impl CommandSpec {

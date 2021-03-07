@@ -2,13 +2,11 @@
 macro_rules! impl_simple_completer {
     ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
         impl crate::input::completion::Completer for $completer_name {
-            type Iter = Box<dyn Iterator<Item = crate::input::completion::Completion>>;
-
             fn suggest(
                 &self,
                 $app: Box<&dyn crate::input::completion::CompletableContext>,
                 $context: crate::input::completion::CompletionContext,
-            ) -> Self::Iter {
+            ) -> crate::input::completion::BoxedSuggestions {
                 let _input = $context.word().to_string();
                 Box::new(
                     $body

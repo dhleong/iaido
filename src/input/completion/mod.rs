@@ -96,10 +96,14 @@ impl Completion {
     }
 }
 
-pub trait Completer {
-    type Iter: Iterator<Item = Completion>;
+pub type BoxedSuggestions = Box<dyn Iterator<Item = Completion>>;
 
-    fn suggest(&self, app: Box<&dyn CompletableContext>, context: CompletionContext) -> Self::Iter;
+pub trait Completer {
+    fn suggest(
+        &self,
+        app: Box<&dyn CompletableContext>,
+        context: CompletionContext,
+    ) -> BoxedSuggestions;
 }
 
 #[cfg(test)]

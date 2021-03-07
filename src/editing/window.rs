@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use std::cmp::{max, min};
 
 use crate::{
@@ -7,12 +9,25 @@ use crate::{
 
 use super::{buffers::Buffers, Buffer, CursorPosition, HasId, Id, Resizable, Size};
 
+bitflags! {
+    pub struct WindowFlags: u8 {
+        const NONE = 0;
+
+        /// A PROTECTED window is not normally closeable, but the contextually
+        /// it may be closed depending on its content. For example, the
+        /// "main" window of a Connection is PROTECTED but may be closed
+        /// if the connection is not active
+        const PROTECTED = 0b01;
+    }
+}
+
 pub struct Window {
     pub id: Id,
     pub buffer: Id,
     pub size: Size,
     pub focused: bool,
     pub inserting: bool,
+    pub flags: WindowFlags,
 
     pub cursor: CursorPosition,
 
@@ -35,6 +50,7 @@ impl Window {
             buffer: buffer_id,
             size: Size { w: 0, h: 0 },
             focused,
+            flags: WindowFlags::NONE,
             inserting: false,
             cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,

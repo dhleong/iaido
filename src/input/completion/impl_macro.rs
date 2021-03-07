@@ -1,9 +1,9 @@
 #[macro_export]
 macro_rules! impl_simple_completer {
-    ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
+    ($completer_name:ident (&$self:ident, $app:ident, $context:ident) $body:expr) => {
         impl crate::input::completion::Completer for $completer_name {
             fn suggest(
-                &self,
+                &$self,
                 $app: Box<&dyn crate::input::completion::CompletableContext>,
                 $context: crate::input::completion::CompletionContext,
             ) -> crate::input::completion::BoxedSuggestions {
@@ -18,9 +18,13 @@ macro_rules! impl_simple_completer {
         }
     };
 
+    ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
+        crate::impl_simple_completer!($completer_name (&self, $app, $context) $body);
+    };
+
     ($completer_name:ident $body:expr) => {
-        crate::impl_simple_completer!($completer_name (_app, _context) $body);
-    }
+        crate::impl_simple_completer!($completer_name (&self, _app, _context) $body);
+    };
 }
 
 #[macro_export]

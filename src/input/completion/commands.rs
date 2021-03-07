@@ -34,8 +34,7 @@ impl Completer for CommandsCompleter {
             return CommandNamesCompleter.suggest(app, context);
         }
 
-        // NOTE: this 1 skips the `:`
-        let command = context.nth_word(0).unwrap()[1..].to_string();
+        let command = context.nth_word(0).unwrap().to_string();
         if let Some(spec) = app.commands().get(&command) {
             if let Some(completer) = spec.completer.as_ref() {
                 return completer.suggest(app, context);
@@ -44,5 +43,30 @@ impl Completer for CommandsCompleter {
 
         // fallback if no completions are available
         EmptyCompleter.suggest(app, context)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{editing::motion::tests::window, input::completion::tests::complete};
+
+    use super::*;
+
+    #[test]
+    fn delegates_to_command_for_arg() {
+        let mut app = window(":e s|");
+        app.mock_command_completions("e", vec!["serenity"]);
+
+        let suggestions = complete(&CommandsCompleter, &mut app);
+        assert_eq!(suggestions, vec!["serenity".to_string()]);
+    }
+
+    #[test]
+    fn delegates_to_command_for_empty_arg() {
+        let mut app = window(":e |");
+        app.mock_command_completions("e", vec!["serenity"]);
+
+        let suggestions = complete(&CommandsCompleter, &mut app);
+        assert_eq!(suggestions, vec!["serenity".to_string()]);
     }
 }

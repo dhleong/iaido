@@ -184,8 +184,11 @@ pub mod tests {
             Buffer, HasId, Resizable, Size,
         },
         input::{
-            commands::{registry::CommandRegistry, CommandHandlerContext},
-            completion::CompletableContext,
+            commands::{
+                registry::{CommandRegistry, CommandSpec},
+                CommandHandlerContext,
+            },
+            completion::{tests::StaticCompleter, CompletableContext},
             source::memory::MemoryKeySource,
             KeySource, Keymap, KeymapContext,
         },
@@ -248,6 +251,21 @@ pub mod tests {
 
         pub fn set_inserting(&mut self, inserting: bool) {
             self.window.set_inserting(inserting);
+        }
+
+        pub fn mock_command_completions(
+            &mut self,
+            command_name: &'static str,
+            completions: Vec<&'static str>,
+        ) {
+            let completion_strings = completions.iter().map(|s| s.to_string()).collect();
+            self.commands.insert(
+                command_name.to_string(),
+                CommandSpec {
+                    handler: Box::new(|_ctx| Ok(())),
+                    completer: Some(Box::new(StaticCompleter::new(completion_strings))),
+                },
+            );
         }
 
         pub fn feed_keys<K: Keymap>(mut self, mut keymap: K, keys: &str) -> Self {

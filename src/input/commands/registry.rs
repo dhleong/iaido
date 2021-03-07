@@ -3,6 +3,7 @@ use std::collections::{hash_map, HashMap};
 use crate::input::completion::Completer;
 
 use super::CommandHandler;
+use crate::input::completion::file::FileCompleter;
 
 pub struct CommandSpec {
     pub handler: Box<CommandHandler>,
@@ -13,7 +14,9 @@ impl CommandSpec {
     pub fn handler(handler: Box<CommandHandler>) -> Self {
         Self {
             handler,
-            completer: None,
+            // completer: None,
+            // FIXME STOPSHIP: this should be specified by the command, not forced
+            completer: Some(Box::new(FileCompleter)),
         }
     }
 }

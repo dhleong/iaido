@@ -1,4 +1,5 @@
 pub mod commands;
+mod empty;
 mod impl_macro;
 pub mod state;
 
@@ -35,6 +36,10 @@ impl CompletionContext {
     pub fn word(&self) -> &str {
         let (start, end) = self.word_range();
         return &self.text[start..end];
+    }
+
+    pub fn nth_word(&self, n: usize) -> Option<&str> {
+        self.text.splitn(n + 1, " ").nth(n)
     }
 
     pub fn create_completion(&self, replacement: String) -> Completion {

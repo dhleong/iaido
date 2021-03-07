@@ -23,14 +23,6 @@ impl VimModeStack {
         self.stack.contains(mode_id)
     }
 
-    pub fn peek(&self) -> Option<&VimMode> {
-        if let Some(name) = self.stack.last() {
-            self.modes.get(name)
-        } else {
-            None
-        }
-    }
-
     pub fn push(&mut self, new_mode: VimMode) {
         self.stack.push(new_mode.id.clone());
         self.modes.insert(new_mode.id.clone(), new_mode);

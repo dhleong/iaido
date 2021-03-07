@@ -52,6 +52,20 @@ impl CommandRegistry {
         self.commands.insert(name, spec);
     }
 
+    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
+        if let Some(handler) = self.commands.get(name) {
+            return Some(handler);
+        }
+
+        if let Some(full_name) = self.abbreviations.get(name) {
+            if let Some(handler) = self.commands.get(full_name) {
+                return Some(handler);
+            }
+        }
+
+        None
+    }
+
     pub fn take(&mut self, name: &String) -> Option<(String, CommandSpec)> {
         if let Some(handler) = self.commands.remove(name) {
             return Some((name.clone(), handler));

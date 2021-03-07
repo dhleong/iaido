@@ -145,6 +145,11 @@ impl Connections {
         self.buffer_to_connection.insert(buffer_id, connection.id());
         self.all.push(connection);
     }
+
+    #[cfg(test)]
+    pub fn add_for_test(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
+        self.add(buffer_id, connection);
+    }
 }
 
 #[derive(PartialEq)]

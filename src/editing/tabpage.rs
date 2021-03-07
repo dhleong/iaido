@@ -1,5 +1,8 @@
 use super::{buffers::Buffers, ids::Ids, layout::conn::ConnLayout, source::BufferSource};
-use super::{layout::SplitableLayout, window::Window};
+use super::{
+    layout::SplitableLayout,
+    window::{Window, WindowFlags},
+};
 use super::{
     layout::{Layout, LinearLayout},
     FocusDirection,
@@ -36,15 +39,17 @@ impl Tabpage {
     pub fn new_connection(&mut self, buffers: &mut Buffers, output_buffer_id: Id) -> ConnLayout {
         let input_buffer = buffers.create_mut();
         input_buffer.set_source(BufferSource::ConnectionInputForBuffer(output_buffer_id));
+        let mut output = Box::new(Window::with_focused(
+            self.ids.next(),
+            output_buffer_id,
+            false,
+        ));
+        output.flags = WindowFlags::PROTECTED;
 
-        ConnLayout {
-            output: Box::new(Window::with_focused(
-                self.ids.next(),
-                output_buffer_id,
-                false,
-            )),
-            input: Box::new(Window::new(self.ids.next(), input_buffer.id())),
-        }
+        let mut input = Box::new(Window::new(self.ids.next(), input_buffer.id()));
+        input.flags = WindowFlags::PROTECTED;
+
+        ConnLayout { output, input }
     }
 
     pub fn current_window(&self) -> &Box<Window> {
@@ -136,10 +141,15 @@ impl Tabpage {
     pub fn move_focus(&mut self, direction: FocusDirection) {
         let prev = self.current;
         if let Some(next) = self.layout.next_focus(prev, direction) {
-            self.current = next;
-            self.layout.by_id_mut(prev).unwrap().focused = false;
-            self.layout.by_id_mut(next).unwrap().focused = true;
+            self.set_focus(next);
         }
+    }
+
+    pub fn set_focus(&mut self, id: Id) {
+        let prev = self.current;
+        self.current = id;
+        self.layout.by_id_mut(prev).unwrap().focused = false;
+        self.layout.by_id_mut(id).unwrap().focused = true;
     }
 
     fn window_for_split(&mut self) -> &mut Box<Window> {

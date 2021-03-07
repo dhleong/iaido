@@ -18,12 +18,9 @@ use super::{
 
 fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
     if let Some(command) = context.command().and_then(|s| Some(s.to_string())) {
-        if let Some((name, handler)) = context.state_mut().builtin_commands.take(&command) {
-            let result = handler(&mut context);
-            context
-                .state_mut()
-                .builtin_commands
-                .declare(name, false, handler);
+        if let Some((name, spec)) = context.state_mut().builtin_commands.take(&command) {
+            let result = (spec.handler)(&mut context);
+            context.state_mut().builtin_commands.insert(name, spec);
             result
         } else {
             Err(KeyError::NoSuchCommand(command))

@@ -99,7 +99,7 @@ impl Completion {
 pub trait Completer {
     type Iter: Iterator<Item = Completion>;
 
-    fn suggest<T: CompletableContext>(&self, app: &T, context: CompletionContext) -> Self::Iter;
+    fn suggest(&self, app: Box<&dyn CompletableContext>, context: CompletionContext) -> Self::Iter;
 }
 
 #[cfg(test)]

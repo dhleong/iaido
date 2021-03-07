@@ -1,9 +1,28 @@
 use std::collections::{hash_map, HashMap};
 
+use crate::input::completion::Completer;
+
 use super::CommandHandler;
 
+pub type CommandCompleter =
+    dyn Completer<Iter = Box<dyn Iterator<Item = crate::input::completion::Completion>>>;
+
+pub struct CommandSpec {
+    pub handler: Box<CommandHandler>,
+    pub completer: Option<Box<CommandCompleter>>,
+}
+
+impl CommandSpec {
+    pub fn handler(handler: Box<CommandHandler>) -> Self {
+        Self {
+            handler,
+            completer: None,
+        }
+    }
+}
+
 pub struct CommandRegistry {
-    commands: HashMap<String, Box<CommandHandler>>,
+    commands: HashMap<String, CommandSpec>,
     abbreviations: HashMap<String, String>,
 }
 
@@ -25,14 +44,18 @@ impl CommandRegistry {
             }
         }
 
-        self.commands.insert(name, handler);
+        self.insert(name, CommandSpec::handler(handler));
     }
 
-    pub fn names(&self) -> hash_map::Keys<String, Box<CommandHandler>> {
+    pub fn names(&self) -> hash_map::Keys<String, CommandSpec> {
         self.commands.keys()
     }
 
-    pub fn take(&mut self, name: &String) -> Option<(String, Box<CommandHandler>)> {
+    pub fn insert(&mut self, name: String, spec: CommandSpec) {
+        self.commands.insert(name, spec);
+    }
+
+    pub fn take(&mut self, name: &String) -> Option<(String, CommandSpec)> {
         if let Some(handler) = self.commands.remove(name) {
             return Some((name.clone(), handler));
         }

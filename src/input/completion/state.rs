@@ -22,7 +22,7 @@ impl CompletionState {
         let original = context.word();
         return Self::from_completions(
             context.create_completion(original.to_string()),
-            Box::new(completer.suggest(app, context)),
+            Box::new(completer.suggest(Box::new(app), context)),
         );
     }
 

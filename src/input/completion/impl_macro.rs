@@ -4,9 +4,9 @@ macro_rules! impl_simple_completer {
         impl crate::input::completion::Completer for $completer_name {
             type Iter = Box<dyn Iterator<Item = crate::input::completion::Completion>>;
 
-            fn suggest<T: crate::input::completion::CompletableContext>(
+            fn suggest(
                 &self,
-                $app: &T,
+                $app: Box<&dyn crate::input::completion::CompletableContext>,
                 $context: crate::input::completion::CompletionContext,
             ) -> Self::Iter {
                 let _input = $context.word().to_string();

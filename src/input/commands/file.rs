@@ -17,18 +17,26 @@ use super::helpers::{check_hide_buffer, HideBufArgs};
 use super::CommandHandlerContext;
 
 declare_commands!(declare_file {
-    pub fn edit(context, file_path: String) {
+    pub fn edit(context, file_path: PathBuf) {
         check_hide_buffer(context, HideBufArgs { force: false })?;
 
-        // TODO if the file doesn't exist, we should still be able to edit it
-        let full_path = fs::canonicalize(&file_path)?;
-        let contents = fs::read_to_string(&full_path)?;
-        let bytes = contents.as_bytes().len();
-        let lines: Vec<TextLine> = contents.split("\n").map(|line| line.to_owned().into()).collect();
-        let lines_count = lines.len();
+        let (full_path_string, lines) = if file_path.exists() {
+            let contents = fs::read_to_string(&file_path)?;
+            let bytes = contents.as_bytes().len();
+            let lines: Vec<TextLine> = contents.split("\n").map(|line| line.to_owned().into()).collect();
+            let lines_count = lines.len();
 
-        let full_path_string = full_path.to_string_lossy();
-        context.state_mut().echom(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes));
+            let canonical = file_path.canonicalize().unwrap();
+            let full_path_string = canonical.to_string_lossy().to_string();
+            context.state_mut().echom(format!("\"{}\": {}L, {}B", full_path_string, lines_count, bytes));
+
+            (full_path_string, lines)
+        } else {
+            let full_path_string = file_path.to_string_lossy().to_string();
+            context.state_mut().echom(format!("\"{}\": [New]", full_path_string));
+
+            (full_path_string, vec![])
+        };
 
         let buffer_id = {
             let buf = context.state_mut().buffers.create_mut();

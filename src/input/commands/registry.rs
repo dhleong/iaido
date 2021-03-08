@@ -89,6 +89,14 @@ macro_rules! command_arg {
     // NOTE: all arg types are parsed as optional; there is a single
     // rule at the end that handles required args
 
+    ($name:ident@$args:ident -> $arg:ident: Optional<PathBuf>) => {
+        let $arg = if let Some(raw) = $args.next() {
+            Some(std::path::PathBuf::from(raw))
+        } else {
+            None
+        };
+    };
+
     ($name:ident@$args:ident -> $arg:ident: Optional<String>) => {
         let $arg = if let Some(raw) = $args.next() {
             Some(raw.to_string())

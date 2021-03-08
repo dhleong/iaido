@@ -1,23 +1,24 @@
 use std::collections::{hash_map, HashMap};
 
-use crate::input::completion::Completer;
+use crate::input::completion::{args::CommandArgsCompleter, Completer};
 
 use super::CommandHandler;
-use crate::input::completion::file::FileCompleter;
 
 pub struct CommandSpec {
     pub handler: Box<CommandHandler>,
-    pub completer: Option<Box<dyn Completer>>,
+    pub completer: CommandArgsCompleter,
 }
 
 impl CommandSpec {
     pub fn handler(handler: Box<CommandHandler>) -> Self {
         Self {
             handler,
-            // completer: None,
-            // FIXME STOPSHIP: this should be specified by the command, not forced
-            completer: Some(Box::new(FileCompleter)),
+            completer: CommandArgsCompleter::new(),
         }
+    }
+
+    pub fn push_arg_completer(&mut self, completer: Box<dyn Completer>) {
+        self.completer.push(completer);
     }
 }
 
@@ -45,6 +46,14 @@ impl CommandRegistry {
         }
 
         self.insert(name, CommandSpec::handler(handler));
+    }
+
+    pub fn declare_arg(&mut self, name: String, completer: Box<dyn Completer>) {
+        let spec = self
+            .commands
+            .get_mut(&name)
+            .expect("Adding arg for not-yet-declared command");
+        spec.push_arg_completer(completer);
     }
 
     pub fn names(&self) -> hash_map::Keys<String, CommandSpec> {
@@ -82,6 +91,18 @@ impl CommandRegistry {
 
         return None;
     }
+}
+
+#[macro_export]
+macro_rules! command_arg_completer {
+    ($r:ident@$name:ident -> PathBuf) => {
+        $r.declare_arg(
+            stringify!($name).to_string(),
+            Box::new(crate::input::completion::file::FileCompleter),
+        );
+    };
+
+    ($r:ident@$name:ident -> $unsupported:ty) => {};
 }
 
 #[macro_export]
@@ -167,6 +188,7 @@ macro_rules! command_decl {
             },
             $($tail)*
         }
+        $(crate::command_arg_completer!($r@$name -> $($type)+)),+;
     };
 }
 

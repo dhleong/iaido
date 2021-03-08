@@ -1,3 +1,4 @@
+pub mod args;
 pub mod commands;
 mod empty;
 pub mod file;
@@ -46,6 +47,14 @@ impl CompletionContext {
     pub fn word(&self) -> &str {
         let (start, end) = self.word_range();
         return &self.text[start..end];
+    }
+
+    pub fn word_index(&self) -> usize {
+        self.text[0..self.cursor]
+            .split(" ")
+            .count()
+            .checked_sub(1) // if there's 1 word, index == 0
+            .unwrap_or(0)
     }
 
     pub fn nth_word(&self, n: usize) -> Option<&str> {

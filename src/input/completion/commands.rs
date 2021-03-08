@@ -36,9 +36,7 @@ impl Completer for CommandsCompleter {
 
         let command = context.nth_word(0).unwrap().to_string();
         if let Some(spec) = app.commands().get(&command) {
-            if let Some(completer) = spec.completer.as_ref() {
-                return completer.suggest(app, context);
-            }
+            return spec.completer.suggest(app, context);
         }
 
         // fallback if no completions are available

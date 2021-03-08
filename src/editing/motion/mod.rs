@@ -259,13 +259,9 @@ pub mod tests {
             completions: Vec<&'static str>,
         ) {
             let completion_strings = completions.iter().map(|s| s.to_string()).collect();
-            self.commands.insert(
-                command_name.to_string(),
-                CommandSpec {
-                    handler: Box::new(|_ctx| Ok(())),
-                    completer: Some(Box::new(StaticCompleter::new(completion_strings))),
-                },
-            );
+            let mut spec = CommandSpec::handler(Box::new(|_ctx| Ok(())));
+            spec.push_arg_completer(Box::new(StaticCompleter::new(completion_strings)));
+            self.commands.insert(command_name.to_string(), spec);
         }
 
         pub fn feed_keys<K: Keymap>(mut self, mut keymap: K, keys: &str) -> Self {

@@ -24,14 +24,23 @@ pub struct CompletionContext {
 }
 
 impl CompletionContext {
-    pub fn word_range(&self) -> (usize, usize) {
+    pub fn word_range_where(&self, is_word: impl Fn(char) -> bool) -> (usize, usize) {
         for i in (0..self.cursor).rev() {
-            let is_end_of_word = self.text[i..i + 1].find(|c| !self.is_keyword(c));
+            let is_end_of_word = self.text[i..i + 1].find(|c| !is_word(c));
             if is_end_of_word.is_some() {
                 return (i + 1, self.cursor);
             }
         }
         return (0, self.cursor);
+    }
+
+    pub fn word_range(&self) -> (usize, usize) {
+        self.word_range_where(|c| self.is_keyword(c))
+    }
+
+    pub fn word_where(&self, is_word: impl Fn(char) -> bool) -> &str {
+        let (start, end) = self.word_range_where(is_word);
+        return &self.text[start..end];
     }
 
     pub fn word(&self) -> &str {

@@ -95,18 +95,28 @@ impl CommandRegistry {
 
 #[macro_export]
 macro_rules! command_arg_completer {
-    ($r:ident@$name:ident -> PathBuf) => {
+    ($r:ident@$name:ident => $completer:expr) => {
         $r.declare_arg(
             stringify!($name).to_string(),
-            Box::new(crate::input::completion::file::FileCompleter),
+            Box::new($completer),
         );
     };
 
-    ($r:ident@$name:ident -> $unsupported:ty) => {
-        $r.declare_arg(
-            stringify!($name).to_string(),
-            Box::new(crate::input::completion::empty::EmptyCompleter),
+    ($r:ident@$name:ident -> PathBuf) => {
+        crate::command_arg_completer!(
+            $r@$name =>
+            crate::input::completion::file::FileCompleter
         );
+    };
+
+    // unwrap optional types to their base type
+    ($r:ident@$name:ident -> Optional<$type:ident>) => {
+        crate::command_arg_completer!($r@$name -> $type);
+    };
+
+    // catchall placeholder:
+    ($r:ident@$name:ident -> $unsupported:ty) => {
+        crate::command_arg_completer!($r@$name => crate::input::completion::empty::EmptyCompleter);
     };
 }
 

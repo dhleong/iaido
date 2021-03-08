@@ -9,7 +9,7 @@ use crate::{
     },
     input::{maps::KeyResult, KeyError},
 };
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use crate::{declare_commands, input::KeymapContext};
 
@@ -51,7 +51,7 @@ declare_commands!(declare_file {
         Ok(())
     },
 
-    pub fn write(context, given_path: Optional<String>) {
+    pub fn write(context, given_path: Optional<PathBuf>) {
         let current_path = match context.state().current_buffer().source() {
             &BufferSource::LocalFile(ref path) => Some(path.clone()),
             _ => None,
@@ -60,7 +60,7 @@ declare_commands!(declare_file {
         let path = if let Some(path) = given_path {
             path
         } else if let Some(path) = current_path {
-            path.clone()
+            PathBuf::from(path.clone())
         } else {
             return Err(KeyError::InvalidInput("No file name".to_string()));
         };
@@ -69,7 +69,7 @@ declare_commands!(declare_file {
     },
 });
 
-fn write(context: &mut CommandHandlerContext, path: String) -> KeyResult {
+fn write(context: &mut CommandHandlerContext, path: PathBuf) -> KeyResult {
     let content = context.state().current_buffer().get_contents();
     let lines_count = context.state().current_buffer().lines_count();
     let bytes = content.as_bytes().len();
@@ -78,7 +78,9 @@ fn write(context: &mut CommandHandlerContext, path: String) -> KeyResult {
 
     context.state_mut().echom(format!(
         "\"{}\": {}L, {}B written",
-        path, lines_count, bytes,
+        path.to_string_lossy(),
+        lines_count,
+        bytes,
     ));
 
     // if we don't already have a source, set it

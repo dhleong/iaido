@@ -102,7 +102,12 @@ macro_rules! command_arg_completer {
         );
     };
 
-    ($r:ident@$name:ident -> $unsupported:ty) => {};
+    ($r:ident@$name:ident -> $unsupported:ty) => {
+        $r.declare_arg(
+            stringify!($name).to_string(),
+            Box::new(crate::input::completion::empty::EmptyCompleter),
+        );
+    };
 }
 
 #[macro_export]

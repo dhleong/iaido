@@ -1,6 +1,6 @@
 pub mod args;
 pub mod commands;
-mod empty;
+pub mod empty;
 pub mod file;
 mod impl_macro;
 pub mod state;

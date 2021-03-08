@@ -111,6 +111,11 @@ impl Buffer for UndoableBuffer {
     }
 
     fn insert_lines(&mut self, line_index: usize, text: TextLines) {
+        if text.lines.is_empty() {
+            // nop
+            return;
+        }
+
         let start = CursorPosition {
             line: line_index,
             col: 0,

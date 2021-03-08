@@ -1,6 +1,28 @@
+use std::rc::Rc;
+
 use crate::{editing::motion::MotionContext, input::KeymapContext};
 
 use super::{CompletableContext, Completer, Completion, CompletionContext};
+
+pub struct BoxedCompleter {
+    delegate: Rc<dyn Completer>,
+}
+
+impl From<Rc<dyn Completer>> for BoxedCompleter {
+    fn from(delegate: Rc<dyn Completer>) -> Self {
+        BoxedCompleter { delegate }
+    }
+}
+
+impl Completer for BoxedCompleter {
+    fn suggest(
+        &self,
+        app: Box<&dyn CompletableContext>,
+        context: CompletionContext,
+    ) -> super::BoxedSuggestions {
+        self.delegate.suggest(app, context)
+    }
+}
 
 pub struct CompletionState {
     completions: Option<Box<dyn Iterator<Item = Completion>>>,
@@ -9,12 +31,12 @@ pub struct CompletionState {
 }
 
 impl CompletionState {
-    pub fn new<C: 'static + Completer, CTX: KeymapContext>(completer: C, ctx: &mut CTX) -> Self {
+    pub fn new<C: Completer, CTX: KeymapContext>(completer: C, ctx: &mut CTX) -> Self {
         let context: CompletionContext = ctx.state_mut().into();
         return Self::from_context(completer, ctx.state(), context);
     }
 
-    pub fn from_context<C: 'static + Completer, CTX: CompletableContext>(
+    pub fn from_context<C: Completer, CTX: CompletableContext>(
         completer: C,
         app: &CTX,
         context: CompletionContext,
@@ -22,7 +44,7 @@ impl CompletionState {
         let original = context.word();
         return Self::from_completions(
             context.create_completion(original.to_string()),
-            Box::new(completer.suggest(app, context)),
+            Box::new(completer.suggest(Box::new(app), context)),
         );
     }
 

@@ -1,9 +1,29 @@
 use std::collections::{hash_map, HashMap};
 
+use crate::input::completion::{args::CommandArgsCompleter, Completer};
+
 use super::CommandHandler;
 
+pub struct CommandSpec {
+    pub handler: Box<CommandHandler>,
+    pub completer: CommandArgsCompleter,
+}
+
+impl CommandSpec {
+    pub fn handler(handler: Box<CommandHandler>) -> Self {
+        Self {
+            handler,
+            completer: CommandArgsCompleter::new(),
+        }
+    }
+
+    pub fn push_arg_completer(&mut self, completer: Box<dyn Completer>) {
+        self.completer.push(completer);
+    }
+}
+
 pub struct CommandRegistry {
-    commands: HashMap<String, Box<CommandHandler>>,
+    commands: HashMap<String, CommandSpec>,
     abbreviations: HashMap<String, String>,
 }
 
@@ -25,14 +45,40 @@ impl CommandRegistry {
             }
         }
 
-        self.commands.insert(name, handler);
+        self.insert(name, CommandSpec::handler(handler));
     }
 
-    pub fn names(&self) -> hash_map::Keys<String, Box<CommandHandler>> {
+    pub fn declare_arg(&mut self, name: String, completer: Box<dyn Completer>) {
+        let spec = self
+            .commands
+            .get_mut(&name)
+            .expect("Adding arg for not-yet-declared command");
+        spec.push_arg_completer(completer);
+    }
+
+    pub fn names(&self) -> hash_map::Keys<String, CommandSpec> {
         self.commands.keys()
     }
 
-    pub fn take(&mut self, name: &String) -> Option<(String, Box<CommandHandler>)> {
+    pub fn insert(&mut self, name: String, spec: CommandSpec) {
+        self.commands.insert(name, spec);
+    }
+
+    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
+        if let Some(handler) = self.commands.get(name) {
+            return Some(handler);
+        }
+
+        if let Some(full_name) = self.abbreviations.get(name) {
+            if let Some(handler) = self.commands.get(full_name) {
+                return Some(handler);
+            }
+        }
+
+        None
+    }
+
+    pub fn take(&mut self, name: &String) -> Option<(String, CommandSpec)> {
         if let Some(handler) = self.commands.remove(name) {
             return Some((name.clone(), handler));
         }
@@ -48,9 +94,44 @@ impl CommandRegistry {
 }
 
 #[macro_export]
+macro_rules! command_arg_completer {
+    ($r:ident@$name:ident => $completer:expr) => {
+        $r.declare_arg(
+            stringify!($name).to_string(),
+            Box::new($completer),
+        );
+    };
+
+    ($r:ident@$name:ident -> PathBuf) => {
+        crate::command_arg_completer!(
+            $r@$name =>
+            crate::input::completion::file::FileCompleter
+        );
+    };
+
+    // unwrap optional types to their base type
+    ($r:ident@$name:ident -> Optional<$type:ident>) => {
+        crate::command_arg_completer!($r@$name -> $type);
+    };
+
+    // catchall placeholder:
+    ($r:ident@$name:ident -> $unsupported:ty) => {
+        crate::command_arg_completer!($r@$name => crate::input::completion::empty::EmptyCompleter);
+    };
+}
+
+#[macro_export]
 macro_rules! command_arg {
     // NOTE: all arg types are parsed as optional; there is a single
     // rule at the end that handles required args
+
+    ($name:ident@$args:ident -> $arg:ident: Optional<PathBuf>) => {
+        let $arg = if let Some(raw) = $args.next() {
+            Some(std::path::PathBuf::from(raw))
+        } else {
+            None
+        };
+    };
 
     ($name:ident@$args:ident -> $arg:ident: Optional<String>) => {
         let $arg = if let Some(raw) = $args.next() {
@@ -122,6 +203,7 @@ macro_rules! command_decl {
             },
             $($tail)*
         }
+        $(crate::command_arg_completer!($r@$name -> $($type)+)),+;
     };
 }
 

@@ -1,14 +1,12 @@
 #[macro_export]
 macro_rules! impl_simple_completer {
-    ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
+    ($completer_name:ident (&$self:ident, $app:ident, $context:ident) $body:expr) => {
         impl crate::input::completion::Completer for $completer_name {
-            type Iter = Box<dyn Iterator<Item = crate::input::completion::Completion>>;
-
-            fn suggest<T: crate::input::completion::CompletableContext>(
-                &self,
-                $app: &T,
+            fn suggest(
+                &$self,
+                $app: Box<&dyn crate::input::completion::CompletableContext>,
                 $context: crate::input::completion::CompletionContext,
-            ) -> Self::Iter {
+            ) -> crate::input::completion::BoxedSuggestions {
                 let _input = $context.word().to_string();
                 Box::new(
                     $body
@@ -20,9 +18,13 @@ macro_rules! impl_simple_completer {
         }
     };
 
+    ($completer_name:ident ($app:ident, $context:ident) $body:expr) => {
+        crate::impl_simple_completer!($completer_name (&self, $app, $context) $body);
+    };
+
     ($completer_name:ident $body:expr) => {
-        crate::impl_simple_completer!($completer_name (_app, _context) $body);
-    }
+        crate::impl_simple_completer!($completer_name (&self, _app, _context) $body);
+    };
 }
 
 #[macro_export]

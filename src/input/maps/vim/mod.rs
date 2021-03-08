@@ -5,6 +5,8 @@ mod normal;
 mod prompt;
 mod tree;
 
+use std::rc::Rc;
+
 use insert::vim_insert_mode;
 use normal::vim_normal_mode;
 use tree::KeyTreeNode;
@@ -12,7 +14,10 @@ use tree::KeyTreeNode;
 use crate::{
     app::widgets::Widget,
     editing::motion::MotionRange,
-    input::{Key, KeyError, Keymap, KeymapContext},
+    input::{
+        completion::{state::BoxedCompleter, Completer},
+        Key, KeyError, Keymap, KeymapContext,
+    },
 };
 
 use self::mode_stack::VimModeStack;
@@ -29,6 +34,7 @@ pub struct VimMode {
     pub mappings: KeyTreeNode,
     pub default_handler: Option<Box<KeyHandler>>,
     pub after_handler: Option<Box<KeyHandler>>,
+    pub completer: Option<Rc<dyn Completer>>,
 }
 
 impl VimMode {
@@ -38,7 +44,13 @@ impl VimMode {
             mappings,
             default_handler: None,
             after_handler: None,
+            completer: None,
         }
+    }
+
+    pub fn with_completer(mut self, completer: Option<Rc<dyn Completer>>) -> Self {
+        self.completer = completer;
+        self
     }
 
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
@@ -65,9 +77,17 @@ pub struct VimKeymap {
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
+    active_completer: Option<Rc<dyn Completer>>,
 }
 
 impl VimKeymap {
+    pub fn completer(&self) -> Option<BoxedCompleter> {
+        if let Some(completer) = self.active_completer.clone() {
+            return Some(BoxedCompleter::from(completer));
+        }
+        None
+    }
+
     pub fn push_mode(&mut self, mode: VimMode) {
         self.mode_stack.push(mode);
     }
@@ -94,6 +114,7 @@ impl Default for VimKeymap {
             operator_fn: None,
             mode_stack: VimModeStack::default(),
             keys_buffer: Vec::default(),
+            active_completer: None,
         }
     }
 }
@@ -119,6 +140,7 @@ impl Keymap for VimKeymap {
         let mut current = &mode.mappings;
         let mut at_root = true;
         let mut result = Ok(());
+        self.active_completer = mode.completer.clone();
 
         loop {
             if let Some(key) = context.next_key()? {
@@ -178,6 +200,8 @@ impl Keymap for VimKeymap {
                 })?;
             }
         }
+
+        self.active_completer = None;
 
         if mode_from_stack {
             // return the moved mode value back to the stack...

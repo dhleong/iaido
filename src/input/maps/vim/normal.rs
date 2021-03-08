@@ -1,6 +1,11 @@
 mod window;
 
-use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext};
+use std::rc::Rc;
+
+use crate::input::{
+    commands::CommandHandlerContext, completion::commands::CommandsCompleter, maps::KeyResult,
+    KeyError, KeymapContext,
+};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
@@ -18,12 +23,9 @@ use super::{
 
 fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
     if let Some(command) = context.command().and_then(|s| Some(s.to_string())) {
-        if let Some((name, handler)) = context.state_mut().builtin_commands.take(&command) {
-            let result = handler(&mut context);
-            context
-                .state_mut()
-                .builtin_commands
-                .declare(name, false, handler);
+        if let Some((name, spec)) = context.state_mut().builtin_commands.take(&command) {
+            let result = (spec.handler)(&mut context);
+            context.state_mut().builtin_commands.insert(name, spec);
             result
         } else {
             Err(KeyError::NoSuchCommand(command))
@@ -43,7 +45,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             ctx.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
                 handler: Box::new(handle_command),
-                // TODO autocomplete
+                completer: Some(Rc::new(CommandsCompleter)),
             }.into());
             Ok(())
          },

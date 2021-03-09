@@ -243,6 +243,24 @@ macro_rules! vim_branches {
         crate::vim_branches! { $root -> $($tail)* }
     };
 
+    // "change" keymaps check for read-only buffer and begin a change:
+    (
+        $root:ident ->
+        $keys:literal =>
+            change |$ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
+            if $ctx_name.state().current_buffer().is_read_only() {
+                return Err(KeyError::ReadOnlyBuffer);
+            }
+            $ctx_name.state_mut().request_redraw();
+            $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
+            $body
+        }));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
+
     // normal keymap with move:
     (
         $root:ident ->

@@ -4,7 +4,9 @@ mod window;
 use std::rc::Rc;
 
 use crate::input::{
-    commands::CommandHandlerContext, completion::commands::CommandsCompleter, maps::KeyResult,
+    commands::CommandHandlerContext,
+    completion::commands::CommandsCompleter,
+    maps::{KeyHandlerContext, KeyResult},
     KeyError, KeymapContext,
 };
 use crate::{
@@ -55,21 +57,13 @@ fn cmd_mode_access() -> KeyTreeNode {
 
 pub fn vim_normal_mode() -> VimMode {
     let mappings = vim_tree! {
-        "a" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_insert_change("a");
+        "a" => change |ctx| {
+            ctx.state_mut().current_window_mut().set_inserting(true);
             CharMotion::Forward(1).apply_cursor(ctx.state_mut());
             Ok(())
         },
-        "A" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_insert_change("A");
+        "A" => change |ctx| {
+            ctx.state_mut().current_window_mut().set_inserting(true);
             ToLineEndMotion.apply_cursor(ctx.state_mut());
             Ok(())
         },
@@ -92,16 +86,10 @@ pub fn vim_normal_mode() -> VimMode {
             ctx.state_mut().current_bufwin().begin_insert_change("");
             Ok(())
         },
-        "C" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_insert_change("C");
+        "C" => change |ctx| {
+            ctx.state_mut().current_window_mut().set_inserting(true);
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
-            ctx.state_mut().current_window_mut().set_inserting(true);
             Ok(())
         },
 
@@ -110,41 +98,31 @@ pub fn vim_normal_mode() -> VimMode {
             ctx.state_mut().current_window_mut().cursor = ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
             Ok(())
         },
-        "D" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_keys_change("D");
+        "D" => change |ctx| {
             let range = ToLineEndMotion.range(ctx.state());
             ctx.state_mut().current_buffer_mut().delete_range(range);
             ctx.state_mut().current_buffer_mut().end_change();
             Ok(())
         },
 
-        "i" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-
+        "i" => change |ctx| {
             ctx.state_mut().clear_echo();
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_insert_change("i");
+            ctx.state_mut().current_window_mut().set_inserting(true);
             Ok(())
         },
-        "I" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
-
+        "I" => change |ctx| {
             ctx.state_mut().clear_echo();
-            ctx.state_mut().request_redraw();
-            ctx.state_mut().current_bufwin().begin_insert_change("I");
+            ctx.state_mut().current_window_mut().set_inserting(true);
             ToLineStartMotion.apply_cursor(ctx.state_mut());
             Ok(())
         },
 
+        "x" => change |ctx| {
+            delete_with_motion(ctx, CharMotion::Forward(1))
+        },
+        "X" => change |ctx| {
+            delete_with_motion(ctx, CharMotion::Backward(1))
+        },
 
     } + cmd_mode_access()
         + change::mappings()
@@ -158,6 +136,17 @@ pub fn vim_normal_mode() -> VimMode {
             Ok(())
         }
     ))
+}
+
+fn delete_with_motion<M: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: M) -> KeyResult {
+    let range = motion.range(ctx.state());
+    ctx.state_mut().current_buffer_mut().delete_range(range);
+    ctx.state_mut().current_window_mut().cursor = ctx
+        .state()
+        .current_window()
+        .clamp_cursor(ctx.state().current_buffer(), range.0);
+    ctx.state_mut().current_buffer_mut().end_change();
+    Ok(())
 }
 
 #[cfg(test)]

@@ -152,5 +152,19 @@ mod tests {
                 |
             "});
         }
+
+        #[test]
+        fn repeat_change_can_seem_idempotent() {
+            let mut ctx = window(indoc! {"
+                Take my |love
+            "});
+            ctx.assert_visual_match(indoc! {"
+                Take my |love
+            "});
+
+            ctx.feed_vim("Cland<esc>b.").assert_visual_match(indoc! {"
+                Take my lan|d
+            "});
+        }
     }
 }

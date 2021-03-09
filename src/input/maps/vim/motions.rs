@@ -25,9 +25,6 @@ pub fn vim_standard_motions() -> KeyTreeNode {
 
         "0" => motion { ToLineStartMotion },
         "$" => motion { ToLineEndMotion },
-
-        "gg" => motion { ToFirstLineMotion },
-        "G" => motion { ToLastLineMotion },
     }
 }
 
@@ -36,5 +33,8 @@ pub fn vim_linewise_motions() -> KeyTreeNode {
     vim_tree! {
         "j" => motion { DownLineMotion },
         "k" => motion { UpLineMotion },
+
+        "gg" => motion { ToFirstLineMotion },
+        "G" => motion { ToLastLineMotion },
     }
 }

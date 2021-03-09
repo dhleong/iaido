@@ -92,7 +92,7 @@ where
     }
 }
 
-fn find<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
+pub fn find<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
     context: &C,
     start: CursorPosition,
     step: &M,

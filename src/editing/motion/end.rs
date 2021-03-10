@@ -7,7 +7,7 @@ use super::{
     {DirectionalMotion, Motion},
 };
 
-pub struct EndWordMotion<T>
+pub struct EndOfWordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
@@ -15,7 +15,7 @@ where
     is_word_boundary: T,
 }
 
-impl<T> EndWordMotion<T>
+impl<T> EndOfWordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<T> Motion for EndWordMotion<T>
+impl<T> Motion for EndOfWordMotion<T>
 where
     T: Fn(&str) -> bool,
 {
@@ -103,7 +103,7 @@ mod tests {
             let mut ctx = window(indoc! {"
                 |Take my land
             "});
-            ctx.motion(EndWordMotion::forward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::forward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Tak|e my land
             "});
@@ -114,7 +114,7 @@ mod tests {
             let mut ctx = window(indoc! {"
                 Tak|e my land
             "});
-            ctx.motion(EndWordMotion::forward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::forward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take m|y land
             "});
@@ -125,7 +125,7 @@ mod tests {
             let mut ctx = window(indoc! {"
                 Take my land    |
             "});
-            ctx.motion(EndWordMotion::backward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::backward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take my lan|d
             "});
@@ -136,7 +136,7 @@ mod tests {
             let mut ctx = window(indoc! {"
                 Take my lan|d
             "});
-            ctx.motion(EndWordMotion::backward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::backward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take m|y land
             "});
@@ -153,7 +153,7 @@ mod tests {
                 Take my love
                 Tak|e my land
             "});
-            ctx.motion(EndWordMotion::backward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::backward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take my lov|e
                 Take my land
@@ -166,7 +166,7 @@ mod tests {
                 Take my lov|e
                 Take my land
             "});
-            ctx.motion(EndWordMotion::forward_until(is_small_word_boundary));
+            ctx.motion(EndOfWordMotion::forward_until(is_small_word_boundary));
             ctx.assert_visual_match(indoc! {"
                 Take my love
                 Tak|e my land

@@ -3,7 +3,7 @@ use crate::input::KeymapContext;
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
-    editing::motion::end::EndWordMotion,
+    editing::motion::end::EndOfWordMotion,
     editing::motion::linewise::{
         DownLineMotion, ToFirstLineMotion, ToLastLineMotion, ToLineEndMotion, ToLineStartMotion,
         UpLineMotion,
@@ -21,10 +21,10 @@ pub fn vim_standard_motions() -> KeyTreeNode {
         "w" => motion { WordMotion::forward_until(is_small_word_boundary) },
         "W" => motion { WordMotion::forward_until(is_big_word_boundary) },
 
-        "ge" => motion { EndWordMotion::backward_until(is_small_word_boundary) },
-        "gE" => motion { EndWordMotion::backward_until(is_big_word_boundary) },
-        "e" => motion { EndWordMotion::forward_until(is_small_word_boundary) },
-        "E" => motion { EndWordMotion::forward_until(is_big_word_boundary) },
+        "ge" => motion { EndOfWordMotion::backward_until(is_small_word_boundary) },
+        "gE" => motion { EndOfWordMotion::backward_until(is_big_word_boundary) },
+        "e" => motion { EndOfWordMotion::forward_until(is_small_word_boundary) },
+        "E" => motion { EndOfWordMotion::forward_until(is_big_word_boundary) },
 
         "h" => motion { CharMotion::Backward(1) },
         "l" => motion { CharMotion::Forward(1) },

@@ -1,5 +1,6 @@
 pub mod char;
 pub mod end;
+pub mod find;
 pub mod linewise;
 pub mod word;
 

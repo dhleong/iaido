@@ -61,14 +61,6 @@ where
         if !was_on_boundary && !self.step.is_forward() {
             // skip past current word
             cursor = find(context, cursor, &self.step, &self.is_word_boundary);
-            // while !self.is_on_boundary(context, cursor) {
-            //     let next = self.step.destination(&context.with_cursor(cursor));
-            //     if next == cursor {
-            //         // cannot go further
-            //         break;
-            //     }
-            //     cursor = next;
-            // }
         }
 
         // skip past any whitespace

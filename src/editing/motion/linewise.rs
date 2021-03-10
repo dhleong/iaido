@@ -149,6 +149,12 @@ impl<T: DirectionalMotion + Motion> LineCrossing<T> {
     }
 }
 
+impl<T: DirectionalMotion + Motion> DirectionalMotion for LineCrossing<T> {
+    fn is_forward(&self) -> bool {
+        self.base.is_forward()
+    }
+}
+
 impl<T: DirectionalMotion + Motion> Motion for LineCrossing<T> {
     fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
         let origin = context.cursor();

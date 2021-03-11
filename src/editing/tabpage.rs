@@ -139,10 +139,13 @@ impl Tabpage {
     }
 
     pub fn move_focus(&mut self, direction: FocusDirection) {
-        let prev = self.current;
-        if let Some(next) = self.layout.next_focus(prev, direction) {
+        if let Some(next) = self.next_focus_window(direction) {
             self.set_focus(next);
         }
+    }
+
+    pub fn next_focus_window(&self, direction: FocusDirection) -> Option<Id> {
+        self.layout.next_focus(self.current, direction)
     }
 
     pub fn set_focus(&mut self, id: Id) {

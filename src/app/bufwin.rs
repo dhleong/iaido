@@ -19,6 +19,20 @@ impl<'a> BufWin<'a> {
         self.window.scroll_lines(self.buffer, virtual_lines);
     }
 
+    pub fn scroll_by_setting(&mut self, direction: i8, setting: u16) {
+        let lines = if setting == 0 {
+            (self.window.size.h / 2) as i32
+        } else {
+            setting as i32
+        };
+        self.scroll_lines((direction as i32) * lines);
+    }
+
+    pub fn scroll_pages(&mut self, virtual_pages: i32) {
+        let lines = virtual_pages * (self.window.size.h as i32);
+        self.scroll_lines(lines);
+    }
+
     pub fn begin_keys_change<T: KeysParsable>(&mut self, initial_keys: T) {
         self.buffer.begin_change(self.window.cursor);
         for key in initial_keys.into_keys() {

@@ -1,4 +1,5 @@
 mod change;
+mod scroll;
 mod window;
 
 use std::rc::Rc;
@@ -126,6 +127,7 @@ pub fn vim_normal_mode() -> VimMode {
 
     } + cmd_mode_access()
         + change::mappings()
+        + scroll::mappings()
         + window::mappings()
         + vim_standard_motions()
         + vim_linewise_motions();

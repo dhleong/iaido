@@ -154,6 +154,12 @@ impl Keymap for VimKeymap {
                         .state_mut()
                         .current_buffer_mut()
                         .push_change_key(key);
+
+                    if show_keys {
+                        // NOTE: render here since some key handlers
+                        // also read from keysource
+                        self.render_keys_buffer(context);
+                    }
                 }
 
                 if let Some(next) = current.children.get(&key) {

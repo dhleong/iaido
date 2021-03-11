@@ -105,11 +105,33 @@ impl Window {
         for line_nr in (0..(buffer.lines_count() - self.scrolled_lines as usize)).rev() {
             let line = buffer.get(line_nr);
             let consumable = line.measure_height(window_width) - self.scroll_offset;
+            let last_visible_line = end - (self.scrolled_lines as usize);
 
             self.scroll_offset += min(to_scroll, consumable as usize) as u16;
+
+            // when scrolling through offsets, ensure the cursor col isn't
+            // out of view
+            if self.cursor.line >= last_visible_line {
+                let last_visible_offset = consumable.checked_sub(self.scroll_offset).unwrap_or(0);
+                let rows_delta = (self.cursor.col / (window_width as usize))
+                    .checked_sub(last_visible_offset as usize)
+                    .unwrap_or(0);
+                self.cursor.col = self
+                    .cursor
+                    .col
+                    .checked_sub(rows_delta * window_width as usize)
+                    .unwrap_or(0);
+            }
+
             if to_scroll < consumable as usize {
                 // done!
                 break;
+            }
+
+            // when scrolling through lines, ensure the cursor line isn't
+            // out of view
+            if self.cursor.line >= last_visible_line {
+                self.cursor.line = self.cursor.line.checked_sub(1).unwrap_or(0);
             }
 
             if self.scrolled_lines as usize >= end {

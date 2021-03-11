@@ -548,6 +548,55 @@ mod tests {
     }
 
     #[cfg(test)]
+    mod scroll_cursor_adjustment {
+        use super::*;
+
+        #[test]
+        fn move_cursor_upward_with_scroll() {
+            let mut ctx = window(indoc! {"
+                Take my love
+                Take my land
+                Take me where
+                I cannot
+                |stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+
+            // TODO: hugging the column might be nice, but is tricky
+            // when wrapping
+            ctx.scroll_lines(3);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn move_cursor_upward_with_scroll_offsets() {
+            let mut ctx = window(indoc! {"
+                Take my land Take me where I cannot |stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+
+            // TODO: hugging the column might be nice, but is tricky
+            // when wrapping
+            ctx.scroll_lines(3);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my land
+                Take me wh|ere
+            "});
+        }
+    }
+
+    #[cfg(test)]
     mod append_value {
         use crate::connection::ReadValue;
 

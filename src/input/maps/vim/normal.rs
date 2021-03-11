@@ -296,4 +296,62 @@ mod tests {
             "});
         }
     }
+
+    #[cfg(test)]
+    mod f {
+        use super::*;
+
+        #[test]
+        fn find_char() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("fl").assert_visual_match(indoc! {"
+                Take my love
+                Take my |land
+                Take me where
+            "});
+        }
+
+        #[test]
+        fn find_non_matching_does_not_move() {
+            let ctx = window(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+            ctx.feed_vim("fz").assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+                Take me where
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod capital_f {
+        use super::*;
+
+        #[test]
+        fn find_char() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("Fe").assert_visual_match(indoc! {"
+                Tak|e my land
+            "});
+        }
+
+        #[test]
+        fn find_non_matching_does_not_move() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("Fz").assert_visual_match(indoc! {"
+                Take my |land
+            "});
+        }
+    }
 }

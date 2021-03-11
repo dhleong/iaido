@@ -1,5 +1,6 @@
 use crate::editing::CursorPosition;
 
+use super::util::find;
 use super::{char::CharMotion, linewise::LineCrossing, Motion, MotionFlags};
 
 pub fn is_big_word_boundary(ch: &str) -> bool {
@@ -90,35 +91,6 @@ where
 
         cursor
     }
-}
-
-pub fn find<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
-    context: &C,
-    start: CursorPosition,
-    step: &M,
-    pred: P,
-) -> CursorPosition {
-    let mut cursor = start;
-
-    loop {
-        if let Some(ch) = context.buffer().get_char(cursor) {
-            if pred(ch) {
-                break;
-            } else {
-                let next = step.destination(&context.with_cursor(cursor));
-                if next == cursor {
-                    // our step didn't move; we can't go further
-                    break;
-                }
-                cursor = next;
-            }
-        } else {
-            // can't go further
-            return cursor;
-        }
-    }
-
-    cursor
 }
 
 #[cfg(test)]

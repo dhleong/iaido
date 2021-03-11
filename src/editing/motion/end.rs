@@ -1,9 +1,10 @@
 use crate::editing::CursorPosition;
 
+use super::util::find;
 use super::{
     char::CharMotion,
     linewise::LineCrossing,
-    word::{find, is_not_whitespace},
+    word::is_not_whitespace,
     {DirectionalMotion, Motion},
 };
 

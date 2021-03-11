@@ -2,6 +2,7 @@ pub mod char;
 pub mod end;
 pub mod find;
 pub mod linewise;
+mod util;
 pub mod word;
 
 use bitflags::bitflags;

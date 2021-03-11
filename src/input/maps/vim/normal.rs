@@ -222,6 +222,26 @@ mod tests {
         }
 
         #[test]
+        fn dh() {
+            let ctx = window(indoc! {"
+                Take my l|and
+            "});
+            ctx.feed_vim("dh").assert_visual_match(indoc! {"
+                Take my |and
+            "});
+        }
+
+        #[test]
+        fn dl() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("dl").assert_visual_match(indoc! {"
+                Take my |and
+            "});
+        }
+
+        #[test]
         fn follows_exclusive_line_cross_exception() {
             // see :help exclusive in vim
             let ctx = window(indoc! {"
@@ -304,28 +324,30 @@ mod tests {
         #[test]
         fn find_char() {
             let ctx = window(indoc! {"
-                Take my love
                 |Take my land
-                Take me where
             "});
             ctx.feed_vim("fl").assert_visual_match(indoc! {"
-                Take my love
                 Take my |land
-                Take me where
             "});
         }
 
         #[test]
         fn find_non_matching_does_not_move() {
             let ctx = window(indoc! {"
-                Take my love
                 |Take my land
-                Take me where
             "});
             ctx.feed_vim("fz").assert_visual_match(indoc! {"
-                Take my love
                 |Take my land
-                Take me where
+            "});
+        }
+
+        #[test]
+        fn delete_with_find() {
+            let ctx = window(indoc! {"
+                |Take my land
+            "});
+            ctx.feed_vim("dfl").assert_visual_match(indoc! {"
+                |and
             "});
         }
     }
@@ -350,6 +372,26 @@ mod tests {
                 Take my |land
             "});
             ctx.feed_vim("Fz").assert_visual_match(indoc! {"
+                Take my |land
+            "});
+        }
+
+        #[test]
+        fn delete_with_find() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("dFm").assert_visual_match(indoc! {"
+                Take |land
+            "});
+        }
+
+        #[test]
+        fn delete_with_non_matching() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("dFz").assert_visual_match(indoc! {"
                 Take my |land
             "});
         }

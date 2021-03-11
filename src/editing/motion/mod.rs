@@ -100,10 +100,15 @@ pub trait Motion {
     }
 
     fn range<T: MotionContext>(&self, context: &T) -> MotionRange {
-        let start = context.cursor();
-        let end = self.destination(context);
         let flags = self.flags();
         let linewise = flags.contains(MotionFlags::LINEWISE);
+        let inclusive = !flags.contains(MotionFlags::EXCLUSIVE);
+
+        let start = context.cursor();
+        let mut end = self.destination(context);
+        if inclusive {
+            end.col += 1;
+        }
 
         normalize_range(
             context.buffer(),

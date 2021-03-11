@@ -34,7 +34,7 @@ impl Motion for FindMotion {
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
-        let (cursor, found) = search(context, context.cursor(), &self.step, |c| {
+        let (cursor, found) = search(context, self.step.destination(context), &self.step, |c| {
             c.chars().next().unwrap() == self.ch
         });
         if found {
@@ -60,10 +60,42 @@ mod tests {
     }
 
     #[test]
+    fn forward_to_same_char() {
+        let mut ctx = window("Tak|e my love");
+
+        ctx.motion(FindMotion::forward_to('e'));
+        ctx.assert_visual_match("Take my lov|e");
+    }
+
+    #[test]
+    fn forward_to_same_char_adversary() {
+        let mut ctx = window("e|eeeee");
+
+        ctx.motion(FindMotion::forward_to('e'));
+        ctx.assert_visual_match("ee|eeee");
+    }
+
+    #[test]
     fn backward_to_char() {
         let mut ctx = window("Take my |love");
 
         ctx.motion(FindMotion::backward_to('m'));
         ctx.assert_visual_match("Take |my love");
+    }
+
+    #[test]
+    fn backward_to_same_char() {
+        let mut ctx = window("Take my lov|e");
+
+        ctx.motion(FindMotion::backward_to('e'));
+        ctx.assert_visual_match("Tak|e my love");
+    }
+
+    #[test]
+    fn backward_to_same_char_adversary() {
+        let mut ctx = window("eeee|ee");
+
+        ctx.motion(FindMotion::backward_to('e'));
+        ctx.assert_visual_match("eee|eee");
     }
 }

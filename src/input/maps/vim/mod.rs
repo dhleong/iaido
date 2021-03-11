@@ -154,6 +154,12 @@ impl Keymap for VimKeymap {
                         .state_mut()
                         .current_buffer_mut()
                         .push_change_key(key);
+
+                    if show_keys {
+                        // NOTE: render here since some key handlers
+                        // also read from keysource
+                        self.render_keys_buffer(context);
+                    }
                 }
 
                 if let Some(next) = current.children.get(&key) {
@@ -344,26 +350,38 @@ macro_rules! vim_branches {
     (
         $root:ident ->
         $keys:literal =>
-            motion $factory:expr,
+            motion |$ctx_name:ident| $factory:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |ctx| {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
             use crate::editing::motion::Motion;
             let motion = $factory;
-            let operator_fn = ctx.keymap.operator_fn.take();
-            ctx.keymap.reset(); // always clear
+            let operator_fn = $ctx_name.keymap.operator_fn.take();
+            $ctx_name.keymap.reset(); // always clear
 
             if let Some(op) = operator_fn {
                 // execute pending operator fn
-                let range = motion.range(ctx.state());
-                op(ctx, range)
+                let range = motion.range($ctx_name.state());
+                op($ctx_name, range)
             } else {
                 // no operator fn? just move the cursor
-                motion.apply_cursor(ctx.state_mut());
+                motion.apply_cursor($ctx_name.state_mut());
                 Ok(())
             }
         }));
         crate::vim_branches! { $root -> $($tail)* }
+    };
+
+    (
+        $root:ident ->
+        $keys:literal =>
+            motion $factory:expr,
+        $($tail:tt)*
+    ) => {
+        crate::vim_branches! { $root ->
+            $keys => motion |ctx| $factory,
+            $($tail)*
+        };
     };
 }
 

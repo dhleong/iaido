@@ -1,9 +1,10 @@
 use crate::input::maps::vim::VimKeymap;
-use crate::input::KeymapContext;
+use crate::input::{Key, KeyCode, KeySource, KeymapContext};
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::end::EndOfWordMotion,
+    editing::motion::find::FindMotion,
     editing::motion::linewise::{
         DownLineMotion, ToFirstLineMotion, ToLastLineMotion, ToLineEndMotion, ToLineStartMotion,
         UpLineMotion,
@@ -31,6 +32,19 @@ pub fn vim_standard_motions() -> KeyTreeNode {
 
         "0" => motion { ToLineStartMotion },
         "$" => motion { ToLineEndMotion },
+
+        "f" => motion |ctx| {
+            match ctx.next_key()? {
+                Some(Key { code: KeyCode::Char(ch), .. }) => FindMotion::forward_to(ch),
+                _ => return Ok(()),
+            }
+        },
+        "F" => motion |ctx| {
+            match ctx.next_key()? {
+                Some(Key { code: KeyCode::Char(ch), .. }) => FindMotion::backward_to(ch),
+                _ => return Ok(()),
+            }
+        },
     }
 }
 

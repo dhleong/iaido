@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::editing::CursorPosition;
 
-use super::{DirectionalMotion, Motion};
+use super::{DirectionalMotion, Motion, MotionFlags};
 
 /// Character-wise column motion
 pub enum CharMotion {
@@ -20,6 +20,10 @@ impl DirectionalMotion for CharMotion {
 }
 
 impl Motion for CharMotion {
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::EXCLUSIVE
+    }
+
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         let from = context.cursor();
         match self {

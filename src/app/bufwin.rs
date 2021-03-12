@@ -19,6 +19,8 @@ impl<'a> BufWin<'a> {
         self.window.scroll_lines(self.buffer, virtual_lines);
     }
 
+    /// If `setting` is 0 (the default), scroll by half this window's
+    /// height instead (see :help scroll)
     pub fn scroll_by_setting(&mut self, direction: i8, setting: u16) {
         let lines = if setting == 0 {
             (self.window.size.h / 2) as i32

@@ -534,5 +534,45 @@ pub mod tests {
                 |
             "});
         }
+
+        #[test]
+        fn follows_cursor_smoothly_down() {
+            let mut ctx = window(indoc! {"
+                |Take my love
+                Take my land
+                Take me where
+                I cannot
+                stand
+            "});
+            ctx.window.resize(Size { w: 14, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my love
+                Take my land
+            "});
+
+            ctx.motion(DownLineMotion);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+
+            ctx.motion(DownLineMotion);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take my land
+                |Take me where
+            "});
+
+            ctx.motion(DownLineMotion);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                Take me where
+                |I cannot
+            "});
+
+            ctx.motion(DownLineMotion);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+        }
     }
 }

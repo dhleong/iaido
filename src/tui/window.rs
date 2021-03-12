@@ -75,6 +75,10 @@ impl<'a> RenderableContent<'a> {
             .checked_sub(available_height + scroll_offset)
             .unwrap_or(0);
 
+        // NOTE: this offset should be the last *rendered* offset;
+        // bottom_height - scroll_offset is how many lines are rendered
+        let end_visual_offset = bottom_height.checked_sub(scroll_offset + 1).unwrap_or(0);
+
         Self {
             start: WrappedLineOffset {
                 line: start,
@@ -82,7 +86,7 @@ impl<'a> RenderableContent<'a> {
             },
             end: WrappedLineOffset {
                 line: end.checked_sub(1).unwrap_or(0),
-                visual_offset: inner_height.checked_sub(available_height).unwrap_or(0),
+                visual_offset: end_visual_offset, // inner_height.checked_sub(available_height).unwrap_or(0),
             },
             candidate_text,
             inner_height,
@@ -566,8 +570,6 @@ mod tests {
                 |stand
             "});
 
-            // TODO: hugging the column might be nice, but is tricky
-            // when wrapping
             ctx.scroll_lines(3);
             ctx.render_at_own_size().assert_visual_match(indoc! {"
                 Take my love
@@ -592,6 +594,49 @@ mod tests {
             ctx.render_at_own_size().assert_visual_match(indoc! {"
                 Take my land
                 Take me wh|ere
+            "});
+        }
+
+        #[test]
+        fn move_cursor_downward_with_scroll() {
+            let mut ctx = window(indoc! {"
+                |Take my love
+                Take my land
+                Take me where
+                I cannot
+                stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my love
+                Take my land
+            "});
+
+            ctx.scroll_lines(-3);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |I cannot
+                stand
+            "});
+        }
+
+        #[ignore]
+        #[test]
+        fn move_cursor_downward_with_scroll_offsets() {
+            let mut ctx = window(indoc! {"
+                |Take my love Take my land Take me where I cannot stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |Take my love
+                Take my land
+            "});
+
+            // TODO: hugging the column might be nice, but is tricky
+            // when wrapping
+            ctx.scroll_lines(-3);
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                |I cannot
+                stand
             "});
         }
     }

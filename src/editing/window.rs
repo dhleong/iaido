@@ -168,6 +168,23 @@ impl Window {
             self.scroll_offset = (self.scroll_offset as usize)
                 .checked_sub(to_scroll)
                 .unwrap_or(0) as u16;
+
+            let first_visible_line = (end - self.scrolled_lines as usize)
+                .checked_sub(self.size.h as usize)
+                .unwrap_or(0);
+
+            // when scrolling through offsets, ensure the cursor col isn't
+            // out of view
+            if self.cursor.line <= first_visible_line {
+                let first_visible_offset = consumable
+                    .checked_sub(self.scroll_offset as usize)
+                    .unwrap_or(0);
+                let rows_delta = (self.cursor.col / (window_width as usize))
+                    .checked_sub(first_visible_offset as usize)
+                    .unwrap_or(0);
+                self.cursor.col += rows_delta * window_width as usize;
+            }
+
             if to_scroll < consumable {
                 // done!
                 break;
@@ -176,6 +193,12 @@ impl Window {
             if self.scrolled_lines == 0 {
                 // no further to go
                 break;
+            }
+
+            // when scrolling through lines, ensure the cursor line isn't
+            // out of view
+            if self.cursor.line <= first_visible_line {
+                self.cursor.line += 1;
             }
 
             to_scroll = to_scroll - consumable;

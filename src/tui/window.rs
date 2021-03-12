@@ -619,7 +619,6 @@ mod tests {
             "});
         }
 
-        #[ignore]
         #[test]
         fn move_cursor_downward_with_scroll_offsets() {
             let mut ctx = window(indoc! {"

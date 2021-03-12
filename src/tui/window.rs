@@ -86,7 +86,7 @@ impl<'a> RenderableContent<'a> {
             },
             end: WrappedLineOffset {
                 line: end.checked_sub(1).unwrap_or(0),
-                visual_offset: end_visual_offset, // inner_height.checked_sub(available_height).unwrap_or(0),
+                visual_offset: end_visual_offset,
             },
             candidate_text,
             inner_height,

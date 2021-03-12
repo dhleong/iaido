@@ -163,7 +163,7 @@ impl Renderable for Window {
             self.scroll_offset = 0;
             self.scrolled_lines = self
                 .scrolled_lines
-                .checked_sub((self.cursor.line - renderable.start.line) as u32)
+                .checked_sub((self.cursor.line - renderable.end.line) as u32)
                 .unwrap_or(0);
         } else {
             if cursor_y_offset < renderable.start.visual_offset {

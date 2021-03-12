@@ -630,8 +630,6 @@ mod tests {
                 Take my land
             "});
 
-            // TODO: hugging the column might be nice, but is tricky
-            // when wrapping
             ctx.scroll_lines(-3);
             ctx.render_at_own_size().assert_visual_match(indoc! {"
                 |I cannot

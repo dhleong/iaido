@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::{
     connection::connections::Connections,
     editing::{
@@ -15,6 +17,7 @@ use crate::{
         commands::{create_builtin_commands, registry::CommandRegistry},
         completion::CompletableContext,
     },
+    script::{ApiManager, ScriptingManager},
 };
 
 use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, widgets::Widget, winsbuf::WinsBuf};
@@ -34,6 +37,9 @@ pub struct AppState {
     // Connections should generally be available, but is an
     // Option so callers may temporarily take ownership of it
     pub connections: Option<Connections>,
+
+    pub scripting: Arc<Mutex<ScriptingManager>>,
+    pub api: Option<ApiManager>,
 
     pub jobs: Jobs,
 }
@@ -198,6 +204,8 @@ impl Default for AppState {
             builtin_commands: create_builtin_commands(),
             keymap_widget: None,
             connections: Some(Connections::default()),
+            scripting: Arc::new(Mutex::new(ScriptingManager::default())),
+            api: Some(ApiManager::default()),
             jobs: Jobs::new(),
         };
 

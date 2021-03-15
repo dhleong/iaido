@@ -2,6 +2,7 @@ mod app;
 mod connection;
 mod editing;
 mod input;
+mod script;
 mod tui;
 mod ui;
 
@@ -43,14 +44,16 @@ fn main_loop() -> io::Result<()> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    let mut keymap = VimKeymap::default();
-    keymap.remap_keys(
-        RemapMode::VimNormal,
-        "gc".into_keys(),
-        ":connect ".into_keys(),
-    );
+    let scripting = app.state.scripting.clone();
+    let delegate = app.state.api.as_ref().unwrap().delegate();
 
-    app_loop(app, tui::events::TuiEvents::default(), keymap);
+    app.state.jobs.spawn(move |_| async move {
+        let lock = scripting.lock().unwrap();
+        lock.load(delegate, "/Users/dhleong/.config/iaido/init.py".to_string())?;
+        Ok(())
+    });
+
+    app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
 
     Ok(())
 }

@@ -2,12 +2,15 @@ use lazy_static::lazy_static;
 
 use std::{sync::Mutex, time::Duration};
 
-use crate::input::{Key, KeyError, KeySource, Keymap};
 use crate::ui::{UiEvent, UiEvents, UI};
 use crate::{
     app::{self, App},
     editing::text::TextLines,
     input::KeymapContext,
+};
+use crate::{
+    input::{Key, KeyError, KeySource, Keymap},
+    script::ScriptingManager,
 };
 
 use super::jobs::Jobs;
@@ -43,7 +46,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 }
 
                 // process messages from jobs
-                Jobs::process(&mut self.app.state)?;
+                dirty |= Jobs::process(&mut self.app.state)?;
+
+                // ... and from scripts
+                dirty |= ScriptingManager::process(&mut self.app.state)?;
 
                 // finally, check for input:
                 match self.events.poll_event(Duration::from_millis(10))? {

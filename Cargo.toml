@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Daniel Leong <me@dhleong.net>"]
 edition = "2018"
 
+[features]
+default = ["python"]
+
+python = ["rustpython-vm"]
+
 [dependencies]
 # internal crates
 command_decl = { path = "./command_decl" }
@@ -14,6 +19,9 @@ indoc = "1.0"
 # "ui"
 crossterm = { version = "0.19" }
 tui = { version = "0.14", default-features = false, features = ["crossterm"] }
+
+# scripting
+rustpython-vm = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true }
 
 genawaiter = "0.99.1"
 telnet = "0.1.4"

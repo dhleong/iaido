@@ -69,6 +69,12 @@ pub enum KeyError {
     NoSuchCommand(String),
 }
 
+impl From<KeyError> for io::Error {
+    fn from(error: KeyError) -> Self {
+        io::Error::new(io::ErrorKind::Other, format!("{:?}", error))
+    }
+}
+
 impl From<io::Error> for KeyError {
     fn from(error: io::Error) -> Self {
         KeyError::IO(error)

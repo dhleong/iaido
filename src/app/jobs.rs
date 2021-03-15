@@ -101,10 +101,11 @@ impl Jobs {
 
     /// Process messages from Jobs meant to be handled on the main thread.
     /// This should probably be called in looper.
-    pub fn process(state: &mut app::State) -> io::Result<()> {
+    pub fn process(state: &mut app::State) -> io::Result<bool> {
+        let mut dirty = false;
         for _ in 0..MAX_TASKS_PER_TICK {
             match state.jobs.next_action()? {
-                None => return Ok(()),
+                None => return Ok(dirty),
 
                 Some(MainThreadAction::OnState(closure)) => closure(state)?,
                 Some(MainThreadAction::Echo(msg)) => state.echo(msg.into()),
@@ -126,9 +127,11 @@ impl Jobs {
                     };
                 }
             };
+
+            dirty = true;
         }
 
-        Ok(())
+        Ok(dirty)
     }
 
     pub fn cancel_all(&mut self) {

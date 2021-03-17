@@ -1,4 +1,6 @@
-use std::time::Duration;
+use lazy_static::lazy_static;
+
+use std::{sync::Mutex, time::Duration};
 
 use crate::input::{Key, KeyError, KeySource, Keymap};
 use crate::ui::{UiEvent, UiEvents, UI};
@@ -69,6 +71,11 @@ impl<U: UI, UE: UiEvents> KeymapContext for AppKeySource<U, UE> {
     }
 }
 
+lazy_static! {
+    /// Tracks whether a non-main thread panicked
+    pub static ref PANICKED: Mutex<bool> = Mutex::new(false);
+}
+
 pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM)
 where
     U: UI,
@@ -87,7 +94,8 @@ where
 
         // TODO check if we need to change maps, etc.
 
-        if !app_keys.app.state.running {
+        let panicked = *PANICKED.lock().unwrap();
+        if !app_keys.app.state.running || panicked {
             // goodbye!
             break;
         }

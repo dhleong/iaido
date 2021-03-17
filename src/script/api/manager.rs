@@ -54,8 +54,8 @@ impl ApiManager {
 
     fn process_one(&self, app: &mut app::State, msg: ApiMessage<ApiRequest>) -> KeyResult {
         match msg.payload {
-            ApiRequest::Echo(msg) => {
-                app.echo(msg.into());
+            ApiRequest::Echo(text) => {
+                app.echo(text.into());
             }
         }
 

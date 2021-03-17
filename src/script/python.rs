@@ -51,23 +51,16 @@ impl PythonScriptingRuntime {
         let iaido = Arc::new(Iaido { app: api });
         Self {
             vm: vm::Interpreter::new_with_init(settings, move |vm| {
-                vm.builtins
-                    .set_item(
-                        "iaido",
-                        create_iaido_module(vm, iaido).expect("Unable to initialize iaido module"),
-                        vm,
-                    )
-                    .expect("Couldn't set iaido module");
+                let moved_api = iaido;
+                vm.add_native_module(
+                    "iaido".to_string(),
+                    Box::new(move |vm| {
+                        let internal = moved_api.clone();
+                        create_iaido_module(vm, internal)
+                            .expect("Unable to initialize iaido module")
+                    }),
+                );
 
-                // vm.add_native_module(
-                //     "iaido".to_string(),
-                //     Box::new(move |vm| {
-                //         let internal = moved_api;
-                //         // create_iaido_module(vm, moved_api)
-                //         //     .expect("Unable to initialize iaido module")
-                //         todo!()
-                //     }),
-                // );
                 vm::InitParameter::External
             }),
         }

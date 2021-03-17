@@ -74,9 +74,10 @@ impl ScriptingRuntime for PythonScriptingRuntime {
             let code_obj = runtime
                 .compile(
                     r#"
-                    import iaido
-                    iaido.echo('hello from python!')
-                    "#,
+import iaido
+iaido.echo('hello from python!')
+                    "#
+                    .trim(),
                     vm::compile::Mode::Exec,
                     path.to_string_lossy().to_string(),
                 )
@@ -89,7 +90,20 @@ impl ScriptingRuntime for PythonScriptingRuntime {
 
         // TODO: return the py exception properly
         match result {
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{:?}", e))),
+            Err(e) => {
+                let args = e.args();
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!(
+                        "{:?} ({:?}) / ({:?})\nCause: {:?}\nTraceback: {:?}",
+                        e,
+                        args,
+                        e.context(),
+                        e.cause(),
+                        e.traceback(),
+                    ),
+                ));
+            }
             _ => Ok(()),
         }
     }

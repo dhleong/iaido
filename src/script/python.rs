@@ -8,6 +8,7 @@ use std::{io, path::PathBuf, sync::Arc};
 use rustpython_vm as vm;
 use vm::{
     builtins::PyStrRef,
+    exceptions::PyBaseExceptionRef,
     pyobject::{ItemProtocol, PyObjectRef, PyResult},
 };
 
@@ -65,6 +66,15 @@ impl PythonScriptingRuntime {
             }),
         }
     }
+
+    fn format_exception(&mut self, e: PyBaseExceptionRef) -> String {
+        let mut output: Vec<u8> = Vec::new();
+        self.vm
+            .enter(|vm| vm::exceptions::write_exception(&mut output, vm, &e))
+            .unwrap();
+
+        String::from_utf8_lossy(&output).to_string()
+    }
 }
 
 impl ScriptingRuntime for PythonScriptingRuntime {
@@ -88,22 +98,12 @@ iaido.echo('hello from python!')
             Ok(())
         });
 
-        // TODO: return the py exception properly
         match result {
-            Err(e) => {
-                let args = e.args();
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!(
-                        "{:?} ({:?}) / ({:?})\nCause: {:?}\nTraceback: {:?}",
-                        e,
-                        args,
-                        e.context(),
-                        e.cause(),
-                        e.traceback(),
-                    ),
-                ));
-            }
+            Err(e) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                self.format_exception(e),
+            )),
+
             _ => Ok(()),
         }
     }

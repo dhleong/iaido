@@ -9,13 +9,13 @@ pub use api::ApiManager;
 use self::api::ApiManagerDelegate;
 
 pub trait ScriptingRuntime {
-    fn load(&mut self, app: ApiManagerDelegate, path: PathBuf) -> io::Result<()>;
+    fn load(&mut self, path: PathBuf) -> io::Result<()>;
 }
 
 pub trait ScriptingRuntimeFactory {
     fn handles_file(&self, path: &PathBuf) -> bool;
 
-    fn create(&self) -> Box<dyn ScriptingRuntime + Send>;
+    fn create(&self, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
 }
 
 pub struct ScriptingManager {
@@ -72,12 +72,12 @@ impl ScriptingManager {
         let runtime = if let Some(runtime) = runtimes.get_mut(&id) {
             runtime
         } else {
-            let runtime = self.runtime_factories[id].create();
+            let runtime = self.runtime_factories[id].create(api);
             runtimes.insert(id, runtime);
             runtimes.get_mut(&id).unwrap()
         };
 
-        runtime.load(api, path_buf)?;
+        runtime.load(path_buf)?;
 
         Ok(id)
     }

@@ -87,7 +87,9 @@ where
     loop {
         if let Err(e) = map.process(&mut app_keys) {
             let error = format!("ERR: {:?}", e);
-            app_keys.state_mut().echo(TextLines::raw(error));
+            for line in error.split("\n") {
+                app_keys.state_mut().echom(TextLines::raw(line.to_string()));
+            }
             // TODO fatal errors?
             continue;
         }

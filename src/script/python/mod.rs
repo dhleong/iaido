@@ -6,6 +6,7 @@ use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
 
 use super::{
     api::{core::IaidoApi, ApiManagerDelegate},
+    bindings::ScriptFile,
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
@@ -48,18 +49,12 @@ impl PythonScriptingRuntime {
 
 impl ScriptingRuntime for PythonScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> std::io::Result<()> {
-        let result: PyResult<()> = self.vm.enter(|runtime| {
+        let script = ScriptFile::read_from(path)?;
+
+        let result: PyResult<()> = self.vm.enter(move |runtime| {
             let scope = runtime.new_scope_with_builtins();
             let code_obj = runtime
-                .compile(
-                    r#"
-import iaido
-iaido.echo('hello from python!')
-                    "#
-                    .trim(),
-                    vm::compile::Mode::Exec,
-                    path.to_string_lossy().to_string(),
-                )
+                .compile(&script.code, vm::compile::Mode::Exec, script.path)
                 .map_err(|e| runtime.new_syntax_error(&e))?;
 
             runtime.run_code_obj(code_obj, scope)?;

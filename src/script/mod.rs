@@ -1,4 +1,5 @@
 mod api;
+mod bindings;
 mod python;
 
 use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};

@@ -1,38 +1,20 @@
-use crate::input::KeyError;
 use std::{io, path::PathBuf, sync::Arc};
 
 // NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
 use rustpython_vm as vm;
-use vm::{
-    builtins::PyStrRef,
-    exceptions::PyBaseExceptionRef,
-    pyobject::{ItemProtocol, PyObjectRef, PyResult},
-};
+use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
 
 use super::{
     api::{core::IaidoApi, ApiManagerDelegate},
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
+mod wrapper;
+
+use wrapper::create_iaido_module;
+
 pub struct PythonScriptingRuntime {
     vm: vm::Interpreter,
-}
-
-fn create_iaido_module(
-    vm: &vm::VirtualMachine,
-    api: Arc<IaidoApi<ApiManagerDelegate>>,
-) -> PyResult<PyObjectRef> {
-    let dict = vm.ctx.new_dict();
-    dict.set_item(
-        "echo",
-        vm.ctx
-            .new_function("echo", move |message: PyStrRef, vm: &vm::VirtualMachine| {
-                wrap_error(vm, api.echo(message.to_string()))
-            }),
-        vm,
-    )?;
-
-    Ok(vm.new_module("iaido", dict))
 }
 
 impl PythonScriptingRuntime {
@@ -41,12 +23,10 @@ impl PythonScriptingRuntime {
         let iaido = Arc::new(IaidoApi::new(api));
         Self {
             vm: vm::Interpreter::new_with_init(settings, move |vm| {
-                let moved_api = iaido;
                 vm.add_native_module(
                     "iaido".to_string(),
                     Box::new(move |vm| {
-                        let internal = moved_api.clone();
-                        create_iaido_module(vm, internal)
+                        create_iaido_module(vm, iaido.clone())
                             .expect("Unable to initialize iaido module")
                     }),
                 );
@@ -95,13 +75,6 @@ iaido.echo('hello from python!')
 
             _ => Ok(()),
         }
-    }
-}
-
-fn wrap_error<T>(vm: &vm::VirtualMachine, result: Result<T, KeyError>) -> PyResult<T> {
-    match result {
-        Ok(v) => Ok(v),
-        Err(e) => Err(vm.new_runtime_error(format!("{:?}", e))),
     }
 }
 

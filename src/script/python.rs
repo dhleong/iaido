@@ -1,7 +1,4 @@
-use crate::{
-    input::{maps::KeyResult, KeyError},
-    script::api,
-};
+use crate::input::KeyError;
 use std::{io, path::PathBuf, sync::Arc};
 
 // NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
@@ -12,27 +9,19 @@ use vm::{
     pyobject::{ItemProtocol, PyObjectRef, PyResult},
 };
 
-use super::{api::ApiManagerDelegate, ScriptingRuntime, ScriptingRuntimeFactory};
+use super::{
+    api::{core::IaidoApi, ApiManagerDelegate},
+    ScriptingRuntime, ScriptingRuntimeFactory,
+};
 
 pub struct PythonScriptingRuntime {
     vm: vm::Interpreter,
 }
 
-struct Iaido {
-    app: ApiManagerDelegate,
-}
-
-impl Iaido {
-    pub fn echo(&self, message: String) -> KeyResult {
-        api::core::echo(&self.app, message.to_string())
-    }
-}
-
-fn create_iaido_module(vm: &vm::VirtualMachine, api: Arc<Iaido>) -> PyResult<PyObjectRef> {
-    // let echo = move |message: PyStrRef, vm: &vm::VirtualMachine| {
-    //     wrap_error(vm, api::core::echo(&app, message.to_string()))
-    // };
-
+fn create_iaido_module(
+    vm: &vm::VirtualMachine,
+    api: Arc<IaidoApi<ApiManagerDelegate>>,
+) -> PyResult<PyObjectRef> {
     let dict = vm.ctx.new_dict();
     dict.set_item(
         "echo",
@@ -49,7 +38,7 @@ fn create_iaido_module(vm: &vm::VirtualMachine, api: Arc<Iaido>) -> PyResult<PyO
 impl PythonScriptingRuntime {
     fn new(api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
-        let iaido = Arc::new(Iaido { app: api });
+        let iaido = Arc::new(IaidoApi::new(api));
         Self {
             vm: vm::Interpreter::new_with_init(settings, move |vm| {
                 let moved_api = iaido;

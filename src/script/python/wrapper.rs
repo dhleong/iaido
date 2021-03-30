@@ -9,20 +9,50 @@ use vm::{
     pyobject::{ItemProtocol, PyObjectRef, PyResult},
 };
 
-use crate::input::KeyError;
-use crate::script::api::{core::IaidoApi, ApiManagerDelegate};
+use crate::{
+    editing::Id,
+    script::api::{core::IaidoApi, ApiManagerDelegate},
+};
+use crate::{input::KeyError, script::api::core::ScriptingFnRef};
 
 pub fn create_iaido_module(
     vm: &vm::VirtualMachine,
+    runtime_id: Id,
     api: Arc<IaidoApi<ApiManagerDelegate>>,
 ) -> PyResult<PyObjectRef> {
     let dict = vm.ctx.new_dict();
+    let fns = vm.ctx.new_dict();
+
+    vm.current_globals()
+        .set_item("__iaido_fns__", fns.as_object().clone(), vm)?;
+
+    let api_echo = api.clone();
     dict.set_item(
         "echo",
         vm.ctx
             .new_function("echo", move |message: PyStrRef, vm: &vm::VirtualMachine| {
-                wrap_error(vm, api.echo(message.to_string()))
+                wrap_error(vm, api_echo.echo(message.to_string()))
             }),
+        vm,
+    )?;
+
+    let api_set_keymap = api.clone();
+    dict.set_item(
+        "set_keymap",
+        vm.ctx.new_function(
+            "set_keymap",
+            move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
+                fns.set_item("0", f, vm)?;
+                wrap_error(
+                    vm,
+                    api_set_keymap.set_keymap(
+                        modes.to_string(),
+                        from_keys.to_string(),
+                        ScriptingFnRef::new(runtime_id, 0),
+                    ),
+                )
+            },
+        ),
         vm,
     )?;
 
@@ -33,5 +63,13 @@ fn wrap_error<T>(vm: &vm::VirtualMachine, result: Result<T, KeyError>) -> PyResu
     match result {
         Ok(v) => Ok(v),
         Err(e) => Err(vm.new_runtime_error(format!("{:?}", e))),
+    }
+}
+
+pub fn unwrap_error<T>(_vm: &vm::VirtualMachine, result: PyResult<T>) -> Result<T, KeyError> {
+    // TODO: format exception better
+    match result {
+        Ok(v) => Ok(v),
+        Err(e) => Err(KeyError::InvalidInput(format!("{:?}", e))),
     }
 }

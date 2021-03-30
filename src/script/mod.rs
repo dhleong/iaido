@@ -4,19 +4,24 @@ mod python;
 
 use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 
-use crate::{app, editing::Id};
+use crate::{
+    app,
+    editing::Id,
+    input::{maps::KeyResult, KeyError},
+};
 pub use api::ApiManager;
 
-use self::api::ApiManagerDelegate;
+use self::api::{core::ScriptingFnRef, ApiManagerDelegate};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> io::Result<()>;
+    fn invoke(&mut self, f: ScriptingFnRef) -> KeyResult;
 }
 
 pub trait ScriptingRuntimeFactory {
     fn handles_file(&self, path: &PathBuf) -> bool;
 
-    fn create(&self, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
+    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
 }
 
 pub struct ScriptingManager {
@@ -73,7 +78,7 @@ impl ScriptingManager {
         let runtime = if let Some(runtime) = runtimes.get_mut(&id) {
             runtime
         } else {
-            let runtime = self.runtime_factories[id].create(api);
+            let runtime = self.runtime_factories[id].create(id, api);
             runtimes.insert(id, runtime);
             runtimes.get_mut(&id).unwrap()
         };
@@ -81,6 +86,16 @@ impl ScriptingManager {
         runtime.load(path_buf)?;
 
         Ok(id)
+    }
+
+    pub fn invoke(&self, f: ScriptingFnRef) -> KeyResult {
+        let mut runtimes = self.runtimes.borrow_mut();
+        if let Some(runtime) = runtimes.get_mut(&f.runtime) {
+            runtime.invoke(f)
+        } else {
+            // maybe panic?
+            Err(KeyError::InvalidInput("No such runtime".to_string()))
+        }
     }
 
     pub fn process(mut state: &mut app::State) -> io::Result<bool> {

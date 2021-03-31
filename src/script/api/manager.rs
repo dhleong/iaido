@@ -1,11 +1,17 @@
-use std::sync::{mpsc, Arc, Mutex};
+use std::{
+    io,
+    sync::{mpsc, Arc, Mutex},
+};
 
 use crate::{
     app,
-    input::{maps::KeyResult, KeyError},
+    input::{
+        maps::{KeyResult, UserKeyHandler},
+        KeyError, KeymapContext,
+    },
 };
 
-use super::{ApiDelegate, ApiRequest, ApiResult};
+use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResult};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -57,6 +63,11 @@ impl ApiManager {
             ApiRequest::Echo(text) => {
                 app.echo(text.into());
             }
+
+            ApiRequest::SetKeymapFn(mode, keys, f) => {
+                // TODO store this... somewhere
+                create_user_keyhandler(f);
+            }
         }
 
         match msg.response.send(Ok(())) {
@@ -66,6 +77,24 @@ impl ApiManager {
 
         Ok(())
     }
+}
+
+fn create_user_keyhandler(f: ScriptingFnRef) -> Box<UserKeyHandler> {
+    Box::new(move |mut ctx| {
+        let scripting = ctx.state().scripting.clone();
+        ctx.state_mut()
+            .jobs
+            .start(move |_| async move {
+                match scripting.try_lock() {
+                    Ok(scripting) => {
+                        scripting.invoke(f)?;
+                        Ok(())
+                    }
+                    Err(_) => Err(io::ErrorKind::WouldBlock.into()),
+                }
+            })
+            .join_interruptably(&mut ctx)
+    })
 }
 
 pub struct ApiManagerDelegate {

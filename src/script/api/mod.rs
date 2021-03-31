@@ -5,8 +5,11 @@ mod manager;
 
 pub use manager::{ApiManager, ApiManagerDelegate};
 
+use self::core::ScriptingFnRef;
+
 pub enum ApiRequest {
     Echo(String),
+    SetKeymapFn(String, String, ScriptingFnRef),
 }
 
 pub type ApiResult = Result<(), KeyError>;

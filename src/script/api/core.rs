@@ -6,6 +6,7 @@ pub struct IaidoApi<A: ApiDelegate> {
     api: A,
 }
 
+#[derive(Clone, Copy)]
 pub struct ScriptingFnRef {
     pub runtime: Id,
     pub id: Id,
@@ -27,6 +28,10 @@ impl<A: ApiDelegate> IaidoApi<A> {
     }
 
     pub fn set_keymap(&self, modes: String, from_keys: String, to: ScriptingFnRef) -> KeyResult {
-        self.api.perform(ApiRequest::Echo(from_keys.to_string()))
+        self.api.perform(ApiRequest::SetKeymapFn(
+            modes.to_string(),
+            from_keys.to_string(),
+            to,
+        ))
     }
 }

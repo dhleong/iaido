@@ -46,6 +46,7 @@ impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
 
 pub type KeyResult = Result<(), KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
+pub type UserKeyHandler = KeyHandler<()>;
 
 /// Syntactic sugar for declaring a key handler
 #[macro_export]

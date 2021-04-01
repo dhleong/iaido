@@ -1,13 +1,14 @@
-use std::{collections::HashMap, ops};
+use std::{collections::HashMap, ops, rc::Rc};
 
 use crate::input::Key;
 
 use super::KeyHandler;
 
+#[derive(Clone)]
 pub struct KeyTreeNode {
     pub children: HashMap<Key, KeyTreeNode>,
-    handler: Option<Box<KeyHandler>>,
-    handler_override: Option<Box<KeyHandler>>,
+    handler: Option<Rc<KeyHandler>>,
+    handler_override: Option<Rc<KeyHandler>>,
 }
 
 impl KeyTreeNode {
@@ -19,7 +20,7 @@ impl KeyTreeNode {
         }
     }
 
-    pub fn get_handler(&self) -> Option<&Box<KeyHandler>> {
+    pub fn get_handler(&self) -> Option<&Rc<KeyHandler>> {
         if let Some(overridden) = &self.handler_override {
             Some(overridden)
         } else if let Some(handler) = &self.handler {
@@ -31,7 +32,7 @@ impl KeyTreeNode {
 
     pub fn insert(&mut self, keys: &[Key], handler: Box<KeyHandler>) {
         if keys.is_empty() {
-            self.handler = Some(handler);
+            self.handler = Some(Rc::new(handler));
         } else {
             let first_key = keys[0];
             let node = self

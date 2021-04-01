@@ -17,7 +17,7 @@ pub struct KeyHandlerContext<'a, T> {
 }
 
 impl<T: Keymap> KeyHandlerContext<'_, T> {
-    fn feed_keys(mut self, keys: Vec<Key>) -> Result<Self, KeyError> {
+    pub fn feed_keys(mut self, keys: Vec<Key>) -> Result<Self, KeyError> {
         let source = MemoryKeySource::from(keys);
         let mut context = KeymapContextWithKeys::new(self.context, source);
 

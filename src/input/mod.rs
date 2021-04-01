@@ -12,6 +12,8 @@ use std::time::Duration;
 use crate::delegate_keysource;
 use delegate::delegate;
 
+use self::maps::KeyHandler;
+
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
 
@@ -106,6 +108,30 @@ impl<'a, K: KeySource> KeymapContext for KeymapContextWithKeys<'a, K> {
 
 impl<'a, K: KeySource> KeySource for KeymapContextWithKeys<'a, K> {
     delegate_keysource!(keys);
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum RemapMode {
+    VimNormal,
+    VimInsert,
+    User(String),
+}
+
+pub trait Remappable<T> {
+    fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
+}
+
+impl<T: Keymap> dyn Remappable<T> {
+    fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
+        self.remap_keys_fn(
+            mode,
+            from,
+            Box::new(move |ctx| {
+                ctx.feed_keys(to.clone())?;
+                Ok(())
+            }),
+        );
+    }
 }
 
 pub trait Keymap {

@@ -5,7 +5,7 @@ mod normal;
 mod prompt;
 mod tree;
 
-use std::rc::Rc;
+use std::{collections::HashMap, ops, rc::Rc};
 
 use insert::vim_insert_mode;
 use normal::vim_normal_mode;
@@ -16,7 +16,7 @@ use crate::{
     editing::motion::MotionRange,
     input::{
         completion::{state::BoxedCompleter, Completer},
-        Key, KeyError, Keymap, KeymapContext,
+        Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
     },
 };
 
@@ -64,6 +64,31 @@ impl VimMode {
     }
 }
 
+impl ops::Add<Option<&KeyTreeNode>> for VimMode {
+    type Output = VimMode;
+
+    fn add(self, rhs: Option<&KeyTreeNode>) -> Self::Output {
+        if let Some(rhs) = rhs {
+            self + rhs
+        } else {
+            self
+        }
+    }
+}
+
+impl ops::Add<&KeyTreeNode> for VimMode {
+    type Output = VimMode;
+
+    fn add(self, rhs: &KeyTreeNode) -> Self::Output {
+        let cloned: KeyTreeNode = rhs.clone();
+        let mut new = VimMode::new(self.id, self.mappings + cloned);
+        new.after_handler = self.after_handler;
+        new.completer = self.completer;
+        new.default_handler = self.default_handler;
+        new
+    }
+}
+
 impl std::fmt::Debug for VimMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[VimMode]")
@@ -78,6 +103,7 @@ pub struct VimKeymap {
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
     active_completer: Option<Rc<dyn Completer>>,
+    user_maps: HashMap<RemapMode, KeyTreeNode>,
 }
 
 impl VimKeymap {
@@ -115,6 +141,7 @@ impl Default for VimKeymap {
             mode_stack: VimModeStack::default(),
             keys_buffer: Vec::default(),
             active_completer: None,
+            user_maps: HashMap::new(),
         }
     }
 }
@@ -127,10 +154,18 @@ impl Keymap for VimKeymap {
             (mode, true, false)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
-            (vim_insert_mode(&buffer_source), false, false)
+            (
+                vim_insert_mode(&buffer_source) + self.user_maps.get(&RemapMode::VimInsert),
+                false,
+                false,
+            )
         } else {
             self.render_keys_buffer(context);
-            (vim_normal_mode(), false, true)
+            (
+                vim_normal_mode() + self.user_maps.get(&RemapMode::VimNormal),
+                false,
+                true,
+            )
         };
 
         if !show_keys && !self.keys_buffer.is_empty() {
@@ -215,6 +250,20 @@ impl Keymap for VimKeymap {
         }
 
         result
+    }
+}
+
+impl Remappable<VimKeymap> for VimKeymap {
+    fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler>) {
+        let tree = if let Some(tree) = self.user_maps.get_mut(&mode) {
+            tree
+        } else {
+            let new_tree = KeyTreeNode::root();
+            self.user_maps.insert(mode.clone(), new_tree);
+            self.user_maps.get_mut(&mode).unwrap()
+        };
+
+        tree.insert(&keys, handler);
     }
 }
 

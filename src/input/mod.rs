@@ -117,11 +117,9 @@ pub enum RemapMode {
     User(String),
 }
 
-pub trait Remappable<T> {
+pub trait Remappable<T: Keymap> {
     fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
-}
 
-impl<T: Keymap> dyn Remappable<T> {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
         self.remap_keys_fn(
             mode,

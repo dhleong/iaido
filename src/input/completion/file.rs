@@ -1,4 +1,5 @@
 use genawaiter::{sync::gen, yield_};
+use std::fs::DirEntry;
 use std::path::PathBuf;
 
 use crate::declare_simple_completer;
@@ -12,6 +13,7 @@ declare_simple_completer!(
         // TODO we need to allow spaces if escaped
         let given_word = context.word_where(is_path_word).to_string();
         let given_path = PathBuf::from(given_word.clone());
+
         gen!({
             let mut path = if let Ok(path) = std::env::current_dir() {
                 path
@@ -31,10 +33,12 @@ declare_simple_completer!(
 
             if let Some(dir_source) = dir_source {
                 if let Ok(dir) = dir_source.read_dir() {
-                    for sibling in dir {
-                        if let Ok(entry) = sibling {
-                            yield_!(entry.file_name().to_string_lossy().to_string());
-                        }
+                    let mut siblings: Vec<DirEntry> = dir.into_iter()
+                        .filter_map(|entry| entry.ok())
+                        .collect();
+                    siblings.sort_by_key(|e| e.file_name());
+                    for sibling in siblings {
+                        yield_!(sibling.file_name().to_string_lossy().to_string());
                     }
                 }
             }
@@ -55,7 +59,7 @@ mod tests {
         let suggestions = complete(&FileCompleter, &mut app);
         assert_eq!(
             suggestions,
-            vec!["Cargo.toml".to_string(), "Cargo.lock".to_string()]
+            vec!["Cargo.lock".to_string(), "Cargo.toml".to_string()]
         );
     }
 

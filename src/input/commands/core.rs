@@ -69,13 +69,13 @@ fn quit_window(context: &mut CommandHandlerContext, args: HideBufArgs) -> KeyRes
 
 #[cfg(test)]
 mod tests {
-    use crate::editing::motion::tests::TestKeymapContext;
+    use crate::editing::motion::tests::TestKeyHandlerContext;
 
     use super::*;
 
     #[test]
     fn quit_single_windows_test() -> KeyResult {
-        let mut context = TestKeymapContext::empty();
+        let mut context = TestKeyHandlerContext::empty();
         let mut ctx = context.command_context("q");
         ctx.state_mut().current_tab_mut().vsplit();
 
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn quit_connection_window_test() -> KeyResult {
-        let mut context = TestKeymapContext::empty();
+        let mut context = TestKeyHandlerContext::empty();
         let mut ctx = context.command_context("q");
 
         let state = ctx.state_mut();

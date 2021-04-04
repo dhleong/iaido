@@ -96,7 +96,7 @@ mod tests {
     #[cfg(test)]
     mod check_hide_buffer {
         use crate::editing::FocusDirection;
-        use crate::{connection::Connection, editing::motion::tests::TestKeymapContext};
+        use crate::{connection::Connection, editing::motion::tests::TestKeyHandlerContext};
 
         use super::*;
 
@@ -118,7 +118,7 @@ mod tests {
 
         #[test]
         fn disallow_hiding_connlayout() -> KeyResult {
-            let mut context = TestKeymapContext::empty();
+            let mut context = TestKeyHandlerContext::empty();
             let mut ctx = context.command_context("q");
 
             let state = ctx.state_mut();

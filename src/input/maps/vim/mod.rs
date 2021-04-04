@@ -16,7 +16,7 @@ use crate::{
     editing::motion::MotionRange,
     input::{
         completion::{state::BoxedCompleter, Completer},
-        Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
+        BoxableKeymap, Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
     },
 };
 
@@ -250,6 +250,12 @@ impl Keymap for VimKeymap {
         }
 
         result
+    }
+}
+
+impl BoxableKeymap for VimKeymap {
+    fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
+        crate::input::remap_keys_to_fn(self, mode, from, to)
     }
 }
 

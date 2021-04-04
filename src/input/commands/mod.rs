@@ -17,19 +17,25 @@ use self::{
     log::declare_log, registry::CommandRegistry, window::declare_window,
 };
 
-use super::{maps::KeyResult, KeySource, KeymapContext};
+use super::{maps::KeyResult, BoxableKeymap, KeySource, KeymapContext};
 
 pub type CommandHandler = dyn Fn(&mut CommandHandlerContext<'_>) -> KeyResult;
 
 pub struct CommandHandlerContext<'a> {
     pub context: Box<&'a mut dyn KeymapContext>,
+    pub keymap: Box<&'a mut dyn BoxableKeymap>,
     pub input: String,
 }
 
 impl<'a> CommandHandlerContext<'a> {
-    pub fn new<T: KeymapContext>(context: &'a mut T, input: String) -> Self {
+    pub fn new<T: KeymapContext, K: BoxableKeymap>(
+        context: &'a mut T,
+        keymap: &'a mut K,
+        input: String,
+    ) -> Self {
         Self {
             context: Box::new(context),
+            keymap: Box::new(keymap),
             input,
         }
     }

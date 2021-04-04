@@ -86,6 +86,24 @@ pub trait KeymapContext: KeySource {
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
 
+impl KeymapContext for Box<&mut dyn KeymapContext> {
+    delegate! {
+        to (**self) {
+            fn state(&self) -> &crate::app::State;
+            fn state_mut(&mut self) -> &mut crate::app::State;
+        }
+    }
+}
+
+impl KeySource for Box<&mut dyn KeymapContext> {
+    delegate! {
+        to (**self) {
+            fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
+            fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+        }
+    }
+}
+
 pub struct KeymapContextWithKeys<'a, K: KeySource> {
     base: Box<&'a mut dyn KeymapContext>,
     keys: K,
@@ -117,18 +135,35 @@ pub enum RemapMode {
     User(String),
 }
 
-pub trait Remappable<T: Keymap> {
-    fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
+pub trait BoxableKeymap {
+    fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+}
 
-    fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
-        self.remap_keys_fn(
-            mode,
-            from,
-            Box::new(move |ctx| {
-                ctx.feed_keys(to.clone())?;
-                Ok(())
-            }),
-        );
+pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
+    keymap: &mut R,
+    mode: RemapMode,
+    from: Vec<Key>,
+    to: Vec<Key>,
+) {
+    keymap.remap_keys_fn(
+        mode,
+        from,
+        Box::new(move |ctx| {
+            ctx.feed_keys(to.clone())?;
+            Ok(())
+        }),
+    );
+}
+
+pub trait Remappable<T: Keymap>: BoxableKeymap {
+    fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
+}
+
+impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
+    delegate! {
+        to (**self) {
+            fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+        }
     }
 }
 

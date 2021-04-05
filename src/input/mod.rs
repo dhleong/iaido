@@ -12,6 +12,8 @@ use std::time::Duration;
 use crate::delegate_keysource;
 use delegate::delegate;
 
+use self::maps::KeyHandler;
+
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
 
@@ -84,6 +86,24 @@ pub trait KeymapContext: KeySource {
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
 
+impl KeymapContext for Box<&mut dyn KeymapContext> {
+    delegate! {
+        to (**self) {
+            fn state(&self) -> &crate::app::State;
+            fn state_mut(&mut self) -> &mut crate::app::State;
+        }
+    }
+}
+
+impl KeySource for Box<&mut dyn KeymapContext> {
+    delegate! {
+        to (**self) {
+            fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
+            fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+        }
+    }
+}
+
 pub struct KeymapContextWithKeys<'a, K: KeySource> {
     base: Box<&'a mut dyn KeymapContext>,
     keys: K,
@@ -106,6 +126,45 @@ impl<'a, K: KeySource> KeymapContext for KeymapContextWithKeys<'a, K> {
 
 impl<'a, K: KeySource> KeySource for KeymapContextWithKeys<'a, K> {
     delegate_keysource!(keys);
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum RemapMode {
+    VimNormal,
+    VimInsert,
+    User(String),
+}
+
+pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
+    keymap: &mut R,
+    mode: RemapMode,
+    from: Vec<Key>,
+    to: Vec<Key>,
+) {
+    keymap.remap_keys_fn(
+        mode,
+        from,
+        Box::new(move |ctx| {
+            ctx.feed_keys(to.clone())?;
+            Ok(())
+        }),
+    );
+}
+
+pub trait Remappable<T: Keymap>: BoxableKeymap {
+    fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
+}
+
+pub trait BoxableKeymap {
+    fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+}
+
+impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
+    delegate! {
+        to (**self) {
+            fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+        }
+    }
 }
 
 pub trait Keymap {

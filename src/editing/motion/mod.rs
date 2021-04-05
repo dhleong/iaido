@@ -198,7 +198,7 @@ pub mod tests {
             },
             completion::{tests::StaticCompleter, CompletableContext},
             source::memory::MemoryKeySource,
-            KeySource, Keymap, KeymapContext,
+            BoxableKeymap, KeySource, Keymap, KeymapContext,
         },
         tui::{
             rendering::display::tests::TestableDisplay, Display, LayoutContext, RenderContext,
@@ -213,22 +213,40 @@ pub mod tests {
         state: app::State,
     }
 
-    impl TestKeymapContext {
-        pub fn empty() -> TestKeymapContext {
-            TestKeymapContext::from_keys("")
+    pub struct TestBoxableKeymap;
+
+    impl BoxableKeymap for TestBoxableKeymap {
+        fn remap_keys(
+            &mut self,
+            _mode: crate::input::RemapMode,
+            _from: Vec<crate::input::Key>,
+            _to: Vec<crate::input::Key>,
+        ) {
+            todo!()
         }
-        pub fn from_keys(keys: &'static str) -> TestKeymapContext {
-            TestKeymapContext {
-                state: app::State::default(),
-                keys: MemoryKeySource::from_keys(keys),
+    }
+
+    pub struct TestKeyHandlerContext {
+        pub context: TestKeymapContext,
+        pub keymap: TestBoxableKeymap,
+    }
+
+    impl TestKeyHandlerContext {
+        pub fn empty() -> Self {
+            Self::from_keys("")
+        }
+        pub fn from_keys(keys: &'static str) -> Self {
+            TestKeyHandlerContext {
+                context: TestKeymapContext {
+                    state: app::State::default(),
+                    keys: MemoryKeySource::from_keys(keys),
+                },
+                keymap: TestBoxableKeymap,
             }
         }
 
         pub fn command_context(&mut self, input: &'static str) -> CommandHandlerContext {
-            CommandHandlerContext {
-                context: Box::new(self),
-                input: input.to_string(),
-            }
+            CommandHandlerContext::new(&mut self.context, &mut self.keymap, input.to_string())
         }
     }
 

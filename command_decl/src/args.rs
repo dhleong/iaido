@@ -28,11 +28,12 @@ macro_rules! build_arg_handler {
 
     ($map:ident -> $type:ty => |$ctx:ident, $raw:ident| $parse:expr, $($tail:tt)*) => {
         $map.insert(stringify!($type).to_string(), Box::new(|$ctx| {
-            let arg = $ctx.arg_name;
+            let arg = $ctx.arg_name.clone();
             let args_iter = $ctx.args_iter_name;
+            let parse = $parse;
             let gen = quote! {
                 let #arg = if let Some($raw) = #args_iter.next() {
-                    Some($parse)
+                    Some(#parse)
                 } else {
                     None
                 };
@@ -40,6 +41,14 @@ macro_rules! build_arg_handler {
             gen.into()
         }));
         build_arg_handler! { $map -> $($tail)* };
+    };
+
+    ($map:ident -> $type:ty => |$raw:ident| $parse:expr, $($tail:tt)*) => {
+        build_arg_handler! { $map ->
+            $type => |ctx, $raw| { quote! { $parse } },
+
+            $($tail)*
+        };
     };
 }
 
@@ -49,7 +58,24 @@ fn create_arg_parser() -> ArgParser {
     let mut map: HashMap<String, Box<GenerateArgParseFn>> = HashMap::new();
 
     build_arg_handler! { map ->
-        String => |ctx, raw| raw.to_string(),
+        String => |raw| raw.to_string(),
+        PathBuf => |raw| std::path::PathBuf::from(raw),
+        usize => |ctx, raw| {
+            let command = ctx.command_name;
+            let arg = ctx.arg_name.clone();
+            quote! {
+                match raw.parse::<usize>() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(
+                            crate::input::KeyError::InvalidInput(format!(
+                            "{}: argument `{}`: expected integer: {}",
+                            stringify!(#command), stringify!(#arg), e
+                        )));
+                    }
+                }
+            }
+        },
     }
 
     ArgParser { map }

@@ -20,23 +20,16 @@ struct CommandArg {
 }
 
 impl CommandArg {
-    // TODO
     pub fn to_tokens(
         &self,
         arg_parser: &ArgParser,
         command: Ident,
         args_ident: Ident,
     ) -> TokensResult {
-        let CommandArg { name, kind } = self;
         let context = self.context(command, args_ident)?;
         let block: proc_macro2::TokenStream = arg_parser.parse(context)?.into();
 
-        let gen = quote! {
-            // $crate::args::command_arg { #command@#args_ident -> #name: #kind };
-            let #name: #kind = #block;
-        };
-
-        Ok(gen.into())
+        Ok(block.into())
     }
 
     fn context(

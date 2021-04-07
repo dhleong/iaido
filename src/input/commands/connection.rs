@@ -15,7 +15,7 @@ declare_commands!(declare_connection {
 
     pub fn disconnect(context) {
         disconnect(context)
-    },
+    }
 });
 
 fn parse_url(url: &str) -> Result<Url, url::ParseError> {

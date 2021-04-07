@@ -1,86 +1,13 @@
 mod args;
+mod parse;
 
-use args::{ArgContext, ArgParser};
+use args::ArgParser;
+use parse::CommandArg;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
-use proc_macro2_diagnostics::{Diagnostic, SpanDiagnosticExt};
 use quote::quote;
-use syn::{parenthesized, parse_macro_input, Block, GenericArgument, Ident, Token, Type};
-use syn::{
-    parse::{Parse, ParseStream},
-    PathArguments,
-};
-
-type TokensResult = Result<TokenStream, Diagnostic>;
-type SynResult<T> = syn::parse::Result<T>;
-
-struct CommandArg {
-    pub name: Ident,
-    pub kind: Type,
-}
-
-impl CommandArg {
-    pub fn to_tokens(
-        &self,
-        arg_parser: &ArgParser,
-        command: Ident,
-        args_ident: Ident,
-    ) -> TokensResult {
-        let context = self.context(command, args_ident)?;
-        let block: proc_macro2::TokenStream = arg_parser.parse(context)?.into();
-
-        Ok(block.into())
-    }
-
-    fn context(
-        &self,
-        command_name: Ident,
-        args_iter_name: Ident,
-    ) -> Result<ArgContext, Diagnostic> {
-        let CommandArg { name, kind } = self;
-
-        if let Type::Path(stream) = kind {
-            let first = &stream.path.segments[0];
-            let type_name = first.ident.clone();
-            if type_name.to_string().find("Optional").is_some() {
-                match first.arguments {
-                    PathArguments::AngleBracketed(ref args) => {
-                        if let GenericArgument::Type(Type::Path(ref actual_type)) = args.args[0] {
-                            return Ok(ArgContext {
-                                command_name,
-                                args_iter_name,
-                                arg_name: name.clone(),
-                                arg_kind: actual_type.path.segments[0].ident.to_string(),
-                                is_optional: true,
-                            });
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            return Ok(ArgContext {
-                command_name,
-                args_iter_name,
-                arg_name: name.clone(),
-                arg_kind: type_name.to_string(),
-                is_optional: false,
-            });
-        }
-
-        Err(name.span().error("Unexpected arg type"))
-    }
-}
-
-impl Parse for CommandArg {
-    fn parse(input: ParseStream) -> SynResult<Self> {
-        input.parse::<Token![,]>()?;
-        let name: Ident = input.parse()?;
-        input.parse::<Token![:]>()?;
-        let kind: Type = input.parse()?;
-        return Ok(CommandArg { name, kind });
-    }
-}
+use syn::parse::{Parse, ParseStream, Result};
+use syn::{parenthesized, parse_macro_input, Block, Ident, Token};
 
 struct OneCommandDecl {
     pub name: Ident,
@@ -90,7 +17,7 @@ struct OneCommandDecl {
 }
 
 impl OneCommandDecl {
-    pub fn to_tokens(&self, arg_parser: &ArgParser, registry_name: Ident) -> TokensResult {
+    pub fn to_tokens(&self, arg_parser: &ArgParser, registry_name: Ident) -> Result<TokenStream> {
         let OneCommandDecl {
             name,
             context_ident,
@@ -132,7 +59,7 @@ impl OneCommandDecl {
 }
 
 impl Parse for OneCommandDecl {
-    fn parse(input: ParseStream) -> SynResult<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         input.parse::<Token![pub]>()?;
         input.parse::<Token![fn]>()?;
         let name: Ident = input.parse()?;
@@ -143,7 +70,7 @@ impl Parse for OneCommandDecl {
 
         let mut args = vec![];
         loop {
-            let arg_result: SynResult<CommandArg> = parens.parse();
+            let arg_result: Result<CommandArg> = parens.parse();
             if let Ok(arg) = arg_result {
                 args.push(arg);
             } else {
@@ -166,7 +93,7 @@ struct CommandDecl {
 }
 
 impl Parse for CommandDecl {
-    fn parse(input: ParseStream) -> SynResult<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let registry_name: Ident = input.parse()?;
         input.parse::<Token![-]>()?;
         input.parse::<Token![>]>()?;
@@ -177,7 +104,7 @@ impl Parse for CommandDecl {
             // consume an optional comma
             let _ = input.parse::<Token![,]>();
 
-            let command: SynResult<OneCommandDecl> = input.parse();
+            let command: Result<OneCommandDecl> = input.parse();
             if let Ok(command) = command {
                 commands.push(command);
             } else {
@@ -192,7 +119,7 @@ impl Parse for CommandDecl {
     }
 }
 
-fn impl_command_decl(decl: &CommandDecl) -> TokensResult {
+fn impl_command_decl(decl: &CommandDecl) -> Result<TokenStream> {
     let mut output = TokenStream::new();
     let args = ArgParser::default();
     for command in &decl.commands {
@@ -206,6 +133,6 @@ pub fn command_decl(input: TokenStream) -> TokenStream {
     let decl = parse_macro_input!(input as CommandDecl);
     match impl_command_decl(&decl) {
         Ok(tokens) => tokens.into(),
-        Err(diag) => diag.emit_as_expr_tokens().into(),
+        Err(diag) => diag.to_compile_error().into(),
     }
 }

@@ -5,14 +5,14 @@ use quote::quote;
 use syn::parse::{Error, Result};
 use syn::Ident;
 
+use crate::parse::CommandArg;
+
 type GenerateArgParseFn = dyn Fn(ArgContext) -> TokenStream + Send;
 
 pub struct ArgContext {
     pub command_name: Ident,
-    pub arg_name: Ident,
-    pub arg_kind: String,
+    pub arg: CommandArg,
     pub args_iter_name: Ident,
-    pub is_optional: bool,
 }
 
 pub struct ArgParser {
@@ -28,7 +28,7 @@ macro_rules! build_arg_handler {
 
     ($map:ident -> $type:ty => |$ctx:ident, $raw:ident| $parse:expr, $($tail:tt)*) => {
         $map.insert(stringify!($type).to_string(), Box::new(|$ctx| {
-            let arg = $ctx.arg_name.clone();
+            let arg = $ctx.arg.name.clone();
             let args_iter = $ctx.args_iter_name;
             let parse = $parse;
             let gen = quote! {
@@ -62,7 +62,7 @@ fn create_arg_parser() -> ArgParser {
         PathBuf => |raw| std::path::PathBuf::from(raw),
         usize => |ctx, raw| {
             let command = ctx.command_name;
-            let arg = ctx.arg_name.clone();
+            let arg = ctx.arg.name.clone();
             quote! {
                 match raw.parse::<usize>() {
                     Ok(v) => v,
@@ -85,10 +85,10 @@ fn create_arg_parser() -> ArgParser {
 
 impl ArgParser {
     pub fn parse(&self, context: ArgContext) -> Result<TokenStream> {
-        if let Some(handler) = self.map.get(&context.arg_kind) {
+        if let Some(handler) = self.map.get(&context.arg.type_name) {
             let command_name = context.command_name.clone();
-            let arg_name = context.arg_name.clone();
-            let is_optional = context.is_optional;
+            let arg_name = context.arg.name.clone();
+            let is_optional = context.arg.is_optional;
 
             let mut result = handler(context);
 
@@ -111,7 +111,7 @@ impl ArgParser {
 
             Ok(result)
         } else {
-            Err(Error::new(context.arg_name.span(), "Unsupported arg type"))
+            Err(Error::new(context.arg.span(), "Unsupported arg type"))
         }
     }
 }

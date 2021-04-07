@@ -11,7 +11,7 @@ use super::CommandHandlerContext;
 declare_commands!(declare_connection {
     pub fn connect(context, url: String) {
         connect(context, url)
-    },
+    }
 
     pub fn disconnect(context) {
         disconnect(context)

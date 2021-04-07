@@ -171,47 +171,47 @@ macro_rules! command_arg {
     };
 }
 
-#[macro_export]
-macro_rules! command_decl {
-    // base case:
-    ($r:ident ->) => {
-        // as elsewhere, this import makes things work easier, but
-        // breaks completion for now
-        // #[allow(unused_imports)]
-        // use crate::input::KeymapContext;
-    };
-
-    // simple case: no special args handling
-    ($r:ident -> pub fn $name:ident($context:ident) $body:expr, $($tail:tt)*) => {
-        $r.declare(
-            stringify!($name).to_string(),
-            true,
-            Box::new(|$context| $body),
-        );
-        crate::command_decl! { $r -> $($tail)* }
-    };
-
-    // 1 or more args
-    ($r:ident -> pub fn $name:ident($context:ident, $($arg:ident: $($type:tt)+),+) $body:expr, $($tail:tt)*) => {
-        crate::command_decl! { $r ->
-            pub fn $name($context) {
-                let args_vec = $context.args();
-                let mut args = args_vec.iter();
-                $(crate::command_arg!($name@args -> $arg: $($type)+)),+;
-
-                $body
-            },
-            $($tail)*
-        }
-        $(crate::command_arg_completer!($r@$name -> $($type)+)),+;
-    };
-}
+// #[macro_export]
+// macro_rules! command_decl {
+//     // base case:
+//     ($r:ident ->) => {
+//         // as elsewhere, this import makes things work easier, but
+//         // breaks completion for now
+//         // #[allow(unused_imports)]
+//         // use crate::input::KeymapContext;
+//     };
+//
+//     // simple case: no special args handling
+//     ($r:ident -> pub fn $name:ident($context:ident) $body:expr, $($tail:tt)*) => {
+//         $r.declare(
+//             stringify!($name).to_string(),
+//             true,
+//             Box::new(|$context| $body),
+//         );
+//         crate::command_decl! { $r -> $($tail)* }
+//     };
+//
+//     // 1 or more args
+//     ($r:ident -> pub fn $name:ident($context:ident$(, $arg:ident: $($type:tt)+)+) $body:expr, $($tail:tt)*) => {
+//         crate::command_decl! { $r ->
+//             pub fn $name($context) {
+//                 let args_vec = $context.args();
+//                 let mut args = args_vec.iter();
+//                 $(crate::command_arg!($name@args -> $arg: $($type)+));+;
+//
+//                 $body
+//             },
+//             $($tail)*
+//         }
+//         $(crate::command_arg_completer!($r@$name -> $($type)+));+;
+//     };
+// }
 
 #[macro_export]
 macro_rules! declare_commands {
     ($name:ident { $( $SPEC:tt )* }) => {
         pub fn $name(registry: &mut crate::input::commands::registry::CommandRegistry) {
-            crate::command_decl! { registry -> $($SPEC)* }
+            command_decl::command_decl! { registry -> $($SPEC)* }
         }
     }
 }

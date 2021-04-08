@@ -63,7 +63,7 @@ declare_commands!(declare_colors {
         }
 
         Ok(())
-    },
+    }
 });
 
 fn basic_colors_line(to_style: impl Fn(Color) -> Style) -> TextLine {

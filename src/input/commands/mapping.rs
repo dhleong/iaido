@@ -6,5 +6,5 @@ declare_commands!(declare_mapping {
         context.keymap.remap_keys(RemapMode::VimNormal, from.into_keys(), to.into_keys());
 
         Ok(())
-    },
+    }
 });

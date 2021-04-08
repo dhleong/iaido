@@ -1,7 +1,9 @@
 mod args;
+mod completers;
 mod parse;
 
 use args::ArgParser;
+use completers::CompletionManager;
 use parse::CommandArg;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
@@ -17,7 +19,12 @@ struct OneCommandDecl {
 }
 
 impl OneCommandDecl {
-    pub fn to_tokens(&self, arg_parser: &ArgParser, registry_name: Ident) -> Result<TokenStream> {
+    pub fn to_tokens(
+        &self,
+        arg_parser: &ArgParser,
+        completions: &CompletionManager,
+        registry_name: Ident,
+    ) -> Result<TokenStream> {
         let OneCommandDecl {
             name,
             context_ident,
@@ -43,6 +50,20 @@ impl OneCommandDecl {
             gen
         };
 
+        let mut completers: Vec<proc_macro2::TokenStream> = vec![];
+        for arg in args {
+            let def = completions.declare_completer(arg)?;
+            completers.push(
+                quote! {
+                    #registry_name.declare_arg(
+                        stringify!(#name).to_string(),
+                        Box::new(#def),
+                    );
+                }
+                .into(),
+            );
+        }
+
         let gen = quote! {
             #registry_name.declare(
                 stringify!(#name).to_string(),
@@ -52,6 +73,7 @@ impl OneCommandDecl {
                     #body
                 })
             );
+            #(#completers)*
         };
 
         Ok(gen.into())
@@ -122,8 +144,9 @@ impl Parse for CommandDecl {
 fn impl_command_decl(decl: &CommandDecl) -> Result<TokenStream> {
     let mut output = TokenStream::new();
     let args = ArgParser::default();
+    let completions = CompletionManager::default();
     for command in &decl.commands {
-        output.extend(command.to_tokens(&args, decl.registry_name.clone())?);
+        output.extend(command.to_tokens(&args, &completions, decl.registry_name.clone())?);
     }
     Ok(output)
 }

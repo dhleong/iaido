@@ -49,7 +49,7 @@ declare_commands!(declare_file {
         context.state_mut().set_current_window_buffer(buffer_id);
 
         Ok(())
-    },
+    }
 
     pub fn write(context, given_path: Optional<PathBuf>) {
         let current_path = match context.state().current_buffer().source() {
@@ -66,7 +66,7 @@ declare_commands!(declare_file {
         };
 
         write(context, path)
-    },
+    }
 });
 
 fn write(context: &mut CommandHandlerContext, path: PathBuf) -> KeyResult {

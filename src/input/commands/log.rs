@@ -12,5 +12,5 @@ declare_commands!(declare_log {
         log::write_to_buffer(buf);
 
         Ok(())
-    },
+    }
 });

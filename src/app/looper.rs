@@ -2,11 +2,14 @@ use lazy_static::lazy_static;
 
 use std::{sync::Mutex, time::Duration};
 
-use crate::ui::{UiEvent, UiEvents, UI};
 use crate::{
     app::{self, App},
     editing::text::TextLines,
     input::KeymapContext,
+};
+use crate::{
+    input::BoxableKeymap,
+    ui::{UiEvent, UiEvents, UI},
 };
 use crate::{
     input::{Key, KeyError, KeySource, Keymap},
@@ -31,7 +34,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         }
     }
 
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
+    fn next_key_with_map(
+        &mut self,
+        mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<Option<Key>, KeyError> {
         let mut dirty = true;
         loop {
             loop {
@@ -48,8 +54,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 // process messages from jobs
                 dirty |= Jobs::process(&mut self.app.state)?;
 
-                // ... and from scripts
-                dirty |= ScriptingManager::process(&mut self.app.state)?;
+                if let Some(ref mut keymap) = keymap {
+                    // ... and from scripts
+                    dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
+                }
 
                 // finally, check for input:
                 match self.events.poll_event(Duration::from_millis(10))? {

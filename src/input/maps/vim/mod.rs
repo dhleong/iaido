@@ -22,7 +22,7 @@ use crate::{
 
 use self::mode_stack::VimModeStack;
 
-use super::{KeyHandlerContext, KeyResult};
+use super::{KeyHandlerContext, KeyResult, UserKeyHandler};
 
 type KeyHandler = super::KeyHandler<VimKeymap>;
 type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymap>, MotionRange) -> KeyResult;
@@ -178,7 +178,7 @@ impl Keymap for VimKeymap {
         self.active_completer = mode.completer.clone();
 
         loop {
-            if let Some(key) = context.next_key()? {
+            if let Some(key) = context.next_key_with_map(Some(Box::new(self)))? {
                 if show_keys {
                     self.keys_buffer.push(key.clone());
                 }
@@ -260,6 +260,24 @@ impl Keymap for VimKeymap {
 impl BoxableKeymap for VimKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
         crate::input::remap_keys_to_fn(self, mode, from, to)
+    }
+    fn remap_keys_user_fn(
+        &mut self,
+        mode: RemapMode,
+        from: Vec<Key>,
+        handler: Box<UserKeyHandler>,
+    ) {
+        self.remap_keys_fn(
+            mode,
+            from,
+            Box::new(move |mut ctx| {
+                handler(KeyHandlerContext {
+                    context: Box::new(&mut ctx),
+                    keymap: &mut (),
+                    key: '0'.into(),
+                })
+            }),
+        );
     }
 }
 

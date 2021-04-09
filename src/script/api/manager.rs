@@ -6,8 +6,9 @@ use std::{
 use crate::{
     app,
     input::{
+        keys::KeysParsable,
         maps::{KeyResult, UserKeyHandler},
-        KeyError, KeymapContext,
+        BoxableKeymap, KeyError, KeymapContext, RemapMode,
     },
 };
 
@@ -42,12 +43,16 @@ impl ApiManager {
         }
     }
 
-    pub fn process(&mut self, app: &mut app::State) -> Result<bool, KeyError> {
+    pub fn process<K: BoxableKeymap>(
+        &mut self,
+        app: &mut app::State,
+        keymap: &mut K,
+    ) -> Result<bool, KeyError> {
         let mut dirty = false;
         for _ in 0..MAX_TASKS_PER_TICK {
             match self.from_script.try_recv() {
                 Ok(msg) => {
-                    self.process_one(app, msg)?;
+                    self.process_one(app, keymap, msg)?;
                     dirty = true;
                 }
                 Err(mpsc::TryRecvError::Empty) => return Ok(dirty),
@@ -58,7 +63,12 @@ impl ApiManager {
         Ok(dirty)
     }
 
-    fn process_one(&self, app: &mut app::State, msg: ApiMessage<ApiRequest>) -> KeyResult {
+    fn process_one<K: BoxableKeymap>(
+        &self,
+        app: &mut app::State,
+        keymap: &mut K,
+        msg: ApiMessage<ApiRequest>,
+    ) -> KeyResult {
         match msg.payload {
             ApiRequest::Echo(text) => {
                 app.echo(text.into());
@@ -66,7 +76,12 @@ impl ApiManager {
 
             ApiRequest::SetKeymapFn(mode, keys, f) => {
                 // TODO store this... somewhere
-                create_user_keyhandler(f);
+                let mode = match mode.as_str() {
+                    "n" => RemapMode::VimNormal,
+                    "i" => RemapMode::VimInsert,
+                    _ => RemapMode::User(mode),
+                };
+                keymap.remap_keys_user_fn(mode, keys.into_keys(), create_user_keyhandler(f));
             }
         }
 

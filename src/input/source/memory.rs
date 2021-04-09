@@ -1,5 +1,5 @@
 use super::KeySource;
-use crate::input::{keys::KeysParsable, Key};
+use crate::input::{keys::KeysParsable, BoxableKeymap, Key};
 
 /// A MemoryKeySource provides a fixed sequence of keys
 /// from memory
@@ -27,7 +27,10 @@ impl KeySource for MemoryKeySource {
         Ok(!self.keys.is_empty())
     }
 
-    fn next_key(&mut self) -> Result<Option<Key>, crate::input::KeyError> {
+    fn next_key_with_map(
+        &mut self,
+        _keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<Option<Key>, crate::input::KeyError> {
         if self.keys.is_empty() {
             return Ok(None);
         }

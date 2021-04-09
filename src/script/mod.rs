@@ -7,7 +7,7 @@ use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 use crate::{
     app,
     editing::Id,
-    input::{maps::KeyResult, KeyError},
+    input::{maps::KeyResult, BoxableKeymap, KeyError},
 };
 pub use api::ApiManager;
 
@@ -98,9 +98,12 @@ impl ScriptingManager {
         }
     }
 
-    pub fn process(mut state: &mut app::State) -> io::Result<bool> {
+    pub fn process<K: BoxableKeymap>(
+        mut state: &mut app::State,
+        keymap: &mut K,
+    ) -> io::Result<bool> {
         if let Some(mut api) = state.api.take() {
-            let dirty = api.process(&mut state)?;
+            let dirty = api.process(&mut state, keymap)?;
             state.api = Some(api);
             Ok(dirty)
         } else {

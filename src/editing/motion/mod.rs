@@ -224,6 +224,15 @@ pub mod tests {
         ) {
             todo!()
         }
+
+        fn remap_keys_user_fn(
+            &mut self,
+            _mode: crate::input::RemapMode,
+            _keys: Vec<crate::input::Key>,
+            _handler: Box<crate::input::maps::UserKeyHandler>,
+        ) {
+            todo!()
+        }
     }
 
     pub struct TestKeyHandlerContext {

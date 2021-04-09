@@ -10,7 +10,7 @@ pub mod log;
 
 use app::looper::app_loop;
 use backtrace::Backtrace;
-use input::{keys::KeysParsable, maps::vim::VimKeymap, BoxableKeymap, RemapMode};
+use input::maps::vim::VimKeymap;
 use std::{
     io, panic,
     sync::{Arc, Mutex},

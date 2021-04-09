@@ -12,7 +12,7 @@ use std::time::Duration;
 use crate::delegate_keysource;
 use delegate::delegate;
 
-use self::maps::KeyHandler;
+use self::maps::{KeyHandler, UserKeyHandler};
 
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
@@ -106,6 +106,7 @@ impl KeySource for Box<&mut dyn KeymapContext> {
         to (**self) {
             fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
             fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+            fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
         }
     }
 }
@@ -163,12 +164,14 @@ pub trait Remappable<T: Keymap>: BoxableKeymap {
 
 pub trait BoxableKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+    fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
     delegate! {
         to (**self) {
             fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+            fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
         }
     }
 }

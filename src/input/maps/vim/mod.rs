@@ -15,6 +15,7 @@ use crate::{
     app::widgets::Widget,
     editing::motion::MotionRange,
     input::{
+        commands::CommandHandlerContext,
         completion::{state::BoxedCompleter, Completer},
         BoxableKeymap, Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
     },
@@ -271,10 +272,10 @@ impl BoxableKeymap for VimKeymap {
             mode,
             from,
             Box::new(move |mut ctx| {
-                handler(KeyHandlerContext {
-                    context: Box::new(&mut ctx),
-                    keymap: &mut (),
-                    key: '0'.into(),
+                handler(CommandHandlerContext {
+                    context: Box::new(&mut ctx.context),
+                    keymap: Box::new(ctx.keymap),
+                    input: "".to_string(),
                 })
             }),
         );

@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::delegate_keysource;
 
 use super::{
-    source::memory::MemoryKeySource, Key, KeyError, KeySource, Keymap, KeymapContext,
-    KeymapContextWithKeys,
+    commands::CommandHandlerContext, source::memory::MemoryKeySource, Key, KeyError, KeySource,
+    Keymap, KeymapContext, KeymapContextWithKeys,
 };
 
 pub mod actions;
@@ -46,7 +46,7 @@ impl<'a, T> KeySource for KeyHandlerContext<'a, T> {
 
 pub type KeyResult = Result<(), KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
-pub type UserKeyHandler = KeyHandler<()>;
+pub type UserKeyHandler = dyn Fn(CommandHandlerContext<'_>) -> KeyResult;
 
 /// Syntactic sugar for declaring a key handler
 #[macro_export]

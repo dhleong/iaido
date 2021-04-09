@@ -225,6 +225,10 @@ impl Keymap for VimKeymap {
                         });
                         break;
                     }
+                } else {
+                    // no possible mapping; stop
+                    self.keys_buffer.clear();
+                    break;
                 }
             } else {
                 // no key read:

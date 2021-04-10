@@ -1,15 +1,16 @@
-use std::{io, path::PathBuf, sync::Arc};
+use std::{
+    io,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 // NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
 use rustpython_vm as vm;
 use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
 
-use crate::{
-    editing::Id,
-    input::{maps::KeyResult, KeyError},
-};
+use crate::{editing::Id, input::maps::KeyResult};
 
-use self::wrapper::unwrap_error;
+use self::wrapper::{unwrap_error, FnManager};
 
 use super::{
     api::{
@@ -25,6 +26,7 @@ mod wrapper;
 use wrapper::create_iaido_module;
 
 pub struct PythonScriptingRuntime {
+    fns: Arc<Mutex<FnManager>>,
     vm: Option<vm::Interpreter>,
 }
 
@@ -32,13 +34,17 @@ impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
         let iaido = Arc::new(IaidoApi::new(api));
-        let mut runtime = PythonScriptingRuntime { vm: None };
+        let fns = Arc::new(Mutex::new(FnManager::new(id)));
+        let mut runtime = PythonScriptingRuntime {
+            fns: fns.clone(),
+            vm: None,
+        };
 
         let vm = vm::Interpreter::new_with_init(settings, move |vm| {
             vm.add_native_module(
                 "iaido".to_string(),
                 Box::new(move |vm| {
-                    create_iaido_module(vm, id, iaido.clone())
+                    create_iaido_module(vm, iaido.clone(), fns.clone())
                         .expect("Unable to initialize iaido module")
                 }),
             );
@@ -92,21 +98,14 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         }
     }
 
-    fn invoke(&mut self, f: ScriptingFnRef) -> KeyResult {
+    fn invoke(&mut self, fn_ref: ScriptingFnRef) -> KeyResult {
+        let fns = self.fns.clone();
         self.with_vm(move |vm| {
-            let fns = vm
-                .current_globals()
-                .get_item_option("__iaido_fns__", vm)
-                .expect("Could not find fns")
-                .unwrap()
-                .dict()
-                .unwrap();
-            if let Some(f) = unwrap_error(vm, fns.get_item_option(f.id.to_string(), vm))? {
-                unwrap_error(vm, vm.invoke(&f, vec![]))?;
-                Ok(())
-            } else {
-                Err(KeyError::InvalidInput("Invalid Fn ref".to_string()))
-            }
+            let lock = fns.lock().unwrap();
+            let f = lock.get(&fn_ref);
+
+            unwrap_error(vm, vm.invoke(&f, vec![]))?;
+            Ok(())
         })
     }
 }

@@ -1,6 +1,9 @@
 /*! API wrapper */
 
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 // NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
 use rustpython_vm as vm;
@@ -10,21 +13,45 @@ use vm::{
 };
 
 use crate::{
-    editing::Id,
+    editing::{ids::Ids, Id},
     script::api::{core::IaidoApi, ApiManagerDelegate},
 };
 use crate::{input::KeyError, script::api::core::ScriptingFnRef};
 
+pub struct FnManager {
+    runtime_id: Id,
+    ids: Ids,
+    fns: HashMap<Id, PyObjectRef>,
+}
+
+impl FnManager {
+    pub fn new(runtime_id: Id) -> Self {
+        Self {
+            runtime_id,
+            ids: Ids::new(),
+            fns: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, fn_ref: &ScriptingFnRef) -> &PyObjectRef {
+        self.fns.get(&fn_ref.id).expect("Invalid fn ref")
+    }
+
+    pub fn create_ref(&mut self, f: PyObjectRef) -> ScriptingFnRef {
+        let id = self.ids.next();
+
+        self.fns.insert(id, f);
+
+        ScriptingFnRef::new(self.runtime_id, id)
+    }
+}
+
 pub fn create_iaido_module(
     vm: &vm::VirtualMachine,
-    runtime_id: Id,
     api: Arc<IaidoApi<ApiManagerDelegate>>,
+    fns: Arc<Mutex<FnManager>>,
 ) -> PyResult<PyObjectRef> {
     let dict = vm.ctx.new_dict();
-    let fns = vm.ctx.new_dict();
-
-    vm.current_globals()
-        .set_item("__iaido_fns__", fns.as_object().clone(), vm)?;
 
     let api_echo = api.clone();
     dict.set_item(
@@ -42,14 +69,12 @@ pub fn create_iaido_module(
         vm.ctx.new_function(
             "set_keymap",
             move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
-                fns.set_item("0", f, vm)?;
+                let fns = fns.clone();
+                let mut lock = fns.lock().unwrap();
+                let fn_ref = lock.create_ref(f);
                 wrap_error(
                     vm,
-                    api_set_keymap.set_keymap(
-                        modes.to_string(),
-                        from_keys.to_string(),
-                        ScriptingFnRef::new(runtime_id, 0),
-                    ),
+                    api_set_keymap.set_keymap(modes.to_string(), from_keys.to_string(), fn_ref),
                 )
             },
         ),

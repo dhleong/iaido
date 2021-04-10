@@ -57,6 +57,8 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 if let Some(ref mut keymap) = keymap {
                     // ... and from scripts
                     dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
+                } else {
+                    panic!("No keymap provided");
                 }
 
                 // finally, check for input:

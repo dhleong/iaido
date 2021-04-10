@@ -75,7 +75,6 @@ impl ApiManager {
             }
 
             ApiRequest::SetKeymapFn(mode, keys, f) => {
-                // TODO store this... somewhere
                 let mode = match mode.as_str() {
                     "n" => RemapMode::VimNormal,
                     "i" => RemapMode::VimInsert,

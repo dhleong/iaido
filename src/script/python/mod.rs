@@ -1,3 +1,5 @@
+#![cfg(feature = "python")]
+
 use std::{
     io,
     path::PathBuf,

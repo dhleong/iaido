@@ -1,5 +1,7 @@
 mod api;
 mod bindings;
+
+#[cfg(feature = "python")]
 mod python;
 
 use dirs;
@@ -34,11 +36,11 @@ pub struct ScriptingManager {
 
 impl Default for ScriptingManager {
     fn default() -> Self {
+        #[allow(unused_mut)]
         let mut runtime_factories: Vec<Box<dyn ScriptingRuntimeFactory + Send>> = vec![];
 
-        if cfg!(feature = "python") {
-            runtime_factories.push(Box::new(python::PythonScriptingRuntimeFactory));
-        }
+        #[cfg(feature = "python")]
+        runtime_factories.push(Box::new(python::PythonScriptingRuntimeFactory));
 
         Self {
             runtime_factories,

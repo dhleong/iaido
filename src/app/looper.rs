@@ -121,9 +121,11 @@ pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM)
 where
     U: UI,
     UE: UiEvents,
-    KM: Keymap,
+    KM: Keymap + BoxableKeymap,
 {
     let mut app_keys = AppKeySource { app, events };
+
+    ScriptingManager::init(&mut app_keys, &mut map);
 
     loop {
         if let Err(e) = map.process(&mut app_keys) {

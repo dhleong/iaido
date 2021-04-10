@@ -7,7 +7,9 @@ use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 use crate::{
     app,
     editing::Id,
-    input::{maps::KeyResult, BoxableKeymap, KeyError},
+    input::{
+        commands::CommandHandlerContext, maps::KeyResult, BoxableKeymap, KeyError, KeymapContext,
+    },
 };
 pub use api::ApiManager;
 
@@ -45,6 +47,31 @@ impl Default for ScriptingManager {
 }
 
 impl ScriptingManager {
+    pub fn init<K: KeymapContext, KM: BoxableKeymap>(context: &mut K, map: &mut KM) {
+        let scripting = context.state().scripting.clone();
+        let delegate = context.state().api.as_ref().unwrap().delegate();
+        let jobs = &mut context.state_mut().jobs;
+
+        let result = jobs
+            .start(move |_| async move {
+                let lock = scripting.lock().unwrap();
+                lock.load(delegate, "/Users/dhleong/.config/iaido/init.py".to_string())?;
+                Ok(())
+            })
+            .join_interruptably(&mut CommandHandlerContext::new(
+                context,
+                map,
+                "".to_string(),
+            ));
+
+        if let Err(e) = result {
+            let error = format!("INIT ERR: {:?}", e);
+            for line in error.split("\n") {
+                context.state_mut().echom(line.to_string());
+            }
+        }
+    }
+
     pub fn load(&self, api: ApiManagerDelegate, path: String) -> io::Result<Id> {
         let path_buf = PathBuf::from(path.clone());
         if !path_buf.exists() {

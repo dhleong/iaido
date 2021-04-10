@@ -44,15 +44,6 @@ fn main_loop() -> io::Result<()> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    let scripting = app.state.scripting.clone();
-    let delegate = app.state.api.as_ref().unwrap().delegate();
-
-    app.state.jobs.spawn(move |_| async move {
-        let lock = scripting.lock().unwrap();
-        lock.load(delegate, "/Users/dhleong/.config/iaido/init.py".to_string())?;
-        Ok(())
-    });
-
     app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
 
     Ok(())

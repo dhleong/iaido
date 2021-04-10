@@ -23,7 +23,11 @@ impl From<Vec<Key>> for MemoryKeySource {
 }
 
 impl KeySource for MemoryKeySource {
-    fn poll_key(&mut self, _timeout: std::time::Duration) -> Result<bool, crate::input::KeyError> {
+    fn poll_key_with_map(
+        &mut self,
+        _timeout: std::time::Duration,
+        _keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<bool, crate::input::KeyError> {
         Ok(!self.keys.is_empty())
     }
 

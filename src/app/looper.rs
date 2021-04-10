@@ -23,9 +23,42 @@ struct AppKeySource<U: UI, UE: UiEvents> {
     events: UE,
 }
 
+impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
+    fn process_async(
+        &mut self,
+        keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<bool, KeyError> {
+        let mut dirty = false;
+
+        // process incoming data from connections
+        if let Some(mut connections) = self.app.state.connections.take() {
+            dirty |= connections.process(&mut self.app.state);
+            self.app.state.connections = Some(connections);
+        }
+
+        // process messages from jobs
+        dirty |= Jobs::process(&mut self.app.state)?;
+
+        if let Some(ref mut keymap) = keymap {
+            // ... and from scripts
+            dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
+        } else {
+            panic!("No keymap provided");
+        }
+
+        Ok(dirty)
+    }
+}
+
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
-    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
-        self.app.render();
+    fn poll_key_with_map(
+        &mut self,
+        duration: Duration,
+        mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<bool, KeyError> {
+        if self.process_async(&mut keymap)? {
+            self.app.render();
+        }
 
         match self.events.poll_event(duration) {
             Ok(Some(UiEvent::Key(_))) => Ok(true),
@@ -45,21 +78,7 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                     self.app.render();
                 }
 
-                // process incoming data from connections
-                if let Some(mut connections) = self.app.state.connections.take() {
-                    dirty = connections.process(&mut self.app.state);
-                    self.app.state.connections = Some(connections);
-                }
-
-                // process messages from jobs
-                dirty |= Jobs::process(&mut self.app.state)?;
-
-                if let Some(ref mut keymap) = keymap {
-                    // ... and from scripts
-                    dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
-                } else {
-                    panic!("No keymap provided");
-                }
+                dirty = self.process_async(&mut keymap)?;
 
                 // finally, check for input:
                 match self.events.poll_event(Duration::from_millis(10))? {
@@ -69,7 +88,13 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
             }
 
             match self.events.next_event()? {
-                UiEvent::Key(key) => return Ok(Some(key)),
+                UiEvent::Key(key) => {
+                    // if dirty, render one more time before returning the key
+                    if dirty {
+                        self.app.render();
+                    }
+                    return Ok(Some(key));
+                }
                 _ => {}
             }
 

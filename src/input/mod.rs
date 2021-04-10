@@ -106,6 +106,7 @@ impl KeySource for Box<&mut dyn KeymapContext> {
         to (**self) {
             fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
             fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+            fn poll_key_with_map(&mut self, timeout: Duration, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<bool, KeyError>;
             fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
         }
     }

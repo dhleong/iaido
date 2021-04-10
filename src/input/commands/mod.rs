@@ -77,7 +77,7 @@ impl KeymapContext for CommandHandlerContext<'_> {
 impl KeySource for CommandHandlerContext<'_> {
     delegate! {
         to self.context {
-            fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
+            fn poll_key_with_map(&mut self, timeout: Duration, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<bool, KeyError>;
             fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
         }
     }
@@ -85,6 +85,11 @@ impl KeySource for CommandHandlerContext<'_> {
     fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
         self.context
             .next_key_with_map(Some(Box::new(&mut self.keymap)))
+    }
+
+    fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
+        self.context
+            .poll_key_with_map(timeout, Some(Box::new(&mut self.keymap)))
     }
 }
 

@@ -111,6 +111,7 @@ fn create_user_keyhandler(f: ScriptingFnRef) -> Box<UserKeyHandler> {
     })
 }
 
+#[derive(Clone)]
 pub struct ApiManagerDelegate {
     to_app: Arc<Mutex<mpsc::Sender<ApiMessage<ApiRequest>>>>,
 }

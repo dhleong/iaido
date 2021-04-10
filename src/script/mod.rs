@@ -2,6 +2,7 @@ mod api;
 mod bindings;
 mod python;
 
+use dirs;
 use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 
 use crate::{
@@ -55,7 +56,9 @@ impl ScriptingManager {
         let result = jobs
             .start(move |_| async move {
                 let lock = scripting.lock().unwrap();
-                lock.load(delegate, "/Users/dhleong/.config/iaido/init.py".to_string())?;
+                for path in ScriptingManager::find_init_scripts() {
+                    lock.load(delegate.clone(), path)?;
+                }
                 Ok(())
             })
             .join_interruptably(&mut CommandHandlerContext::new(
@@ -136,5 +139,29 @@ impl ScriptingManager {
         } else {
             panic!("Re-entrant script API access");
         }
+    }
+
+    fn find_init_scripts() -> Vec<String> {
+        if let Some(mut dir) = dirs::home_dir() {
+            dir.push(".config");
+            dir.push("iaido");
+
+            if let Ok(contents) = dir.read_dir() {
+                return contents
+                    .filter_map(|f| {
+                        if let Ok(entry) = f {
+                            if let Some(name) = entry.file_name().to_str() {
+                                if name.starts_with("init.") {
+                                    return Some(entry.path().to_string_lossy().to_string());
+                                }
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+            }
+        }
+
+        vec![]
     }
 }

@@ -71,7 +71,7 @@ impl ApiManager {
     ) -> KeyResult {
         match msg.payload {
             ApiRequest::Echo(text) => {
-                app.echo(text.into());
+                app.echom(text.to_string());
             }
 
             ApiRequest::SetKeymapFn(mode, keys, f) => {

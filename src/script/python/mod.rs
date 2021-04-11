@@ -6,7 +6,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-// NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
 use rustpython_vm as vm;
 use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
 
@@ -23,8 +22,10 @@ use super::{
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
+mod compat;
 mod wrapper;
 
+use compat::apply_compat;
 use wrapper::create_iaido_module;
 
 pub struct PythonScriptingRuntime {
@@ -35,7 +36,7 @@ pub struct PythonScriptingRuntime {
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
-        let iaido = Arc::new(IaidoApi::new(api));
+        let iaido = Arc::new(IaidoApi::new(api.clone()));
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
             fns: fns.clone(),
@@ -56,6 +57,8 @@ impl PythonScriptingRuntime {
 
         runtime.vm = Some(vm);
 
+        runtime.with_vm(|vm| apply_compat(api, vm));
+
         runtime
     }
 
@@ -66,12 +69,14 @@ impl PythonScriptingRuntime {
             .enter(f)
     }
 
-    fn format_exception(&mut self, e: PyBaseExceptionRef) -> String {
+    fn format_exception_vm(vm: &vm::VirtualMachine, e: PyBaseExceptionRef) -> String {
         let mut output: Vec<u8> = Vec::new();
-        self.with_vm(|vm| vm::exceptions::write_exception(&mut output, vm, &e))
-            .unwrap();
-
+        vm::exceptions::write_exception(&mut output, vm, &e).unwrap();
         String::from_utf8_lossy(&output).to_string()
+    }
+
+    fn format_exception(&mut self, e: PyBaseExceptionRef) -> String {
+        self.with_vm(|vm| PythonScriptingRuntime::format_exception_vm(vm, e))
     }
 }
 

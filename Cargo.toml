@@ -21,7 +21,7 @@ crossterm = { version = "0.19" }
 tui = { version = "0.14", default-features = false, features = ["crossterm"] }
 
 # scripting
-rustpython-vm = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true }
+rustpython-vm = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true, features = ["freeze-stdlib"] }
 
 genawaiter = "0.99.1"
 telnet = "0.1.4"

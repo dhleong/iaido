@@ -1631,6 +1631,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustpython-pylib"
+version = "0.1.0"
+source = "git+https://github.com/RustPython/RustPython.git?rev=3ce476c13d4daa3366e012a96a5e52e271ed2b29#3ce476c13d4daa3366e012a96a5e52e271ed2b29"
+dependencies = [
+ "rustpython-bytecode",
+ "rustpython-derive",
+]
+
+[[package]]
 name = "rustpython-vm"
 version = "0.1.2"
 source = "git+https://github.com/RustPython/RustPython.git?rev=3ce476c13d4daa3366e012a96a5e52e271ed2b29#3ce476c13d4daa3366e012a96a5e52e271ed2b29"
@@ -1693,6 +1702,7 @@ dependencies = [
  "rustpython-compiler-core",
  "rustpython-derive",
  "rustpython-parser",
+ "rustpython-pylib",
  "rustyline",
  "schannel",
  "serde",

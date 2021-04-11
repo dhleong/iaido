@@ -6,14 +6,20 @@ use std::{
 };
 
 use rustpython_vm as vm;
-use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
+use vm::{
+    exceptions::PyBaseExceptionRef,
+    pyobject::{ItemProtocol, PyResult},
+};
 
 use crate::{
     app::jobs::{JobError, JobResult},
     editing::Id,
 };
 
-use self::wrapper::{unwrap_error, FnManager};
+use self::{
+    modules::ModuleContained,
+    wrapper::{unwrap_error, FnManager},
+};
 
 use super::{
     api::{
@@ -25,6 +31,7 @@ use super::{
 };
 
 mod compat;
+mod modules;
 mod wrapper;
 
 use compat::apply_compat;
@@ -84,10 +91,25 @@ impl PythonScriptingRuntime {
 
 impl ScriptingRuntime for PythonScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult {
-        let script = ScriptFile::read_from(path)?;
+        let script = ScriptFile::read_from(path.clone())?;
 
         let result: PyResult<()> = self.with_vm(move |runtime| {
             let scope = runtime.new_scope_with_builtins();
+
+            let package = script.package_name();
+            if let Some(package) = package {
+                script.ensure_module(runtime)?;
+
+                scope
+                    .globals
+                    .set_item("__package__", runtime.ctx.new_str(package), runtime)?;
+            }
+
+            scope.globals.set_item(
+                "__file__",
+                runtime.ctx.new_str(script.path.clone()),
+                runtime,
+            )?;
             let code_obj = runtime
                 .compile(&script.code, vm::compile::Mode::Exec, script.path)
                 .map_err(|e| runtime.new_syntax_error(&e))?;

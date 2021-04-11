@@ -143,11 +143,18 @@ impl ScriptingManager {
         }
     }
 
-    fn find_init_scripts() -> Vec<String> {
+    pub fn config_dir() -> Option<PathBuf> {
         if let Some(mut dir) = dirs::home_dir() {
             dir.push(".config");
             dir.push("iaido");
+            Some(dir)
+        } else {
+            None
+        }
+    }
 
+    fn find_init_scripts() -> Vec<String> {
+        if let Some(dir) = ScriptingManager::config_dir() {
             if let Ok(contents) = dir.read_dir() {
                 return contents
                     .filter_map(|f| {

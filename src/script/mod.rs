@@ -8,19 +8,20 @@ use dirs;
 use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 
 use crate::{
-    app,
-    editing::Id,
-    input::{
-        commands::CommandHandlerContext, maps::KeyResult, BoxableKeymap, KeyError, KeymapContext,
+    app::{
+        self,
+        jobs::{JobError, JobResult},
     },
+    editing::Id,
+    input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
 pub use api::ApiManager;
 
 use self::api::{core::ScriptingFnRef, ApiManagerDelegate};
 
 pub trait ScriptingRuntime {
-    fn load(&mut self, path: PathBuf) -> io::Result<()>;
-    fn invoke(&mut self, f: ScriptingFnRef) -> KeyResult;
+    fn load(&mut self, path: PathBuf) -> JobResult;
+    fn invoke(&mut self, f: ScriptingFnRef) -> JobResult;
 }
 
 pub trait ScriptingRuntimeFactory {
@@ -70,17 +71,15 @@ impl ScriptingManager {
             ));
 
         if let Err(e) = result {
-            let error = format!("INIT ERR: {:?}", e);
-            for line in error.split("\n") {
-                context.state_mut().echom(line.to_string());
-            }
+            context.state_mut().echom("INIT ERROR");
+            context.state_mut().echom_error(e);
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: String) -> io::Result<Id> {
+    pub fn load(&self, api: ApiManagerDelegate, path: String) -> JobResult<Id> {
         let path_buf = PathBuf::from(path.clone());
         if !path_buf.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, path));
+            return Err(io::Error::new(io::ErrorKind::NotFound, path).into());
         }
 
         let mut runtime_id = None;
@@ -103,7 +102,8 @@ impl ScriptingManager {
                         .and_then(|name| Some(name.to_string_lossy().to_string()))
                         .unwrap_or(path),
                 ),
-            ));
+            )
+            .into());
         };
 
         let mut runtimes = self.runtimes.borrow_mut();
@@ -120,13 +120,13 @@ impl ScriptingManager {
         Ok(id)
     }
 
-    pub fn invoke(&self, f: ScriptingFnRef) -> KeyResult {
+    pub fn invoke(&self, f: ScriptingFnRef) -> JobResult {
         let mut runtimes = self.runtimes.borrow_mut();
         if let Some(runtime) = runtimes.get_mut(&f.runtime) {
             runtime.invoke(f)
         } else {
             // maybe panic?
-            Err(KeyError::InvalidInput("No such runtime".to_string()))
+            Err(JobError::Script("No such runtime".to_string()))
         }
     }
 

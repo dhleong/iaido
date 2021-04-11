@@ -1,7 +1,6 @@
 #![cfg(feature = "python")]
 
 use std::{
-    io,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -9,7 +8,10 @@ use std::{
 use rustpython_vm as vm;
 use vm::{exceptions::PyBaseExceptionRef, pyobject::PyResult};
 
-use crate::{editing::Id, input::maps::KeyResult};
+use crate::{
+    app::jobs::{JobError, JobResult},
+    editing::Id,
+};
 
 use self::wrapper::{unwrap_error, FnManager};
 
@@ -81,7 +83,7 @@ impl PythonScriptingRuntime {
 }
 
 impl ScriptingRuntime for PythonScriptingRuntime {
-    fn load(&mut self, path: PathBuf) -> std::io::Result<()> {
+    fn load(&mut self, path: PathBuf) -> JobResult {
         let script = ScriptFile::read_from(path)?;
 
         let result: PyResult<()> = self.with_vm(move |runtime| {
@@ -96,16 +98,13 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         });
 
         match result {
-            Err(e) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                self.format_exception(e),
-            )),
+            Err(e) => Err(JobError::Script(self.format_exception(e))),
 
             _ => Ok(()),
         }
     }
 
-    fn invoke(&mut self, fn_ref: ScriptingFnRef) -> KeyResult {
+    fn invoke(&mut self, fn_ref: ScriptingFnRef) -> JobResult {
         let fns = self.fns.clone();
         self.with_vm(move |vm| {
             let lock = fns.lock().unwrap();

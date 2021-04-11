@@ -12,7 +12,33 @@ use crate::{
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
-type StateAction = dyn (FnOnce(&mut app::State) -> io::Result<()>) + Send + Sync;
+#[derive(Debug)]
+pub enum JobError {
+    IO(io::Error),
+    Script(String),
+}
+
+impl From<io::Error> for JobError {
+    fn from(e: io::Error) -> Self {
+        JobError::IO(e)
+    }
+}
+
+impl From<io::ErrorKind> for JobError {
+    fn from(e: io::ErrorKind) -> Self {
+        JobError::IO(e.into())
+    }
+}
+
+impl From<JobError> for KeyError {
+    fn from(e: JobError) -> Self {
+        KeyError::Job(e)
+    }
+}
+
+pub type JobResult<T = ()> = Result<T, JobError>;
+
+type StateAction = dyn (FnOnce(&mut app::State) -> JobResult) + Send + Sync;
 
 pub enum MainThreadAction {
     OnState(Box<StateAction>),
@@ -27,22 +53,22 @@ pub struct JobContext {
 }
 
 impl JobContext {
-    pub fn run<F>(&self, on_state: F) -> io::Result<()>
+    pub fn run<F>(&self, on_state: F) -> JobResult
     where
-        F: (FnOnce(&mut app::State) -> io::Result<()>) + Send + Sync + 'static,
+        F: (FnOnce(&mut app::State) -> JobResult) + Send + Sync + 'static,
     {
         self.send(MainThreadAction::OnState(Box::new(on_state)))
     }
 
     #[allow(unused)]
-    pub fn echo(&self, message: String) -> io::Result<()> {
+    pub fn echo(&self, message: String) -> JobResult {
         self.send(MainThreadAction::Echo(message))
     }
 
-    pub fn send(&self, action: MainThreadAction) -> io::Result<()> {
+    pub fn send(&self, action: MainThreadAction) -> JobResult {
         match self.to_main.send(action) {
             Ok(_) => Ok(()),
-            Err(e) => Err(io::Error::new(io::ErrorKind::BrokenPipe, e)),
+            Err(e) => Err(io::Error::new(io::ErrorKind::BrokenPipe, e).into()),
         }
     }
 }
@@ -50,7 +76,7 @@ impl JobContext {
 #[must_use = "If not using with join_interruptably, prefer spawn()"]
 pub struct JobRecord {
     pub id: Id,
-    await_channel: mpsc::Receiver<Option<io::Error>>,
+    await_channel: mpsc::Receiver<Option<JobError>>,
     handle: JoinHandle<()>,
 }
 
@@ -101,7 +127,7 @@ impl Jobs {
 
     /// Process messages from Jobs meant to be handled on the main thread.
     /// This should probably be called in looper.
-    pub fn process(state: &mut app::State) -> io::Result<bool> {
+    pub fn process(state: &mut app::State) -> JobResult<bool> {
         let mut dirty = false;
         for _ in 0..MAX_TASKS_PER_TICK {
             match state.jobs.next_action()? {
@@ -146,7 +172,7 @@ impl Jobs {
     pub fn start<T, F>(&mut self, task: T) -> JobRecord
     where
         T: Send + 'static + FnOnce(JobContext) -> F,
-        F: Future<Output = io::Result<()>> + Send + 'static,
+        F: Future<Output = JobResult> + Send + 'static,
     {
         let id = self.ids.next();
         let to_main = self.to_main.clone();
@@ -181,7 +207,7 @@ impl Jobs {
     pub fn spawn<T, F>(&mut self, task: T) -> Id
     where
         T: Send + 'static + FnOnce(JobContext) -> F,
-        F: Future<Output = io::Result<()>> + Send + 'static,
+        F: Future<Output = JobResult> + Send + 'static,
     {
         let job = self.start(task);
         let id = job.id;

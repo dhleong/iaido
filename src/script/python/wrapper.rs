@@ -13,10 +13,13 @@ use vm::{
 };
 
 use crate::{
+    app::jobs::{JobError, JobResult},
     editing::{ids::Ids, Id},
     script::api::{core::IaidoApi, ApiManagerDelegate},
 };
 use crate::{input::KeyError, script::api::core::ScriptingFnRef};
+
+use super::PythonScriptingRuntime;
 
 pub struct FnManager {
     runtime_id: Id,
@@ -91,10 +94,11 @@ fn wrap_error<T>(vm: &vm::VirtualMachine, result: Result<T, KeyError>) -> PyResu
     }
 }
 
-pub fn unwrap_error<T>(_vm: &vm::VirtualMachine, result: PyResult<T>) -> Result<T, KeyError> {
-    // TODO: format exception better
+pub fn unwrap_error<T>(vm: &vm::VirtualMachine, result: PyResult<T>) -> JobResult<T> {
     match result {
         Ok(v) => Ok(v),
-        Err(e) => Err(KeyError::InvalidInput(format!("{:?}", e))),
+        Err(e) => Err(JobError::Script(
+            PythonScriptingRuntime::format_exception_vm(vm, e),
+        )),
     }
 }

@@ -16,11 +16,18 @@ use crate::{
     input::{
         commands::{create_builtin_commands, registry::CommandRegistry},
         completion::CompletableContext,
+        KeyError,
     },
     script::{ApiManager, ScriptingManager},
 };
 
-use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, widgets::Widget, winsbuf::WinsBuf};
+use super::{
+    bufwin::BufWin,
+    jobs::{JobError, Jobs},
+    prompt::Prompt,
+    widgets::Widget,
+    winsbuf::WinsBuf,
+};
 
 pub struct AppState {
     pub running: bool,
@@ -152,6 +159,16 @@ impl AppState {
             crate::info!("{}", line.to_string());
         }
         self.echo(lines);
+    }
+
+    pub fn echom_error(&mut self, e: KeyError) {
+        let error = match e {
+            KeyError::Job(JobError::Script(text)) => text,
+            _ => format!("ERR: {:?}", e),
+        };
+        for line in error.split("\n") {
+            self.echom(line.to_string());
+        }
     }
 
     // ======= keymap conveniences ============================

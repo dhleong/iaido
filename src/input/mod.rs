@@ -9,7 +9,7 @@ pub use source::KeySource;
 use std::io;
 use std::time::Duration;
 
-use crate::delegate_keysource;
+use crate::{app::jobs::JobError, delegate_keysource};
 use delegate::delegate;
 
 use self::maps::{KeyHandler, UserKeyHandler};
@@ -62,6 +62,7 @@ impl From<KeyCode> for Key {
 #[derive(Debug)]
 pub enum KeyError {
     IO(io::Error),
+    Job(JobError),
     NotPermitted(String),
     ReadOnlyBuffer,
     Interrupted,

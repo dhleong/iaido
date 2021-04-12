@@ -11,14 +11,13 @@ mod helpers;
 
 use std::time::Duration;
 
-use crate::delegate_keysource;
-
 use self::{
     colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
     log::declare_log, mapping::declare_mapping, registry::CommandRegistry, window::declare_window,
 };
+use crate::delegate_keysource_with_map;
 
-use super::{maps::KeyResult, BoxableKeymap, KeySource, KeymapContext};
+use super::{maps::KeyResult, BoxableKeymap, Key, KeyError, KeySource, KeymapContext};
 
 pub type CommandHandler = dyn Fn(&mut CommandHandlerContext<'_>) -> KeyResult;
 
@@ -75,7 +74,7 @@ impl KeymapContext for CommandHandlerContext<'_> {
 }
 
 impl KeySource for CommandHandlerContext<'_> {
-    delegate_keysource!(context);
+    delegate_keysource_with_map!(context, &mut keymap);
 }
 
 pub fn create_builtin_commands() -> CommandRegistry {

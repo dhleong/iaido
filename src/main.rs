@@ -2,6 +2,7 @@ mod app;
 mod connection;
 mod editing;
 mod input;
+mod script;
 mod tui;
 mod ui;
 
@@ -9,7 +10,7 @@ pub mod log;
 
 use app::looper::app_loop;
 use backtrace::Backtrace;
-use input::{keys::KeysParsable, maps::vim::VimKeymap, BoxableKeymap, RemapMode};
+use input::maps::vim::VimKeymap;
 use std::{
     io, panic,
     sync::{Arc, Mutex},
@@ -43,14 +44,7 @@ fn main_loop() -> io::Result<()> {
         ToLineEndMotion.apply_cursor(&mut app.state);
     }
 
-    let mut keymap = VimKeymap::default();
-    keymap.remap_keys(
-        RemapMode::VimNormal,
-        "gc".into_keys(),
-        ":connect ".into_keys(),
-    );
-
-    app_loop(app, tui::events::TuiEvents::default(), keymap);
+    app_loop(app, tui::events::TuiEvents::default(), VimKeymap::default());
 
     Ok(())
 }

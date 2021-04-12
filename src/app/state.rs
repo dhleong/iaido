@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::{
     connection::connections::Connections,
     editing::{
@@ -14,10 +16,18 @@ use crate::{
     input::{
         commands::{create_builtin_commands, registry::CommandRegistry},
         completion::CompletableContext,
+        KeyError,
     },
+    script::{ApiManager, ScriptingManager},
 };
 
-use super::{bufwin::BufWin, jobs::Jobs, prompt::Prompt, widgets::Widget, winsbuf::WinsBuf};
+use super::{
+    bufwin::BufWin,
+    jobs::{JobError, Jobs},
+    prompt::Prompt,
+    widgets::Widget,
+    winsbuf::WinsBuf,
+};
 
 pub struct AppState {
     pub running: bool,
@@ -34,6 +44,9 @@ pub struct AppState {
     // Connections should generally be available, but is an
     // Option so callers may temporarily take ownership of it
     pub connections: Option<Connections>,
+
+    pub scripting: Arc<Mutex<ScriptingManager>>,
+    pub api: Option<ApiManager>,
 
     pub jobs: Jobs,
 }
@@ -148,6 +161,16 @@ impl AppState {
         self.echo(lines);
     }
 
+    pub fn echom_error(&mut self, e: KeyError) {
+        let error = match e {
+            KeyError::Job(JobError::Script(text)) => text,
+            _ => format!("ERR: {:?}", e),
+        };
+        for line in error.split("\n") {
+            self.echom(line.to_string());
+        }
+    }
+
     // ======= keymap conveniences ============================
 
     pub fn backspace(&mut self) {
@@ -198,6 +221,8 @@ impl Default for AppState {
             builtin_commands: create_builtin_commands(),
             keymap_widget: None,
             connections: Some(Connections::default()),
+            scripting: Arc::new(Mutex::new(ScriptingManager::default())),
+            api: Some(ApiManager::default()),
             jobs: Jobs::new(),
         };
 

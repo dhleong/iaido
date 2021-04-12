@@ -9,10 +9,10 @@ pub use source::KeySource;
 use std::io;
 use std::time::Duration;
 
-use crate::delegate_keysource;
+use crate::{app::jobs::JobError, delegate_keysource};
 use delegate::delegate;
 
-use self::maps::KeyHandler;
+use self::maps::{KeyHandler, UserKeyHandler};
 
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
@@ -62,11 +62,18 @@ impl From<KeyCode> for Key {
 #[derive(Debug)]
 pub enum KeyError {
     IO(io::Error),
+    Job(JobError),
     NotPermitted(String),
     ReadOnlyBuffer,
     Interrupted,
     InvalidInput(String),
     NoSuchCommand(String),
+}
+
+impl From<KeyError> for io::Error {
+    fn from(error: KeyError) -> Self {
+        io::Error::new(io::ErrorKind::Other, format!("{:?}", error))
+    }
 }
 
 impl From<io::Error> for KeyError {
@@ -100,6 +107,8 @@ impl KeySource for Box<&mut dyn KeymapContext> {
         to (**self) {
             fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError>;
             fn next_key(&mut self) -> Result<Option<Key>, KeyError>;
+            fn poll_key_with_map(&mut self, timeout: Duration, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<bool, KeyError>;
+            fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
         }
     }
 }
@@ -135,7 +144,7 @@ pub enum RemapMode {
     User(String),
 }
 
-pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
+pub fn remap_keys_to_fn<K: Keymap + BoxableKeymap, R: Remappable<K>>(
     keymap: &mut R,
     mode: RemapMode,
     from: Vec<Key>,
@@ -151,18 +160,20 @@ pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
     );
 }
 
-pub trait Remappable<T: Keymap>: BoxableKeymap {
+pub trait Remappable<T: Keymap + BoxableKeymap>: BoxableKeymap {
     fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
 }
 
 pub trait BoxableKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+    fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
     delegate! {
         to (**self) {
             fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
+            fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
         }
     }
 }

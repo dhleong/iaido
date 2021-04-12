@@ -2,12 +2,18 @@ use lazy_static::lazy_static;
 
 use std::{sync::Mutex, time::Duration};
 
-use crate::input::{Key, KeyError, KeySource, Keymap};
-use crate::ui::{UiEvent, UiEvents, UI};
 use crate::{
     app::{self, App},
     editing::text::TextLines,
     input::KeymapContext,
+};
+use crate::{
+    input::BoxableKeymap,
+    ui::{UiEvent, UiEvents, UI},
+};
+use crate::{
+    input::{Key, KeyError, KeySource, Keymap},
+    script::ScriptingManager,
 };
 
 use super::jobs::Jobs;
@@ -17,9 +23,42 @@ struct AppKeySource<U: UI, UE: UiEvents> {
     events: UE,
 }
 
+impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
+    fn process_async(
+        &mut self,
+        keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<bool, KeyError> {
+        let mut dirty = false;
+
+        // process incoming data from connections
+        if let Some(mut connections) = self.app.state.connections.take() {
+            dirty |= connections.process(&mut self.app.state);
+            self.app.state.connections = Some(connections);
+        }
+
+        // process messages from jobs
+        dirty |= Jobs::process(&mut self.app.state)?;
+
+        if let Some(ref mut keymap) = keymap {
+            // ... and from scripts
+            dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
+        } else {
+            panic!("No keymap provided");
+        }
+
+        Ok(dirty)
+    }
+}
+
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
-    fn poll_key(&mut self, duration: Duration) -> Result<bool, KeyError> {
-        self.app.render();
+    fn poll_key_with_map(
+        &mut self,
+        duration: Duration,
+        mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<bool, KeyError> {
+        if self.process_async(&mut keymap)? {
+            self.app.render();
+        }
 
         match self.events.poll_event(duration) {
             Ok(Some(UiEvent::Key(_))) => Ok(true),
@@ -28,7 +67,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         }
     }
 
-    fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
+    fn next_key_with_map(
+        &mut self,
+        mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
+    ) -> Result<Option<Key>, KeyError> {
         let mut dirty = true;
         loop {
             loop {
@@ -36,14 +78,7 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                     self.app.render();
                 }
 
-                // process incoming data from connections
-                if let Some(mut connections) = self.app.state.connections.take() {
-                    dirty = connections.process(&mut self.app.state);
-                    self.app.state.connections = Some(connections);
-                }
-
-                // process messages from jobs
-                Jobs::process(&mut self.app.state)?;
+                dirty = self.process_async(&mut keymap)?;
 
                 // finally, check for input:
                 match self.events.poll_event(Duration::from_millis(10))? {
@@ -53,7 +88,13 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
             }
 
             match self.events.next_event()? {
-                UiEvent::Key(key) => return Ok(Some(key)),
+                UiEvent::Key(key) => {
+                    // if dirty, render one more time before returning the key
+                    if dirty {
+                        self.app.render();
+                    }
+                    return Ok(Some(key));
+                }
                 _ => {}
             }
 
@@ -80,9 +121,11 @@ pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM)
 where
     U: UI,
     UE: UiEvents,
-    KM: Keymap,
+    KM: Keymap + BoxableKeymap,
 {
     let mut app_keys = AppKeySource { app, events };
+
+    ScriptingManager::init(&mut app_keys, &mut map);
 
     loop {
         if let Err(e) = map.process(&mut app_keys) {

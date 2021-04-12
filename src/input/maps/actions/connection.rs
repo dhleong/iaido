@@ -2,7 +2,7 @@ use std::io;
 
 use crate::input::{
     maps::{KeyHandlerContext, KeyResult},
-    KeyError, KeymapContext,
+    BoxableKeymap, KeyError, KeymapContext,
 };
 use crate::{connection::ReadValue, editing::source::BufferSource};
 
@@ -11,7 +11,7 @@ use crate::{connection::ReadValue, editing::source::BufferSource};
 ///
 /// Returns `io::ErrorKind::NotConnected` if there is no Connection
 /// associated with the current buffer.
-pub fn send_current_input_buffer<T>(mut ctx: KeyHandlerContext<T>) -> KeyResult {
+pub fn send_current_input_buffer<T: BoxableKeymap>(mut ctx: KeyHandlerContext<T>) -> KeyResult {
     let buffer = ctx.state().current_buffer();
     let to_send = buffer.get_contents();
     let conn_buffer_id =

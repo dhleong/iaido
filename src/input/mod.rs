@@ -144,7 +144,7 @@ pub enum RemapMode {
     User(String),
 }
 
-pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
+pub fn remap_keys_to_fn<K: Keymap + BoxableKeymap, R: Remappable<K>>(
     keymap: &mut R,
     mode: RemapMode,
     from: Vec<Key>,
@@ -160,7 +160,7 @@ pub fn remap_keys_to_fn<K: Keymap, R: Remappable<K>>(
     );
 }
 
-pub trait Remappable<T: Keymap>: BoxableKeymap {
+pub trait Remappable<T: Keymap + BoxableKeymap>: BoxableKeymap {
     fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler<T>>);
 }
 

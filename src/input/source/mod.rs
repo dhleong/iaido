@@ -49,3 +49,44 @@ macro_rules! delegate_keysource {
         }
     };
 }
+
+#[macro_export]
+macro_rules! delegate_keysource_with_map {
+    ($base_source:ident, &mut $keymap:ident) => {
+        delegate::delegate! {
+            to self.$base_source {
+                fn poll_key_with_map(&mut self, timeout: Duration, keymap: Option<Box<&mut dyn crate::input::BoxableKeymap>>) -> Result<bool, KeyError>;
+                fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn crate::input::BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
+            }
+        }
+
+        fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
+            self.$base_source
+                .next_key_with_map(Some(Box::new(&mut self.$keymap)))
+        }
+
+        fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
+            self.$base_source
+                .poll_key_with_map(timeout, Some(Box::new(&mut self.$keymap)))
+        }
+    };
+
+    ($base_source:ident, $keymap:ident) => {
+        delegate::delegate! {
+            to self.$base_source {
+                fn poll_key_with_map(&mut self, timeout: Duration, keymap: Option<Box<&mut dyn crate::input::BoxableKeymap>>) -> Result<bool, KeyError>;
+                fn next_key_with_map(&mut self, keymap: Option<Box<&mut dyn crate::input::BoxableKeymap>>) -> Result<Option<Key>, KeyError>;
+            }
+        }
+
+        fn next_key(&mut self) -> Result<Option<Key>, KeyError> {
+            self.$base_source
+                .next_key_with_map(Some(Box::new(self.$keymap)))
+        }
+
+        fn poll_key(&mut self, timeout: Duration) -> Result<bool, KeyError> {
+            self.$base_source
+                .poll_key_with_map(timeout, Some(Box::new(self.$keymap)))
+        }
+    };
+}

@@ -59,7 +59,7 @@ impl ScriptingManager {
         let result = jobs
             .start(move |_| async move {
                 let lock = scripting.lock().unwrap();
-                for path in ScriptingManager::find_init_scripts() {
+                for path in lock.find_init_scripts() {
                     lock.load(delegate.clone(), path)?;
                 }
                 Ok(())
@@ -153,14 +153,14 @@ impl ScriptingManager {
         }
     }
 
-    fn find_init_scripts() -> Vec<String> {
+    fn find_init_scripts(&self) -> Vec<String> {
         if let Some(dir) = ScriptingManager::config_dir() {
             if let Ok(contents) = dir.read_dir() {
                 return contents
                     .filter_map(|f| {
                         if let Ok(entry) = f {
                             if let Some(name) = entry.file_name().to_str() {
-                                if name.starts_with("init.") {
+                                if name.starts_with("init.") && self.supports_file(&entry.path()) {
                                     return Some(entry.path().to_string_lossy().to_string());
                                 }
                             }
@@ -172,5 +172,11 @@ impl ScriptingManager {
         }
 
         vec![]
+    }
+
+    fn supports_file(&self, path: &PathBuf) -> bool {
+        self.runtime_factories
+            .iter()
+            .any(|factory| factory.handles_file(path))
     }
 }

@@ -1,7 +1,5 @@
-use crate::{
-    declare_commands,
-    input::{maps::KeyResult, KeyError, KeymapContext},
-};
+use crate::input::{maps::KeyResult, KeyError, KeymapContext};
+use command_decl::declare_commands;
 
 use super::{
     helpers::{buffer_connection_name, check_hide_buffer, HideBufArgs},

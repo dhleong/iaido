@@ -1,10 +1,10 @@
 use url::Url;
 
 use crate::{
-    declare_commands,
     editing::source::BufferSource,
     input::{maps::KeyResult, KeyError, KeymapContext},
 };
+use command_decl::declare_commands;
 
 use super::CommandHandlerContext;
 

@@ -1,5 +1,5 @@
-use crate::declare_commands;
 use crate::input::{keys::KeysParsable, RemapMode};
+use command_decl::declare_commands;
 
 declare_commands!(declare_mapping {
     pub fn nmap(context, from: String, to: String) {

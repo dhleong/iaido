@@ -92,12 +92,3 @@ impl CommandRegistry {
         return None;
     }
 }
-
-#[macro_export]
-macro_rules! declare_commands {
-    ($name:ident { $( $SPEC:tt )* }) => {
-        pub fn $name(registry: &mut crate::input::commands::registry::CommandRegistry) {
-            command_decl::command_decl! { registry -> $($SPEC)* }
-        }
-    }
-}

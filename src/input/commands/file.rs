@@ -11,7 +11,8 @@ use crate::{
 };
 use std::{fs, path::PathBuf};
 
-use crate::{declare_commands, input::KeymapContext};
+use crate::input::KeymapContext;
+use command_decl::declare_commands;
 
 use super::helpers::{check_hide_buffer, HideBufArgs};
 use super::CommandHandlerContext;

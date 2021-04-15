@@ -3,8 +3,9 @@ use tui::{
     text::Span,
 };
 
+use crate::input::KeymapContext;
 use crate::{connection::ReadValue, editing::text::TextLine};
-use crate::{declare_commands, input::KeymapContext};
+use command_decl::declare_commands;
 
 declare_commands!(declare_colors {
     pub fn colors(context) {

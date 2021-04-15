@@ -1,6 +1,7 @@
 use crate::editing::ids::BUFFER_ID_LOG;
+use crate::input::KeymapContext;
 use crate::log;
-use crate::{declare_commands, input::KeymapContext};
+use command_decl::declare_commands;
 
 declare_commands!(declare_log {
     pub fn messages(context) {

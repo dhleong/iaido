@@ -10,7 +10,7 @@ use crate::input::{
     BoxableKeymap, KeyError, KeymapContext, RemapMode,
 };
 
-use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResult};
+use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResult, IdType};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -62,7 +62,20 @@ impl ApiManager {
         context: &mut CommandHandlerContext,
         msg: ApiMessage<ApiRequest>,
     ) -> KeyResult {
+        let mut response = Ok(None);
         match msg.payload {
+            ApiRequest::CurrentId(id_type) => {
+                response = Ok(match id_type {
+                    IdType::Buffer => Some(context.state().current_buffer().id()),
+                    IdType::Connection => context.state().connections.as_ref().and_then(|conns| {
+                        conns.buffer_to_id(context.state().current_buffer().id())
+                    }),
+                    IdType::Window => Some(context.state().current_window().id),
+                    IdType::Tab => Some(context.state().current_tab().id),
+                }
+                .and_then(|id| Some(ApiResponse::Id(id))));
+            }
+
             ApiRequest::Echo(text) => {
                 context.state_mut().echom(text.to_string());
             }
@@ -81,7 +94,7 @@ impl ApiManager {
             }
         }
 
-        match msg.response.send(Ok(())) {
+        match msg.response.send(response) {
             Err(e) => std::panic::panic_any(e),
             Ok(_) => {}
         }

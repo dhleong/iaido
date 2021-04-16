@@ -1,6 +1,9 @@
-use crate::{editing::Id, input::maps::KeyResult};
+use crate::{
+    editing::Id,
+    input::{maps::KeyResult, KeyError},
+};
 
-use super::{ApiDelegate, ApiRequest};
+use super::{ApiDelegate, ApiRequest, ApiResponse, IdType};
 
 pub struct IaidoApi<A: ApiDelegate> {
     api: A,
@@ -23,8 +26,16 @@ impl<A: ApiDelegate> IaidoApi<A> {
         Self { api }
     }
 
+    pub fn current_buffer(&self) -> KeyResult<Id> {
+        match self.api.perform(ApiRequest::CurrentId(IdType::Buffer))? {
+            Some(ApiResponse::Id(id)) => Ok(id),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
     pub fn echo(&self, message: String) -> KeyResult {
-        self.api.perform(ApiRequest::Echo(message))
+        self.api.perform(ApiRequest::Echo(message))?;
+        Ok(())
     }
 
     pub fn set_keymap(&self, modes: String, from_keys: String, to: ScriptingFnRef) -> KeyResult {
@@ -32,6 +43,7 @@ impl<A: ApiDelegate> IaidoApi<A> {
             modes.to_string(),
             from_keys.to_string(),
             to,
-        ))
+        ))?;
+        Ok(())
     }
 }

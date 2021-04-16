@@ -5,7 +5,7 @@ use std::{sync::Mutex, time::Duration};
 use crate::{
     app::{self, App},
     editing::text::TextLines,
-    input::KeymapContext,
+    input::{commands::CommandHandlerContext, KeymapContext},
 };
 use crate::{
     input::BoxableKeymap,
@@ -41,7 +41,8 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
 
         if let Some(ref mut keymap) = keymap {
             // ... and from scripts
-            dirty |= ScriptingManager::process(&mut self.app.state, keymap)?;
+            let mut context = CommandHandlerContext::new(self, keymap, "".to_string());
+            dirty |= ScriptingManager::process(&mut context)?;
         } else {
             panic!("No keymap provided");
         }

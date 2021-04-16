@@ -8,10 +8,7 @@ use dirs;
 use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
 
 use crate::{
-    app::{
-        self,
-        jobs::{JobError, JobResult},
-    },
+    app::jobs::{JobError, JobResult},
     editing::Id,
     input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
@@ -130,13 +127,10 @@ impl ScriptingManager {
         }
     }
 
-    pub fn process<K: BoxableKeymap>(
-        mut state: &mut app::State,
-        keymap: &mut K,
-    ) -> io::Result<bool> {
-        if let Some(mut api) = state.api.take() {
-            let dirty = api.process(&mut state, keymap)?;
-            state.api = Some(api);
+    pub fn process(context: &mut CommandHandlerContext) -> io::Result<bool> {
+        if let Some(mut api) = context.state_mut().api.take() {
+            let dirty = api.process(context)?;
+            context.state_mut().api = Some(api);
             Ok(dirty)
         } else {
             panic!("Re-entrant script API access");

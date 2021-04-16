@@ -3,13 +3,11 @@ use std::{
     sync::{mpsc, Arc, Mutex},
 };
 
-use crate::{
-    app,
-    input::{
-        keys::KeysParsable,
-        maps::{KeyResult, UserKeyHandler},
-        BoxableKeymap, KeyError, KeymapContext, RemapMode,
-    },
+use crate::input::{
+    commands::CommandHandlerContext,
+    keys::KeysParsable,
+    maps::{KeyResult, UserKeyHandler},
+    BoxableKeymap, KeyError, KeymapContext, RemapMode,
 };
 
 use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResult};
@@ -43,16 +41,12 @@ impl ApiManager {
         }
     }
 
-    pub fn process<K: BoxableKeymap>(
-        &mut self,
-        app: &mut app::State,
-        keymap: &mut K,
-    ) -> Result<bool, KeyError> {
+    pub fn process(&mut self, context: &mut CommandHandlerContext) -> Result<bool, KeyError> {
         let mut dirty = false;
         for _ in 0..MAX_TASKS_PER_TICK {
             match self.from_script.try_recv() {
                 Ok(msg) => {
-                    self.process_one(app, keymap, msg)?;
+                    self.process_one(context, msg)?;
                     dirty = true;
                 }
                 Err(mpsc::TryRecvError::Empty) => return Ok(dirty),
@@ -63,15 +57,14 @@ impl ApiManager {
         Ok(dirty)
     }
 
-    fn process_one<K: BoxableKeymap>(
+    fn process_one(
         &self,
-        app: &mut app::State,
-        keymap: &mut K,
+        context: &mut CommandHandlerContext,
         msg: ApiMessage<ApiRequest>,
     ) -> KeyResult {
         match msg.payload {
             ApiRequest::Echo(text) => {
-                app.echom(text.to_string());
+                context.state_mut().echom(text.to_string());
             }
 
             ApiRequest::SetKeymapFn(mode, keys, f) => {
@@ -80,7 +73,11 @@ impl ApiManager {
                     "i" => RemapMode::VimInsert,
                     _ => RemapMode::User(mode),
                 };
-                keymap.remap_keys_user_fn(mode, keys.into_keys(), create_user_keyhandler(f));
+                context.keymap.remap_keys_user_fn(
+                    mode,
+                    keys.into_keys(),
+                    create_user_keyhandler(f),
+                );
             }
         }
 

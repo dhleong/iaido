@@ -38,10 +38,19 @@ impl PyValue for CurrentPyObjects {
 
 #[vm::pyimpl]
 impl CurrentPyObjects {
-    #[pyproperty(name = "buffer")]
+    #[pyproperty]
     pub fn buffer(&self, vm: &vm::VirtualMachine) -> PyResult<BufferPyObject> {
         let api = self.api.buffer().wrap_err(vm)?;
         Ok(BufferPyObject { api })
+    }
+
+    #[pyproperty(setter)]
+    pub fn set_buffer(
+        &self,
+        buffer: PyRef<BufferPyObject>,
+        vm: &vm::VirtualMachine,
+    ) -> PyResult<()> {
+        self.api.set_buffer(&buffer.api).wrap_err(vm)
     }
 }
 

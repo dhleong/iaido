@@ -33,6 +33,16 @@ impl<A: ApiDelegate> IaidoApi<A> {
         }
     }
 
+    pub fn set_current_buffer(&self, id: Id) -> KeyResult {
+        match self
+            .api
+            .perform(ApiRequest::SetCurrentId(IdType::Buffer, id))?
+        {
+            Some(_) => Ok(()),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
     pub fn echo(&self, message: String) -> KeyResult {
         self.api.perform(ApiRequest::Echo(message))?;
         Ok(())

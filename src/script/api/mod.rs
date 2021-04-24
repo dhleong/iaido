@@ -17,6 +17,7 @@ pub enum IdType {
 
 pub enum ApiRequest {
     CurrentId(IdType),
+    SetCurrentId(IdType, Id),
     Echo(String),
     SetKeymapFn(String, String, ScriptingFnRef),
 }

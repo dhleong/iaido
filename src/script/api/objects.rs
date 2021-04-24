@@ -21,6 +21,10 @@ impl CurrentObjects {
             self.api.current_buffer()?,
         ))
     }
+
+    pub fn set_buffer(&self, buffer: &BufferApiObject) -> KeyResult {
+        self.api.set_current_buffer(buffer.id)
+    }
 }
 
 pub struct BufferApiObject {

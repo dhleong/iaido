@@ -80,6 +80,17 @@ impl ApiManager {
                 context.state_mut().echom(text.to_string());
             }
 
+            ApiRequest::SetCurrentId(id_type, id) => match id_type {
+                IdType::Buffer => {
+                    context.state_mut().current_window_mut().buffer = id;
+                }
+
+                // TODO implement these?
+                IdType::Connection => {}
+                IdType::Window => {}
+                IdType::Tab => {}
+            },
+
             ApiRequest::SetKeymapFn(mode, keys, f) => {
                 let mode = match mode.as_str() {
                     "n" => RemapMode::VimNormal,

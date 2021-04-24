@@ -7,7 +7,7 @@ edition = "2018"
 [features]
 default = ["python"]
 
-python = ["rustpython-vm"]
+python = ["rustpython-common", "rustpython-vm"]
 
 [profile.dev]
 split-debuginfo = "unpacked"
@@ -25,6 +25,7 @@ tui = { version = "0.14", default-features = false, features = ["crossterm"] }
 
 # scripting
 rustpython-vm = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true, features = ["freeze-stdlib"] }
+rustpython-common = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true }
 
 genawaiter = "0.99.1"
 telnet = "0.1.4"

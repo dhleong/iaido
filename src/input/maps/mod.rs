@@ -44,7 +44,7 @@ impl<'a, T: BoxableKeymap> KeySource for KeyHandlerContext<'a, T> {
     delegate_keysource_with_map!(context, keymap);
 }
 
-pub type KeyResult = Result<(), KeyError>;
+pub type KeyResult<T = ()> = Result<T, KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
 pub type UserKeyHandler = dyn Fn(CommandHandlerContext<'_>) -> KeyResult;
 

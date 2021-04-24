@@ -10,7 +10,7 @@ use crate::input::{
     BoxableKeymap, KeyError, KeymapContext, RemapMode,
 };
 
-use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResult};
+use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResult, IdType};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -62,10 +62,42 @@ impl ApiManager {
         context: &mut CommandHandlerContext,
         msg: ApiMessage<ApiRequest>,
     ) -> KeyResult {
+        let mut response = Ok(None);
         match msg.payload {
+            ApiRequest::BufferName(id) => {
+                response = Ok(if let Some(buf) = context.state().buffers.by_id(id) {
+                    Some(ApiResponse::String(format!("{:?}", buf.source())))
+                } else {
+                    None
+                })
+            }
+
+            ApiRequest::CurrentId(id_type) => {
+                response = Ok(match id_type {
+                    IdType::Buffer => Some(context.state().current_buffer().id()),
+                    IdType::Connection => context.state().connections.as_ref().and_then(|conns| {
+                        conns.buffer_to_id(context.state().current_buffer().id())
+                    }),
+                    IdType::Window => Some(context.state().current_window().id),
+                    IdType::Tab => Some(context.state().current_tab().id),
+                }
+                .and_then(|id| Some(ApiResponse::Id(id))));
+            }
+
             ApiRequest::Echo(text) => {
                 context.state_mut().echom(text.to_string());
             }
+
+            ApiRequest::SetCurrentId(id_type, id) => match id_type {
+                IdType::Buffer => {
+                    context.state_mut().current_window_mut().buffer = id;
+                }
+
+                // TODO implement these?
+                IdType::Connection => {}
+                IdType::Window => {}
+                IdType::Tab => {}
+            },
 
             ApiRequest::SetKeymapFn(mode, keys, f) => {
                 let mode = match mode.as_str() {
@@ -79,9 +111,30 @@ impl ApiManager {
                     create_user_keyhandler(f),
                 );
             }
+
+            ApiRequest::TypedClose(id_type, id) => {
+                match id_type {
+                    IdType::Buffer => panic!("Cannot close buffer"),
+                    IdType::Connection => {
+                        if let Some(ref mut conns) = context.state_mut().connections {
+                            conns.disconnect(id)?;
+                        }
+                    }
+                    IdType::Window => {
+                        if let Some(tabpage) =
+                            context.state_mut().tabpages.containing_window_mut(id)
+                        {
+                            tabpage.close_window(id);
+                        }
+                    }
+                    IdType::Tab => {
+                        // TODO support closing a tabpage
+                    }
+                };
+            }
         }
 
-        match msg.response.send(Ok(())) {
+        match msg.response.send(response) {
             Err(e) => std::panic::panic_any(e),
             Ok(_) => {}
         }

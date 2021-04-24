@@ -8,7 +8,9 @@ use vm::{
 
 use crate::{
     editing::Id,
-    script::api::objects::{BufferApiObject, ConnectionApiObject, CurrentObjects},
+    script::api::objects::{
+        BufferApiObject, ConnectionApiObject, CurrentObjects, TabpageApiObject, WindowApiObject,
+    },
 };
 
 use super::util::KeyResultConvertible;
@@ -60,6 +62,18 @@ impl CurrentPyObjects {
         } else {
             Ok(None)
         }
+    }
+
+    #[pyproperty]
+    pub fn tabpage(&self, vm: &vm::VirtualMachine) -> PyResult<TabpagePyObject> {
+        let api = self.api.tabpage().wrap_err(vm)?;
+        Ok(TabpagePyObject { api })
+    }
+
+    #[pyproperty]
+    pub fn window(&self, vm: &vm::VirtualMachine) -> PyResult<WindowPyObject> {
+        let api = self.api.window().wrap_err(vm)?;
+        Ok(WindowPyObject { api })
     }
 }
 
@@ -133,8 +147,80 @@ impl ConnectionPyObject {
     }
 }
 
+#[vm::pyclass(module = "iaido", name = "Tabpage")]
+pub struct TabpagePyObject {
+    pub api: TabpageApiObject,
+}
+
+impl fmt::Debug for TabpagePyObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.api.fmt(f)
+    }
+}
+
+impl PyValue for TabpagePyObject {
+    fn class(_vm: &vm::VirtualMachine) -> &PyTypeRef {
+        Self::static_type()
+    }
+}
+
+#[vm::pyimpl]
+impl TabpagePyObject {
+    #[pyproperty]
+    pub fn id(&self) -> Id {
+        self.api.id
+    }
+
+    #[pymethod(magic)]
+    fn repr(zelf: PyRef<Self>) -> PyResult<String> {
+        Ok(format!("{:?}", zelf.api))
+    }
+
+    #[pymethod]
+    fn close(&self, vm: &vm::VirtualMachine) -> PyResult<()> {
+        self.api.close().wrap_err(vm)
+    }
+}
+
+#[vm::pyclass(module = "iaido", name = "Window")]
+pub struct WindowPyObject {
+    pub api: WindowApiObject,
+}
+
+impl fmt::Debug for WindowPyObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.api.fmt(f)
+    }
+}
+
+impl PyValue for WindowPyObject {
+    fn class(_vm: &vm::VirtualMachine) -> &PyTypeRef {
+        Self::static_type()
+    }
+}
+
+#[vm::pyimpl]
+impl WindowPyObject {
+    #[pyproperty]
+    pub fn id(&self) -> Id {
+        self.api.id
+    }
+
+    #[pymethod(magic)]
+    fn repr(zelf: PyRef<Self>) -> PyResult<String> {
+        Ok(format!("{:?}", zelf.api))
+    }
+
+    #[pymethod]
+    fn close(&self, vm: &vm::VirtualMachine) -> PyResult<()> {
+        self.api.close().wrap_err(vm)
+    }
+}
+
 pub fn init_objects(vm: &vm::VirtualMachine) {
+    BufferPyObject::make_class(&vm.ctx);
     ConnectionPyObject::make_class(&vm.ctx);
     CurrentPyObjects::make_class(&vm.ctx);
-    BufferPyObject::make_class(&vm.ctx);
+    TabpagePyObject::make_class(&vm.ctx);
+    WindowPyObject::make_class(&vm.ctx);
 }

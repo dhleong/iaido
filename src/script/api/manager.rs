@@ -72,12 +72,6 @@ impl ApiManager {
                 })
             }
 
-            ApiRequest::ConnectionClose(id) => {
-                if let Some(ref mut conns) = context.state_mut().connections {
-                    conns.disconnect(id)?;
-                }
-            }
-
             ApiRequest::CurrentId(id_type) => {
                 response = Ok(match id_type {
                     IdType::Buffer => Some(context.state().current_buffer().id()),
@@ -116,6 +110,27 @@ impl ApiManager {
                     keys.into_keys(),
                     create_user_keyhandler(f),
                 );
+            }
+
+            ApiRequest::TypedClose(id_type, id) => {
+                match id_type {
+                    IdType::Buffer => panic!("Cannot close buffer"),
+                    IdType::Connection => {
+                        if let Some(ref mut conns) = context.state_mut().connections {
+                            conns.disconnect(id)?;
+                        }
+                    }
+                    IdType::Window => {
+                        if let Some(tabpage) =
+                            context.state_mut().tabpages.containing_window_mut(id)
+                        {
+                            tabpage.close_window(id);
+                        }
+                    }
+                    IdType::Tab => {
+                        // TODO support closing a tabpage
+                    }
+                };
             }
         }
 

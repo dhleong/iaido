@@ -17,11 +17,11 @@ pub enum IdType {
 
 pub enum ApiRequest {
     BufferName(Id),
-    ConnectionClose(Id),
     CurrentId(IdType),
     SetCurrentId(IdType, Id),
     Echo(String),
     SetKeymapFn(String, String, ScriptingFnRef),
+    TypedClose(IdType, Id),
 }
 
 pub enum ApiResponse {

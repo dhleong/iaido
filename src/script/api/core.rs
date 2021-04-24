@@ -34,10 +34,7 @@ impl<A: ApiDelegate> IaidoApi<A> {
     }
 
     pub fn connection_close(&self, conn_id: Id) -> KeyResult {
-        match self.api.perform(ApiRequest::ConnectionClose(conn_id))? {
-            Some(_) => Ok(()),
-            _ => Err(KeyError::Interrupted),
-        }
+        self.close_by_type(IdType::Connection, conn_id)
     }
 
     pub fn current_buffer(&self) -> KeyResult<Id> {
@@ -68,6 +65,22 @@ impl<A: ApiDelegate> IaidoApi<A> {
         }
     }
 
+    pub fn current_tabpage(&self) -> KeyResult<Id> {
+        self.id_by_type(IdType::Tab)
+    }
+
+    pub fn tabpage_close(&self, tab_id: Id) -> KeyResult {
+        self.close_by_type(IdType::Tab, tab_id)
+    }
+
+    pub fn current_window(&self) -> KeyResult<Id> {
+        self.id_by_type(IdType::Window)
+    }
+
+    pub fn window_close(&self, win_id: Id) -> KeyResult {
+        self.close_by_type(IdType::Window, win_id)
+    }
+
     pub fn echo(&self, message: String) -> KeyResult {
         self.api.perform(ApiRequest::Echo(message))?;
         Ok(())
@@ -80,5 +93,19 @@ impl<A: ApiDelegate> IaidoApi<A> {
             to,
         ))?;
         Ok(())
+    }
+
+    fn close_by_type(&self, id_type: IdType, id: Id) -> KeyResult {
+        match self.api.perform(ApiRequest::TypedClose(id_type, id))? {
+            Some(_) => Ok(()),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
+    fn id_by_type(&self, id_type: IdType) -> KeyResult<Id> {
+        match self.api.perform(ApiRequest::CurrentId(id_type))? {
+            Some(ApiResponse::Id(id)) => Ok(id),
+            _ => Err(KeyError::Interrupted),
+        }
     }
 }

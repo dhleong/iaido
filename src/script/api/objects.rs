@@ -33,6 +33,20 @@ impl CurrentObjects {
             Ok(None)
         }
     }
+
+    pub fn tabpage(&self) -> KeyResult<TabpageApiObject> {
+        Ok(TabpageApiObject::new(
+            self.api.clone(),
+            self.api.current_tabpage()?,
+        ))
+    }
+
+    pub fn window(&self) -> KeyResult<WindowApiObject> {
+        Ok(WindowApiObject::new(
+            self.api.clone(),
+            self.api.current_window()?,
+        ))
+    }
 }
 
 pub struct BufferApiObject {
@@ -74,5 +88,47 @@ impl ConnectionApiObject {
 
     pub fn close(&self) -> KeyResult {
         self.api.connection_close(self.id)
+    }
+}
+
+pub struct TabpageApiObject {
+    api: Api,
+    pub id: Id,
+}
+
+impl fmt::Debug for TabpageApiObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<Tabpage #{}>", self.id)
+    }
+}
+
+impl TabpageApiObject {
+    pub fn new(api: Api, id: Id) -> Self {
+        Self { api, id }
+    }
+
+    pub fn close(&self) -> KeyResult {
+        self.api.tabpage_close(self.id)
+    }
+}
+
+pub struct WindowApiObject {
+    api: Api,
+    pub id: Id,
+}
+
+impl fmt::Debug for WindowApiObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<Window #{}>", self.id)
+    }
+}
+
+impl WindowApiObject {
+    pub fn new(api: Api, id: Id) -> Self {
+        Self { api, id }
+    }
+
+    pub fn close(&self) -> KeyResult {
+        self.api.window_close(self.id)
     }
 }

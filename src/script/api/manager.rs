@@ -50,7 +50,7 @@ impl ApiManager {
                     dirty = true;
                 }
                 Err(mpsc::TryRecvError::Empty) => return Ok(dirty),
-                Err(e) => panic!(e),
+                Err(e) => std::panic::panic_any(e),
             }
         }
 
@@ -82,7 +82,7 @@ impl ApiManager {
         }
 
         match msg.response.send(Ok(())) {
-            Err(e) => panic!(e),
+            Err(e) => std::panic::panic_any(e),
             Ok(_) => {}
         }
 

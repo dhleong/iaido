@@ -149,7 +149,7 @@ mod tests {
             ctx.state_mut().current_tab_mut().set_focus(split_id);
             match check_hide_buffer(&mut ctx, HideBufArgs { force: false }) {
                 Ok(_) => {}
-                Err(e) => panic!(e),
+                Err(e) => std::panic::panic_any(e),
             }
 
             // the original connlayout should NOT be hideable

@@ -32,6 +32,7 @@ use super::{
 
 mod compat;
 mod modules;
+mod objects;
 mod wrapper;
 
 use compat::apply_compat;

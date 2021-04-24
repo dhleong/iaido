@@ -1,5 +1,3 @@
-extern crate rustpython_vm;
-
 mod app;
 mod connection;
 mod editing;

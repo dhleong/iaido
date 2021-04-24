@@ -16,6 +16,7 @@ pub enum IdType {
 }
 
 pub enum ApiRequest {
+    BufferName(Id),
     CurrentId(IdType),
     SetCurrentId(IdType, Id),
     Echo(String),
@@ -24,6 +25,7 @@ pub enum ApiRequest {
 
 pub enum ApiResponse {
     Id(Id),
+    String(String),
 }
 
 pub type ApiResult = KeyResult<Option<ApiResponse>>;

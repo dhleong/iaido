@@ -42,4 +42,8 @@ impl BufferApiObject {
     pub fn new(api: Api, id: Id) -> Self {
         Self { api, id }
     }
+
+    pub fn name(&self) -> KeyResult<String> {
+        self.api.buffer_name(self.id)
+    }
 }

@@ -73,9 +73,14 @@ impl PyValue for BufferPyObject {
 
 #[vm::pyimpl]
 impl BufferPyObject {
-    #[pyproperty(name = "id")]
+    #[pyproperty]
     pub fn id(&self) -> Id {
         self.api.id
+    }
+
+    #[pyproperty]
+    pub fn name(&self, vm: &vm::VirtualMachine) -> PyResult<String> {
+        self.api.name().wrap_err(vm)
     }
 
     #[pymethod(magic)]

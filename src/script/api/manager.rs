@@ -64,6 +64,14 @@ impl ApiManager {
     ) -> KeyResult {
         let mut response = Ok(None);
         match msg.payload {
+            ApiRequest::BufferName(id) => {
+                response = Ok(if let Some(buf) = context.state().buffers.by_id(id) {
+                    Some(ApiResponse::String(format!("{:?}", buf.source())))
+                } else {
+                    None
+                })
+            }
+
             ApiRequest::CurrentId(id_type) => {
                 response = Ok(match id_type {
                     IdType::Buffer => Some(context.state().current_buffer().id()),

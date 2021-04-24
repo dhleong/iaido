@@ -26,6 +26,13 @@ impl<A: ApiDelegate> IaidoApi<A> {
         Self { api }
     }
 
+    pub fn buffer_name(&self, buf_id: Id) -> KeyResult<String> {
+        match self.api.perform(ApiRequest::BufferName(buf_id))? {
+            Some(ApiResponse::String(name)) => Ok(name),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
     pub fn current_buffer(&self) -> KeyResult<Id> {
         match self.api.perform(ApiRequest::CurrentId(IdType::Buffer))? {
             Some(ApiResponse::Id(id)) => Ok(id),

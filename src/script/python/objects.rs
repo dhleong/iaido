@@ -1,33 +1,81 @@
+use std::fmt;
+
 use rustpython_vm as vm;
 use vm::{
     builtins::PyTypeRef,
-    pyobject::{PyValue, StaticType},
+    pyobject::{PyClassImpl, PyRef, PyResult, PyValue, StaticType},
 };
 
-#[vm::pyclass(module = "iaido", name = "CurrentObjects")]
-#[derive(Debug)]
-pub struct CurrentObjects {}
+use crate::{
+    editing::Id,
+    script::api::objects::{BufferApiObject, CurrentObjects},
+};
 
-impl PyValue for CurrentObjects {
+use super::util::KeyResultConvertible;
+
+#[vm::pyclass(module = "iaido", name = "CurrentObjects")]
+pub struct CurrentPyObjects {
+    api: CurrentObjects,
+}
+
+impl CurrentPyObjects {
+    pub fn new(api: CurrentObjects) -> Self {
+        Self { api }
+    }
+}
+
+impl fmt::Debug for CurrentPyObjects {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CurrentObjects")
+    }
+}
+
+impl PyValue for CurrentPyObjects {
     fn class(_vm: &vm::VirtualMachine) -> &PyTypeRef {
         Self::static_type()
     }
 }
 
 #[vm::pyimpl]
-impl CurrentObjects {
+impl CurrentPyObjects {
     #[pyproperty(name = "buffer")]
-    pub fn buffer(&self) -> BufferPyObject {
-        BufferPyObject {}
+    pub fn buffer(&self, vm: &vm::VirtualMachine) -> PyResult<BufferPyObject> {
+        let api = self.api.buffer().wrap_err(vm)?;
+        Ok(BufferPyObject { api })
     }
 }
 
-#[vm::pyclass(module = false, name = "Buffer")]
-#[derive(Debug)]
-pub struct BufferPyObject {}
+#[vm::pyclass(module = "iaido", name = "Buffer")]
+pub struct BufferPyObject {
+    pub api: BufferApiObject,
+}
+
+impl fmt::Debug for BufferPyObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.api.fmt(f)
+    }
+}
 
 impl PyValue for BufferPyObject {
     fn class(_vm: &vm::VirtualMachine) -> &PyTypeRef {
         Self::static_type()
     }
+}
+
+#[vm::pyimpl]
+impl BufferPyObject {
+    #[pyproperty(name = "id")]
+    pub fn id(&self) -> Id {
+        self.api.id
+    }
+
+    #[pymethod(magic)]
+    fn repr(zelf: PyRef<Self>) -> PyResult<String> {
+        Ok(format!("{:?}", zelf.api))
+    }
+}
+
+pub fn init_objects(vm: &vm::VirtualMachine) {
+    CurrentPyObjects::make_class(&vm.ctx);
+    BufferPyObject::make_class(&vm.ctx);
 }

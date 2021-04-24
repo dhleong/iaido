@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use crate::{editing::Id, input::maps::KeyResult};
 
@@ -11,7 +11,7 @@ pub struct CurrentObjects {
 }
 
 impl CurrentObjects {
-    pub fn new(&self, api: Api) -> Self {
+    pub fn new(api: Api) -> Self {
         Self { api }
     }
 
@@ -26,6 +26,12 @@ impl CurrentObjects {
 pub struct BufferApiObject {
     api: Api,
     pub id: Id,
+}
+
+impl fmt::Debug for BufferApiObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<Buffer #{}>", self.id)
+    }
 }
 
 impl BufferApiObject {

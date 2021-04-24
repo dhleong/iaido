@@ -16,10 +16,7 @@ use crate::{
     editing::Id,
 };
 
-use self::{
-    modules::ModuleContained,
-    wrapper::{unwrap_error, FnManager},
-};
+use self::{modules::ModuleContained, util::unwrap_error, wrapper::FnManager};
 
 use super::{
     api::{
@@ -33,6 +30,7 @@ use super::{
 mod compat;
 mod modules;
 mod objects;
+mod util;
 mod wrapper;
 
 use compat::apply_compat;

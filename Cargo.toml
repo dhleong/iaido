@@ -9,6 +9,9 @@ default = ["python"]
 
 python = ["rustpython-vm"]
 
+[profile.dev]
+split-debuginfo = "unpacked"
+
 [dependencies]
 # internal crates
 command_decl = { path = "./command_decl" }

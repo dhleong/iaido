@@ -8,7 +8,7 @@ use vm::{
 
 use crate::{
     editing::Id,
-    script::api::objects::{BufferApiObject, CurrentObjects},
+    script::api::objects::{BufferApiObject, ConnectionApiObject, CurrentObjects},
 };
 
 use super::util::KeyResultConvertible;
@@ -52,6 +52,15 @@ impl CurrentPyObjects {
     ) -> PyResult<()> {
         self.api.set_buffer(&buffer.api).wrap_err(vm)
     }
+
+    #[pyproperty]
+    pub fn connection(&self, vm: &vm::VirtualMachine) -> PyResult<Option<ConnectionPyObject>> {
+        if let Some(api) = self.api.connection().wrap_err(vm)? {
+            Ok(Some(ConnectionPyObject { api }))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[vm::pyclass(module = "iaido", name = "Buffer")]
@@ -89,7 +98,43 @@ impl BufferPyObject {
     }
 }
 
+#[vm::pyclass(module = "iaido", name = "Connection")]
+pub struct ConnectionPyObject {
+    pub api: ConnectionApiObject,
+}
+
+impl fmt::Debug for ConnectionPyObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.api.fmt(f)
+    }
+}
+
+impl PyValue for ConnectionPyObject {
+    fn class(_vm: &vm::VirtualMachine) -> &PyTypeRef {
+        Self::static_type()
+    }
+}
+
+#[vm::pyimpl]
+impl ConnectionPyObject {
+    #[pyproperty]
+    pub fn id(&self) -> Id {
+        self.api.id
+    }
+
+    #[pymethod(magic)]
+    fn repr(zelf: PyRef<Self>) -> PyResult<String> {
+        Ok(format!("{:?}", zelf.api))
+    }
+
+    #[pymethod]
+    fn close(&self, vm: &vm::VirtualMachine) -> PyResult<()> {
+        self.api.close().wrap_err(vm)
+    }
+}
+
 pub fn init_objects(vm: &vm::VirtualMachine) {
+    ConnectionPyObject::make_class(&vm.ctx);
     CurrentPyObjects::make_class(&vm.ctx);
     BufferPyObject::make_class(&vm.ctx);
 }

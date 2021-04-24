@@ -72,6 +72,12 @@ impl ApiManager {
                 })
             }
 
+            ApiRequest::ConnectionClose(id) => {
+                if let Some(ref mut conns) = context.state_mut().connections {
+                    conns.disconnect(id)?;
+                }
+            }
+
             ApiRequest::CurrentId(id_type) => {
                 response = Ok(match id_type {
                     IdType::Buffer => Some(context.state().current_buffer().id()),

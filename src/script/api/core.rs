@@ -33,6 +33,13 @@ impl<A: ApiDelegate> IaidoApi<A> {
         }
     }
 
+    pub fn connection_close(&self, conn_id: Id) -> KeyResult {
+        match self.api.perform(ApiRequest::ConnectionClose(conn_id))? {
+            Some(_) => Ok(()),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
     pub fn current_buffer(&self) -> KeyResult<Id> {
         match self.api.perform(ApiRequest::CurrentId(IdType::Buffer))? {
             Some(ApiResponse::Id(id)) => Ok(id),
@@ -46,6 +53,17 @@ impl<A: ApiDelegate> IaidoApi<A> {
             .perform(ApiRequest::SetCurrentId(IdType::Buffer, id))?
         {
             Some(_) => Ok(()),
+            _ => Err(KeyError::Interrupted),
+        }
+    }
+
+    pub fn current_connection(&self) -> KeyResult<Option<Id>> {
+        match self
+            .api
+            .perform(ApiRequest::CurrentId(IdType::Connection))?
+        {
+            Some(ApiResponse::Id(id)) => Ok(Some(id)),
+            None => Ok(None),
             _ => Err(KeyError::Interrupted),
         }
     }

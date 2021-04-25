@@ -15,6 +15,7 @@ split-debuginfo = "unpacked"
 [dependencies]
 # internal crates
 command_decl = { path = "./command_decl" }
+apigen = { path = "./apigen" }
 
 # for cleaner tests:
 indoc = "1.0"

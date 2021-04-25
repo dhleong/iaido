@@ -14,6 +14,112 @@ use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResul
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
+trait ApiHandler<Payload: Send + Sync> {
+    fn handle(&self, context: &mut CommandHandlerContext, p: &Payload) -> ApiResult;
+}
+
+trait ApiRpcCall: Send {
+    fn handle(&self, context: &mut CommandHandlerContext);
+}
+
+struct ApiMessage2<Payload: Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> {
+    handler: Handler,
+    payload: Payload,
+    response: mpsc::Sender<ApiResult>,
+}
+
+// NOTE: the goal here is that each Module can declare its messages and
+// handler of the messages in isolation, so we're essentially passing
+// a closure that operates on the CommandHandlerContext
+impl<Payload: Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> ApiRpcCall
+    for ApiMessage2<Payload, Handler>
+{
+    fn handle(&self, context: &mut CommandHandlerContext) {
+        let result = self.handler.handle(context, &self.payload);
+        if let Err(e) = self.response.send(result) {
+            std::panic::panic_any(e);
+        }
+    }
+}
+
+pub struct ApiManagerRpc {
+    to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
+    from_script: mpsc::Receiver<Box<dyn ApiRpcCall>>,
+}
+
+struct TestHandler {}
+impl ApiHandler<usize> for TestHandler {
+    fn handle(&self, _context: &mut CommandHandlerContext, _p: &usize) -> ApiResult {
+        todo!()
+    }
+}
+
+impl ApiManagerRpc {
+    pub fn delegate(&self) -> ApiManagerDelegate2 {
+        ApiManagerDelegate2 {
+            to_app: self.to_app.clone(),
+        }
+    }
+
+    pub fn process(&mut self, context: &mut CommandHandlerContext) -> Result<bool, KeyError> {
+        let mut dirty = false;
+        for _ in 0..MAX_TASKS_PER_TICK {
+            match self.from_script.try_recv() {
+                Ok(msg) => {
+                    msg.handle(context);
+                    dirty = true;
+                }
+                Err(mpsc::TryRecvError::Empty) => return Ok(dirty),
+                Err(e) => std::panic::panic_any(e),
+            }
+        }
+
+        Ok(dirty)
+    }
+}
+
+#[derive(Clone)]
+struct ApiManagerDelegate2 {
+    to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
+}
+
+impl ApiManagerDelegate2 {
+    pub fn test(&self) -> ApiResult {
+        self.perform(TestHandler {}, 42)
+    }
+
+    pub fn perform<
+        Payload: 'static + Send + Sync,
+        Handler: 'static + ApiHandler<Payload> + Send + Sync,
+    >(
+        &self,
+        handler: Handler,
+        payload: Payload,
+    ) -> ApiResult {
+        let (tx, rx) = mpsc::channel();
+        let message = Box::new(ApiMessage2 {
+            handler,
+            payload,
+            response: tx,
+        });
+
+        if let Ok(tx) = self.to_app.lock() {
+            if let Err(_) = tx.send(message) {
+                return Err(KeyError::Interrupted);
+            }
+        } else {
+            panic!("Failed to lock to_app RPC sender");
+        }
+
+        match rx.recv() {
+            Ok(response) => response,
+            Err(_) => {
+                return Err(KeyError::Interrupted);
+            }
+        }
+    }
+}
+
 struct ApiMessage<T: Send + Sync> {
     payload: T,
     response: mpsc::Sender<ApiResult>,
@@ -65,11 +171,11 @@ impl ApiManager {
         let mut response = Ok(None);
         match msg.payload {
             ApiRequest::BufferName(id) => {
-                response = Ok(if let Some(buf) = context.state().buffers.by_id(id) {
-                    Some(ApiResponse::String(format!("{:?}", buf.source())))
-                } else {
-                    None
-                })
+                response = Ok(context
+                    .state()
+                    .buffers
+                    .by_id(id)
+                    .and_then(|buf| Some(ApiResponse::String(format!("{:?}", buf.source())))))
             }
 
             ApiRequest::CurrentId(id_type) => {

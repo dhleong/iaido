@@ -14,15 +14,15 @@ use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResul
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
-trait ApiHandler<Payload: Send + Sync> {
-    fn handle(&self, context: &mut CommandHandlerContext, p: &Payload) -> ApiResult;
+trait ApiHandler<Payload: Copy + Send + Sync> {
+    fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> ApiResult;
 }
 
 trait ApiRpcCall: Send {
     fn handle(&self, context: &mut CommandHandlerContext);
 }
 
-struct ApiMessage2<Payload: Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> {
+struct ApiMessage2<Payload: Copy + Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> {
     handler: Handler,
     payload: Payload,
     response: mpsc::Sender<ApiResult>,
@@ -31,11 +31,11 @@ struct ApiMessage2<Payload: Send + Sync, Handler: ApiHandler<Payload> + Send + S
 // NOTE: the goal here is that each Module can declare its messages and
 // handler of the messages in isolation, so we're essentially passing
 // a closure that operates on the CommandHandlerContext
-impl<Payload: Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> ApiRpcCall
+impl<Payload: Copy + Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> ApiRpcCall
     for ApiMessage2<Payload, Handler>
 {
     fn handle(&self, context: &mut CommandHandlerContext) {
-        let result = self.handler.handle(context, &self.payload);
+        let result = self.handler.handle(context, self.payload);
         if let Err(e) = self.response.send(result) {
             std::panic::panic_any(e);
         }
@@ -49,7 +49,7 @@ pub struct ApiManagerRpc {
 
 struct TestHandler {}
 impl ApiHandler<usize> for TestHandler {
-    fn handle(&self, _context: &mut CommandHandlerContext, _p: &usize) -> ApiResult {
+    fn handle(&self, _context: &mut CommandHandlerContext, _p: usize) -> ApiResult {
         todo!()
     }
 }
@@ -89,7 +89,7 @@ impl ApiManagerDelegate2 {
     }
 
     pub fn perform<
-        Payload: 'static + Send + Sync,
+        Payload: 'static + Copy + Send + Sync,
         Handler: 'static + ApiHandler<Payload> + Send + Sync,
     >(
         &self,

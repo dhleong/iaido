@@ -1,9 +1,9 @@
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
-use syn::Ident;
+use syn::{FnArg, Ident, Type};
 
 use super::NsRpc;
-use crate::rpc_fn::RpcFn;
+use crate::{rpc_fn::RpcFn, types::is_command_context};
 
 #[derive(Clone)]
 pub struct NsRequest {
@@ -26,6 +26,24 @@ impl NsRequest {
     fn ident(&self) -> Ident {
         Self::ident_from_ns(&self.ns_name)
     }
+
+    fn extract_arg_types<'a, I>(inputs: I) -> Vec<Type>
+    where
+        I: Iterator<Item = &'a FnArg>,
+    {
+        inputs
+            .filter_map(|p| match p {
+                FnArg::Receiver(_) => None,
+                FnArg::Typed(param) => {
+                    if is_command_context(&param.ty) {
+                        None
+                    } else {
+                        Some(param.ty.as_ref().clone())
+                    }
+                }
+            })
+            .collect()
+    }
 }
 
 impl ToTokens for NsRequest {
@@ -34,9 +52,13 @@ impl ToTokens for NsRequest {
         let mut requests = vec![];
 
         for f in &self.rpc_fns {
-            // TODO: request args
             let name = f.item.sig.ident.clone();
-            requests.push(name);
+            let args = Self::extract_arg_types(f.item.sig.inputs.iter());
+            requests.push(if args.is_empty() {
+                quote! { #name }
+            } else {
+                quote! { #name(#(#args),*) }
+            });
         }
 
         let gen = quote! {

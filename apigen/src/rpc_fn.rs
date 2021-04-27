@@ -87,6 +87,12 @@ impl RpcFn {
             ));
         }
 
+        let unpack_params = if filtered_params.is_empty() {
+            quote! {}
+        } else {
+            quote! { (#(#filtered_params),*) }
+        };
+
         let invocation_params = if filtered_params.is_empty() {
             quote! {}
         } else {
@@ -94,7 +100,7 @@ impl RpcFn {
         };
 
         Ok(quote! {
-            #request_type::#name => {
+            #request_type::#name#unpack_params => {
                 Ok(
                     #response_type::#name(
                         #api_type::#name(#context#invocation_params)

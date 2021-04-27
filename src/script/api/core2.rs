@@ -95,8 +95,9 @@ impl BufferApiObject {
         Self { api, id }
     }
 
-    #[property(rpc, self.id)]
-    pub fn name(&self, context: &mut CommandHandlerContext, id: Id) -> Option<String> {
+    #[property]
+    #[rpc(self.id)]
+    pub fn name(context: &mut CommandHandlerContext, id: Id) -> Option<String> {
         if let Some(buf) = context.state().buffers.by_id(id) {
             Some(format!("{:?}", buf.source()))
         } else {

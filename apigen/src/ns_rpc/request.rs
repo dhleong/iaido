@@ -63,6 +63,7 @@ impl ToTokens for NsRequest {
 
         let gen = quote! {
             #[allow(non_camel_case_types)]
+            #[derive(Clone, Debug)]
             enum #name {
                 #(#requests),*
             }

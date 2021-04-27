@@ -14,7 +14,7 @@ use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResul
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
-trait ApiHandler<Payload: Copy + Send + Sync, Response: Copy + Send + Sync> {
+pub trait ApiHandler<Payload: Clone + Send + Sync, Response: Clone + Send + Sync> {
     fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> KeyResult<Response>;
 }
 
@@ -24,8 +24,8 @@ trait ApiRpcCall: Send {
 
 struct ApiMessage2<Payload, Response, Handler>
 where
-    Payload: Copy + Send + Sync,
-    Response: Copy + Send + Sync,
+    Payload: Clone + Send + Sync,
+    Response: Clone + Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     handler: Handler,
@@ -38,12 +38,13 @@ where
 // a closure that operates on the CommandHandlerContext
 impl<Payload, Response, Handler> ApiRpcCall for ApiMessage2<Payload, Response, Handler>
 where
-    Payload: Copy + Send + Sync,
-    Response: 'static + Copy + Send + Sync,
+    Payload: Clone + Send + Sync,
+    Response: 'static + Clone + Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     fn handle(&self, context: &mut CommandHandlerContext) {
-        let result = self.handler.handle(context, self.payload);
+        // TODO: can we just pass a reference instead of cloning?
+        let result = self.handler.handle(context, self.payload.clone());
         if let Err(e) = self.response.send(result) {
             std::panic::panic_any(e);
         }
@@ -80,7 +81,7 @@ impl ApiManagerRpc {
 }
 
 #[derive(Clone)]
-struct ApiManagerDelegate2 {
+pub struct ApiManagerDelegate2 {
     to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
 }
 
@@ -91,8 +92,8 @@ impl ApiManagerDelegate2 {
         payload: Payload,
     ) -> KeyResult<Response>
     where
-        Payload: 'static + Copy + Send + Sync,
-        Response: 'static + Copy + Send + Sync,
+        Payload: 'static + Clone + Send + Sync,
+        Response: 'static + Clone + Send + Sync,
         Handler: 'static + ApiHandler<Payload, Response> + Send + Sync,
     {
         let (tx, rx) = mpsc::channel();

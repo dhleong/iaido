@@ -1,9 +1,8 @@
 use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, KeymapContext},
+    script::api::manager::Api,
 };
-
-type Api = usize;
 
 #[apigen::ns]
 pub struct IaidoCore {
@@ -72,7 +71,7 @@ impl CurrentObjects {
     pub fn buffer(&self) -> BufferApiObject {
         // NOTE: buffer_id should be turned into a method that
         // delegates to an RPC call
-        BufferApiObject::new(self.api, self.buffer_id())
+        BufferApiObject::new(self.api.clone(), self.buffer_id())
     }
 }
 
@@ -89,7 +88,7 @@ impl BufferApiObject {
     }
 
     #[property]
-    #[rpc(self.id)]
+    #[rpc(passing(self.id))]
     pub fn name(context: &mut CommandHandlerContext, id: Id) -> Option<String> {
         if let Some(buf) = context.state().buffers.by_id(id) {
             Some(format!("{:?}", buf.source()))

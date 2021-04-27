@@ -53,7 +53,10 @@ impl NsApi {
                 #(#fns)*
             }
 
-            impl #name {
+            impl crate::script::api::manager::ApiHandler<
+                #requests_ident,
+                #responses_ident
+            > for #name {
                 fn handle(
                     &self,
                     #context: &mut crate::input::commands::CommandHandlerContext,

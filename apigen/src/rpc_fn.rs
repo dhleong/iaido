@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{FnArg, Ident, ItemFn};
+use syn::{Expr, ExprPath, FnArg, Ident, ItemFn, Path};
 
 use crate::ns_rpc::{NsApi, NsRequest, NsResponse};
 use crate::types::is_command_context;
@@ -15,14 +15,30 @@ pub struct RpcFn {
 impl RpcFn {
     /// Generate the replacement function within the NS that forwards
     /// to, and unpacks the result of, the RPC call
-    pub fn to_rpc_tokens(&self) -> TokenStream {
+    pub fn to_rpc_tokens(&self, ns_name: &Ident) -> TokenStream {
         let ItemFn { sig, .. } = self.item.clone();
         let name = sig.ident.clone();
         let return_type = sig.output.clone();
+        let api_type = NsApi::ident_from_ns(ns_name);
+        let requests_type = NsRequest::ident_from_ns(ns_name);
+        let responses_type = NsResponse::ident_from_ns(ns_name);
+        let request_params = self.perform_request_param_names();
+        let request_params_tokens = if request_params.is_empty() {
+            quote! {}
+        } else {
+            quote! { (#(#request_params),*) }
+        };
 
         quote! {
             fn #name(&self) #return_type {
-                panic!("TODO: rpc call");
+                match self.api.perform(
+                    #api_type,
+                    #requests_type::#name#request_params_tokens
+                ) {
+                    Ok(#responses_type::#name(response)) => response,
+                    Ok(unexpected) => panic!("Unexpected response: {:?}", unexpected),
+                    Err(e) => std::panic::panic_any(e),
+                }
             }
         }
     }
@@ -43,10 +59,74 @@ impl RpcFn {
     pub fn to_pattern_dispatch_tokens(&self, context: &Ident, ns_name: &Ident) -> SynResult {
         let ItemFn { sig, .. } = &self.item;
         let name = sig.ident.clone();
-        let params = sig.inputs.clone();
         let api_type = NsApi::ident_from_ns(ns_name);
         let request_type = NsRequest::ident_from_ns(ns_name);
         let response_type = NsResponse::ident_from_ns(ns_name);
+
+        let filtered_params = match self.unpack_request_param_names() {
+            Ok(params) => params,
+            Err(e) => return Err(e),
+        };
+
+        let unpack_params = if filtered_params.is_empty() {
+            quote! {}
+        } else {
+            quote! { (#(#filtered_params),*) }
+        };
+
+        let invocation_params = if filtered_params.is_empty() {
+            quote! {}
+        } else {
+            quote! { , #(#filtered_params),* }
+        };
+
+        Ok(quote! {
+            #request_type::#name#unpack_params => {
+                Ok(
+                    #response_type::#name(
+                        #api_type::#name(#context#invocation_params)
+                    )
+                )
+            }
+        })
+    }
+
+    fn perform_request_param_names(&self) -> Vec<Expr> {
+        let params = &self.item.sig.inputs;
+        params
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| match p {
+                FnArg::Typed(param) => {
+                    if is_command_context(&param.ty) {
+                        return None;
+                    }
+
+                    if let Some(config) = &self.config.rpc_config {
+                        if i - 1 < config.rpc_args.len() {
+                            return Some(config.rpc_args[i - 1].clone());
+                        }
+                        panic!("well hell: {:?}", config);
+                    }
+
+                    match &param.pat.as_ref() {
+                        &syn::Pat::Ident(ident) => Some(Expr::Path(ExprPath {
+                            attrs: vec![],
+                            qself: None,
+                            path: Path::from(ident.ident.clone()),
+                        })),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn unpack_request_param_names(&self) -> SynResult<Vec<Ident>> {
+        let ItemFn { sig, .. } = &self.item;
+        let name = sig.ident.clone();
+        let params = sig.inputs.clone();
 
         let mut had_context = false;
         let mut context_is_first = false;
@@ -87,26 +167,6 @@ impl RpcFn {
             ));
         }
 
-        let unpack_params = if filtered_params.is_empty() {
-            quote! {}
-        } else {
-            quote! { (#(#filtered_params),*) }
-        };
-
-        let invocation_params = if filtered_params.is_empty() {
-            quote! {}
-        } else {
-            quote! { , #(#filtered_params),* }
-        };
-
-        Ok(quote! {
-            #request_type::#name#unpack_params => {
-                Ok(
-                    #response_type::#name(
-                        #api_type::#name(#context#invocation_params)
-                    )
-                )
-            }
-        })
+        Ok(filtered_params)
     }
 }

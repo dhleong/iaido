@@ -1,13 +1,15 @@
 use syn::{
+    parenthesized,
     parse::{Parse, Result},
+    punctuated::Punctuated,
     Attribute, Expr, Token,
 };
 
 mod kw {
-    syn::custom_keyword!(rpc);
+    syn::custom_keyword!(passing);
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RpcConfig {
     pub rpc_args: Vec<Expr>,
 }
@@ -15,21 +17,21 @@ pub struct RpcConfig {
 impl Parse for RpcConfig {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
         let mut rpc_args: Vec<Expr> = vec![];
-        loop {
-            if input.peek(Token![,]) {
-                input.parse::<Token![,]>()?;
-                let expr: Expr = input.parse()?;
-                rpc_args.push(expr);
-            } else {
-                break;
-            }
+        if input.peek(kw::passing) {
+            input.parse::<kw::passing>()?;
+
+            let args;
+            parenthesized!(args in input);
+
+            let terminated: Punctuated<Expr, Token![,]> = args.parse_terminated(Expr::parse)?;
+            rpc_args = terminated.iter().map(|expr| expr.clone()).collect();
         }
 
         return Ok(RpcConfig { rpc_args });
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MethodConfig {
     pub is_property: bool,
     pub is_rpc: bool,

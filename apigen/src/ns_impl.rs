@@ -52,7 +52,7 @@ impl NsImpl {
     pub fn to_tokens(&self) -> Result<TokenStream> {
         let NsImpl { name, etc, rpc_fns } = self;
 
-        let rpc_delegates = rpc_fns.iter().map(|f| f.to_rpc_tokens());
+        let rpc_delegates = rpc_fns.iter().map(|f| f.to_rpc_tokens(name));
 
         let rpc = NsRpc {
             ns_name: name.clone(),

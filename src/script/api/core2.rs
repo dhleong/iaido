@@ -51,7 +51,7 @@ impl CurrentObjects {
     // }
     // struct CurrentObjectsApi;
     // impl CurrentObjectsApi {
-    //   pub fn handle_buffer_id(
+    //   pub fn buffer_id(
     //    context: &mut CommandHandlerContext,
     //   ) -> Id {
     //     context.state().current_buffer().id()
@@ -67,7 +67,7 @@ impl CurrentObjects {
     //      CurrentObjectsApiRequest::buffer_id => {
     //        Ok(
     //         CurrentObjectsApiResponse::buffer_id(
-    //           CurrentObjectsApi::handle_buffer_id(context),
+    //           CurrentObjectsApi::buffer_id(context),
     //         )
     //        )
     //      }

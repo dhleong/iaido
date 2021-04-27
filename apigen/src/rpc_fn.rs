@@ -24,4 +24,16 @@ impl RpcFn {
             }
         }
     }
+
+    /// Generate the API handler function that actually invokes the provided block
+    pub fn to_api_handler_tokens(&self) -> TokenStream {
+        let ItemFn { sig, block, .. } = self.item.clone();
+        let name = sig.ident.clone();
+        let return_type = sig.output.clone();
+        let params = sig.inputs;
+
+        quote! {
+            fn #name(#params) #return_type #block
+        }
+    }
 }

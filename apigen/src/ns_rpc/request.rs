@@ -2,16 +2,17 @@ use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::Ident;
 
+use super::NsRpc;
 use crate::rpc_fn::RpcFn;
 
 #[derive(Clone)]
-struct NsRequest {
+pub struct NsRequest {
     pub ns_name: Ident,
     pub rpc_fns: Vec<RpcFn>,
 }
 
 impl NsRequest {
-    fn from(rpc: &NsRpc) -> Self {
+    pub fn from(rpc: &NsRpc) -> Self {
         Self {
             ns_name: rpc.ns_name.clone(),
             rpc_fns: rpc.rpc_fns.clone(),
@@ -42,30 +43,6 @@ impl ToTokens for NsRequest {
             enum #name {
                 #(#requests),*
             }
-        };
-
-        tokens.extend(gen);
-    }
-}
-
-#[derive(Clone)]
-pub struct NsResponse {
-    pub ns_name: Ident,
-    pub rpc_fns: Vec<RpcFn>,
-}
-
-#[derive(Clone)]
-pub struct NsRpc {
-    pub ns_name: Ident,
-    pub rpc_fns: Vec<RpcFn>,
-}
-
-impl ToTokens for NsRpc {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let requests = NsRequest::from(self);
-
-        let gen = quote! {
-            #requests
         };
 
         tokens.extend(gen);

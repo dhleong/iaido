@@ -14,25 +14,33 @@ use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResul
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
-trait ApiHandler<Payload: Copy + Send + Sync> {
-    fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> ApiResult;
+trait ApiHandler<Payload: Copy + Send + Sync, Response: Copy + Send + Sync> {
+    fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> KeyResult<Response>;
 }
 
 trait ApiRpcCall: Send {
     fn handle(&self, context: &mut CommandHandlerContext);
 }
 
-struct ApiMessage2<Payload: Copy + Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> {
+struct ApiMessage2<Payload, Response, Handler>
+where
+    Payload: Copy + Send + Sync,
+    Response: Copy + Send + Sync,
+    Handler: ApiHandler<Payload, Response> + Send + Sync,
+{
     handler: Handler,
     payload: Payload,
-    response: mpsc::Sender<ApiResult>,
+    response: mpsc::Sender<KeyResult<Response>>,
 }
 
 // NOTE: the goal here is that each Module can declare its messages and
 // handler of the messages in isolation, so we're essentially passing
 // a closure that operates on the CommandHandlerContext
-impl<Payload: Copy + Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> ApiRpcCall
-    for ApiMessage2<Payload, Handler>
+impl<Payload, Response, Handler> ApiRpcCall for ApiMessage2<Payload, Response, Handler>
+where
+    Payload: Copy + Send + Sync,
+    Response: 'static + Copy + Send + Sync,
+    Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     fn handle(&self, context: &mut CommandHandlerContext) {
         let result = self.handler.handle(context, self.payload);
@@ -45,13 +53,6 @@ impl<Payload: Copy + Send + Sync, Handler: ApiHandler<Payload> + Send + Sync> Ap
 pub struct ApiManagerRpc {
     to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
     from_script: mpsc::Receiver<Box<dyn ApiRpcCall>>,
-}
-
-struct TestHandler {}
-impl ApiHandler<usize> for TestHandler {
-    fn handle(&self, _context: &mut CommandHandlerContext, _p: usize) -> ApiResult {
-        todo!()
-    }
 }
 
 impl ApiManagerRpc {
@@ -84,18 +85,16 @@ struct ApiManagerDelegate2 {
 }
 
 impl ApiManagerDelegate2 {
-    pub fn test(&self) -> ApiResult {
-        self.perform(TestHandler {}, 42)
-    }
-
-    pub fn perform<
-        Payload: 'static + Copy + Send + Sync,
-        Handler: 'static + ApiHandler<Payload> + Send + Sync,
-    >(
+    pub fn perform<Payload, Response, Handler>(
         &self,
         handler: Handler,
         payload: Payload,
-    ) -> ApiResult {
+    ) -> KeyResult<Response>
+    where
+        Payload: 'static + Copy + Send + Sync,
+        Response: 'static + Copy + Send + Sync,
+        Handler: 'static + ApiHandler<Payload, Response> + Send + Sync,
+    {
         let (tx, rx) = mpsc::channel();
         let message = Box::new(ApiMessage2 {
             handler,
@@ -119,6 +118,8 @@ impl ApiManagerDelegate2 {
         }
     }
 }
+
+pub type Api = ApiManagerDelegate2;
 
 struct ApiMessage<T: Send + Sync> {
     payload: T,

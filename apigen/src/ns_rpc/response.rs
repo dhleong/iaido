@@ -37,9 +37,17 @@ impl ToTokens for NsResponse {
         let mut responses = vec![];
 
         for f in &self.rpc_fns {
-            // TODO: response args
             let name = f.item.sig.ident.clone();
-            responses.push(name);
+            match &f.item.sig.output {
+                syn::ReturnType::Default => {
+                    responses.push(quote! {name});
+                }
+                syn::ReturnType::Type(_, ty) => {
+                    responses.push(quote! {
+                        #name(#ty)
+                    });
+                }
+            };
         }
 
         let gen = quote! {

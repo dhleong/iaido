@@ -6,6 +6,7 @@ mod methods;
 mod ns_impl;
 mod ns_rpc;
 mod rpc_fn;
+mod types;
 
 use ns_impl::NsImpl;
 

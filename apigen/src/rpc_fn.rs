@@ -80,6 +80,13 @@ impl RpcFn {
             ));
         }
 
+        if !had_context || !context_is_first {
+            return Err(syn::Error::new(
+                name.span(),
+                "RPC methods MUST accept a CommandHandlerContext as the first param",
+            ));
+        }
+
         let invocation_params = if filtered_params.is_empty() {
             quote! {}
         } else {

@@ -2,7 +2,7 @@ use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::Ident;
 
-use super::NsRpc;
+use super::{request::NsRequest, response::NsResponse, NsRpc};
 use crate::rpc_fn::RpcFn;
 
 #[derive(Clone)]
@@ -33,11 +33,23 @@ impl ToTokens for NsApi {
             .map(|f| f.to_api_handler_tokens())
             .collect();
 
+        let requests_ident = NsRequest::ident_from_ns(&self.ns_name);
+        let responses_ident = NsResponse::ident_from_ns(&self.ns_name);
+
         let gen = quote! {
             struct #name;
-
             impl #name {
                 #(#fns)*
+            }
+
+            impl #name {
+                fn handle(
+                    &self,
+                    context: &mut crate::input::commands::CommandHandlerContext,
+                    p: #requests_ident
+                ) -> crate::input::maps::KeyResult<#responses_ident> {
+                    panic!("TODO")
+                }
             }
         };
 

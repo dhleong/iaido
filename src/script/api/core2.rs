@@ -50,13 +50,6 @@ impl CurrentObjects {
     //   buffer_id(Id),
     // }
     // struct CurrentObjectsApi;
-    // impl CurrentObjectsApi {
-    //   pub fn buffer_id(
-    //    context: &mut CommandHandlerContext,
-    //   ) -> Id {
-    //     context.state().current_buffer().id()
-    //   }
-    // }
     // impl ApiHandler<CurrentObjectsApiRequest> for CurrentObjectsApi {
     //  fn handle(
     //    &self,
@@ -67,7 +60,7 @@ impl CurrentObjects {
     //      CurrentObjectsApiRequest::buffer_id => {
     //        Ok(
     //         CurrentObjectsApiResponse::buffer_id(
-    //           CurrentObjectsApi::buffer_id(context),
+    //           CurrentObjects::buffer_id(context),
     //         )
     //        )
     //      }
@@ -122,19 +115,6 @@ impl BufferApiObject {
     //   name(Option<String>),
     // }
     // struct BufferApiObjectApi;
-    // impl BufferApiObjectApi {
-    //  pub fn handle_name(
-    //    context: &mut CommandHandlerContext,
-    //    id: Id,
-    //  ) -> Option<String> {
-    //    if let Some(buf) = context.state().buffers.by_id(id) {
-    //      Some(format!("{:?}", buf.source()))
-    //    } else {
-    //      None
-    //    }
-    //  }
-    // }
-    //
     // impl ApiHandler<BufferApiObjectApiRequest> for BufferApiObjectApi {
     //  fn handle(
     //    &self,
@@ -143,7 +123,7 @@ impl BufferApiObject {
     //  ) -> ApiResult {
     //    match p {
     //      BufferApiObjectApiRequest::name(id) => {
-    //        let result = BufferApiObjectApi::handle_name(context, id);
+    //        let result = BufferApiObject::name(context, id);
     //        Ok(result)
     //      }
     //    }

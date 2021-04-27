@@ -19,11 +19,12 @@ impl NsRequest {
         }
     }
 
+    pub fn ident_from_ns(ns_name: &Ident) -> Ident {
+        Ident::new(format!("{}ApiRequest", ns_name).as_str(), Span::call_site())
+    }
+
     fn ident(&self) -> Ident {
-        Ident::new(
-            format!("{}ApiRequest", self.ns_name).as_str(),
-            Span::call_site(),
-        )
+        Self::ident_from_ns(&self.ns_name)
     }
 }
 

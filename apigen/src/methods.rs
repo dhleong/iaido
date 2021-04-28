@@ -1,3 +1,7 @@
+use std::fmt;
+
+use proc_macro2::TokenStream;
+use quote::ToTokens;
 use syn::{
     parenthesized,
     parse::{Parse, Result},
@@ -9,9 +13,19 @@ mod kw {
     syn::custom_keyword!(passing);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RpcConfig {
     pub rpc_args: Vec<Expr>,
+}
+
+impl fmt::Debug for RpcConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut tokens = TokenStream::new();
+        for arg in &self.rpc_args {
+            arg.to_tokens(&mut tokens);
+        }
+        write!(f, "Rpc({})", tokens)
+    }
 }
 
 impl Parse for RpcConfig {

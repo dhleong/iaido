@@ -7,7 +7,7 @@ edition = "2018"
 [features]
 default = ["python"]
 
-python = ["rustpython-common", "rustpython-vm"]
+python = ["rustpython-common", "rustpython-vm", "apigen/python"]
 
 [profile.dev]
 split-debuginfo = "unpacked"
@@ -15,7 +15,11 @@ split-debuginfo = "unpacked"
 [dependencies]
 # internal crates
 command_decl = { path = "./command_decl" }
-apigen = { path = "./apigen" }
+
+# NOTE: disable apigen's default features so language support can be toggled
+# from the top-level (each language feature above must also enable the same
+# feature in apigen)
+apigen = { path = "./apigen", default-features = false }
 
 # for cleaner tests:
 indoc = "1.0"
@@ -28,6 +32,7 @@ tui = { version = "0.14", default-features = false, features = ["crossterm"] }
 rustpython-vm = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true, features = ["freeze-stdlib"] }
 rustpython-common = { git = "https://github.com/RustPython/RustPython.git", rev = "3ce476c13d4daa3366e012a96a5e52e271ed2b29", optional = true }
 
+# etc:
 genawaiter = "0.99.1"
 telnet = "0.1.4"
 url = "2.2.0"

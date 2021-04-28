@@ -1,7 +1,8 @@
 #![allow(unused_imports)]
-use crate::methods::MethodConfig;
+use crate::{methods::MethodConfig, ns::Ns};
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Item;
 
 use super::IaidoScriptingLang;
 
@@ -12,10 +13,20 @@ impl IaidoScriptingLang for PythonScriptingLang {}
 
 #[cfg(feature = "python")]
 impl IaidoScriptingLang for PythonScriptingLang {
-    fn wrap_ns(&self, ns: TokenStream) -> TokenStream {
+    fn wrap_ns(&self, ns: TokenStream, item: &Ns) -> TokenStream {
+        let ns_name = &item.name;
         quote! {
             #[rustpython_vm::pyclass(module="iaido", name)]
             #ns
+
+            impl rustpython_vm::pyobject::PyValue for #ns_name {
+                fn class(
+                    _vm: &rustpython_vm::VirtualMachine
+                ) -> &rustpython_vm::builtins::PyTypeRef {
+                    use rustpython_vm::pyobject::StaticType;
+                    Self::static_type()
+                }
+            }
         }
     }
 

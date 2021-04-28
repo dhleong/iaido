@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, KeymapContext},
@@ -14,6 +16,12 @@ impl IaidoCore {
     #[property]
     pub fn current(&self) -> CurrentObjects {
         CurrentObjects::new(self.api.clone())
+    }
+}
+
+impl fmt::Debug for IaidoCore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<iaido>")
     }
 }
 
@@ -75,10 +83,22 @@ impl CurrentObjects {
     }
 }
 
+impl fmt::Debug for CurrentObjects {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<CurrentObjects>")
+    }
+}
+
 #[apigen::ns]
 pub struct BufferApiObject {
     api: Api,
     pub id: Id,
+}
+
+impl fmt::Debug for BufferApiObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<Buffer #{}>", self.id)
+    }
 }
 
 #[apigen::ns_impl]

@@ -4,10 +4,10 @@ mod python;
 
 use python::PythonScriptingLang;
 
-use crate::methods::MethodConfig;
+use crate::{methods::MethodConfig, ns::Ns};
 
 pub trait IaidoScriptingLang {
-    fn wrap_ns(&self, ns: TokenStream) -> TokenStream {
+    fn wrap_ns(&self, ns: TokenStream, _item: &Ns) -> TokenStream {
         ns
     }
     fn wrap_ns_impl(&self, ns_impl: TokenStream) -> TokenStream {
@@ -31,10 +31,10 @@ impl Default for ScriptingLangDelegate {
 }
 
 impl IaidoScriptingLang for ScriptingLangDelegate {
-    fn wrap_ns(&self, ns: TokenStream) -> TokenStream {
+    fn wrap_ns(&self, ns: TokenStream, item: &Ns) -> TokenStream {
         let mut tokens = ns;
         for lang in &self.languages {
-            tokens = lang.wrap_ns(tokens);
+            tokens = lang.wrap_ns(tokens, item);
         }
         tokens
     }

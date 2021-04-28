@@ -29,7 +29,7 @@ impl CurrentObjects {
     }
 
     #[rpc]
-    pub fn buffer_id(context: &mut CommandHandlerContext) -> Id {
+    fn buffer_id(context: &mut CommandHandlerContext) -> Id {
         context.state().current_buffer().id()
     }
 

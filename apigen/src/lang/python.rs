@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use crate::methods::MethodConfig;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -27,5 +28,16 @@ impl IaidoScriptingLang for PythonScriptingLang {
             #[rustpython_vm::pyimpl]
             #ns_impl
         }
+    }
+
+    fn wrap_fn(&self, f: TokenStream, config: &MethodConfig) -> TokenStream {
+        if config.is_property {
+            return quote! {
+                #[pyproperty]
+                #f
+            };
+        }
+
+        f
     }
 }

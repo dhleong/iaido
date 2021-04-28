@@ -4,6 +4,8 @@ mod python;
 
 use python::PythonScriptingLang;
 
+use crate::methods::MethodConfig;
+
 pub trait IaidoScriptingLang {
     fn wrap_ns(&self, ns: TokenStream) -> TokenStream {
         ns
@@ -11,9 +13,12 @@ pub trait IaidoScriptingLang {
     fn wrap_ns_impl(&self, ns_impl: TokenStream) -> TokenStream {
         ns_impl
     }
+    fn wrap_fn(&self, f: TokenStream, _config: &MethodConfig) -> TokenStream {
+        f
+    }
 }
 
-struct ScriptingLangDelegate {
+pub struct ScriptingLangDelegate {
     languages: Vec<Box<dyn IaidoScriptingLang>>,
 }
 
@@ -41,8 +46,16 @@ impl IaidoScriptingLang for ScriptingLangDelegate {
         }
         tokens
     }
+
+    fn wrap_fn(&self, f: TokenStream, config: &MethodConfig) -> TokenStream {
+        let mut tokens = f;
+        for lang in &self.languages {
+            tokens = lang.wrap_fn(tokens, config);
+        }
+        tokens
+    }
 }
 
-pub fn language() -> Box<dyn IaidoScriptingLang> {
-    Box::new(ScriptingLangDelegate::default())
+pub fn language() -> ScriptingLangDelegate {
+    ScriptingLangDelegate::default()
 }

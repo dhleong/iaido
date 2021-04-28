@@ -2,8 +2,11 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Expr, ExprPath, FnArg, Ident, ItemFn, Path};
 
-use crate::ns_rpc::{NsApi, NsRequest, NsResponse};
 use crate::types::is_command_context;
+use crate::{
+    lang::IaidoScriptingLang,
+    ns_rpc::{NsApi, NsRequest, NsResponse},
+};
 use crate::{methods::MethodConfig, types::SynResult};
 
 #[derive(Clone)]
@@ -15,7 +18,11 @@ pub struct RpcFn {
 impl RpcFn {
     /// Generate the replacement function within the NS that forwards
     /// to, and unpacks the result of, the RPC call
-    pub fn to_rpc_tokens(&self, ns_name: &Ident) -> TokenStream {
+    pub fn to_rpc_tokens<L: IaidoScriptingLang>(
+        &self,
+        ns_name: &Ident,
+        language: &L,
+    ) -> TokenStream {
         let ItemFn { sig, .. } = self.item.clone();
         let name = sig.ident.clone();
         let return_type = sig.output.clone();
@@ -29,7 +36,7 @@ impl RpcFn {
             quote! { (#(#request_params),*) }
         };
 
-        quote! {
+        let tokens = quote! {
             fn #name(&self) #return_type {
                 match self.api.perform(
                     #api_type,
@@ -40,7 +47,9 @@ impl RpcFn {
                     Err(e) => std::panic::panic_any(e),
                 }
             }
-        }
+        };
+
+        language.wrap_fn(tokens, &self.config)
     }
 
     /// Generate the API handler function that actually invokes the provided block

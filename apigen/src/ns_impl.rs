@@ -6,14 +6,15 @@ use syn::{
     Ident, Item, Token,
 };
 
-use crate::methods::MethodConfig;
-use crate::ns_rpc::NsRpc;
 use crate::rpc_fn::RpcFn;
+use crate::{direct_fn::DirectFn, ns_rpc::NsRpc};
+use crate::{lang::IaidoScriptingLang, methods::MethodConfig};
 
 pub struct NsImpl {
     name: Ident,
-    etc: Vec<Item>,
+    direct_fns: Vec<DirectFn>,
     rpc_fns: Vec<RpcFn>,
+    etc: Vec<Item>,
 }
 
 impl Parse for NsImpl {
@@ -22,6 +23,7 @@ impl Parse for NsImpl {
         let name: Ident = input.parse()?;
         let content;
         braced!(content in input);
+        let mut direct_fns = vec![];
         let mut rpc_fns = vec![];
         let mut etc = vec![];
 
@@ -35,7 +37,7 @@ impl Parse for NsImpl {
                     if config.is_rpc {
                         rpc_fns.push(RpcFn { item: f, config });
                     } else {
-                        etc.push(Item::Fn(f));
+                        direct_fns.push(DirectFn { item: f, config });
                     }
                 }
 
@@ -44,15 +46,26 @@ impl Parse for NsImpl {
             }
         }
 
-        Ok(NsImpl { name, etc, rpc_fns })
+        Ok(NsImpl {
+            name,
+            direct_fns,
+            etc,
+            rpc_fns,
+        })
     }
 }
 
 impl NsImpl {
-    pub fn to_tokens(&self) -> Result<TokenStream> {
-        let NsImpl { name, etc, rpc_fns } = self;
+    pub fn to_tokens<L: IaidoScriptingLang>(&self, language: &L) -> Result<TokenStream> {
+        let NsImpl {
+            name,
+            direct_fns,
+            etc,
+            rpc_fns,
+        } = self;
 
-        let rpc_delegates = rpc_fns.iter().map(|f| f.to_rpc_tokens(name));
+        let direct_fn_tokens = direct_fns.iter().map(|f| f.to_tokens(language));
+        let rpc_delegates = rpc_fns.iter().map(|f| f.to_rpc_tokens(name, language));
 
         let rpc = NsRpc {
             ns_name: name.clone(),
@@ -64,6 +77,7 @@ impl NsImpl {
         Ok(quote! {
             impl #name {
                 #(#etc)*
+                #(#direct_fn_tokens)*
                 #(#rpc_delegates)*
             }
             #rpc_tokens

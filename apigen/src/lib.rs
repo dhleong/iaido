@@ -1,7 +1,8 @@
-use lang::language;
+use lang::{language, IaidoScriptingLang};
 use proc_macro::{self, TokenStream};
 use syn::parse_macro_input;
 
+mod direct_fn;
 mod lang;
 mod methods;
 mod ns_impl;
@@ -21,7 +22,7 @@ pub fn ns(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn ns_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let data = parse_macro_input!(item as NsImpl);
     let language = language();
-    match data.to_tokens() {
+    match data.to_tokens(&language) {
         Ok(tokens) => language.wrap_ns_impl(tokens).into(),
         Err(diag) => diag.to_compile_error().into(),
     }

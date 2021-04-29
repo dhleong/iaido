@@ -31,10 +31,6 @@ impl IaidoScriptingLang for PythonScriptingLang {
     }
 
     fn wrap_ns_impl(&self, ns_impl: TokenStream) -> TokenStream {
-        // TODO probably not here, but *somewhere* we need to add the
-        // #[pyproperty] attribute to methods previously annotated with
-        // #[property]... but, perhaps somehow conditionally based on
-        // whether the script language's features are selected?
         quote! {
             #[rustpython_vm::pyimpl]
             #ns_impl

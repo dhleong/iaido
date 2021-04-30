@@ -3,6 +3,7 @@ use proc_macro2::TokenStream;
 mod python;
 
 use python::PythonScriptingLang;
+use syn::ItemFn;
 
 use crate::{methods::MethodConfig, ns::Ns};
 
@@ -13,7 +14,7 @@ pub trait IaidoScriptingLang {
     fn wrap_ns_impl(&self, ns_impl: TokenStream) -> TokenStream {
         ns_impl
     }
-    fn wrap_fn(&self, f: TokenStream, _config: &MethodConfig) -> TokenStream {
+    fn wrap_fn(&self, f: TokenStream, _item: &ItemFn, _config: &MethodConfig) -> TokenStream {
         f
     }
 }
@@ -47,10 +48,10 @@ impl IaidoScriptingLang for ScriptingLangDelegate {
         tokens
     }
 
-    fn wrap_fn(&self, f: TokenStream, config: &MethodConfig) -> TokenStream {
+    fn wrap_fn(&self, f: TokenStream, item: &ItemFn, config: &MethodConfig) -> TokenStream {
         let mut tokens = f;
         for lang in &self.languages {
-            tokens = lang.wrap_fn(tokens, config);
+            tokens = lang.wrap_fn(tokens, item, config);
         }
         tokens
     }

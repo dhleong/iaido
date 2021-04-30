@@ -47,6 +47,7 @@ impl Parse for RpcConfig {
 
 #[derive(Clone, Debug)]
 pub struct MethodConfig {
+    pub is_method: bool,
     pub is_property: bool,
     pub is_rpc: bool,
     pub rpc_config: Option<RpcConfig>,
@@ -55,6 +56,7 @@ pub struct MethodConfig {
 impl MethodConfig {
     pub fn from(attrs: Vec<Attribute>) -> Result<Self> {
         let mut new = Self {
+            is_method: false,
             is_property: false,
             is_rpc: false,
             rpc_config: None,
@@ -63,6 +65,9 @@ impl MethodConfig {
         for attr in attrs {
             let name = attr.path.segments.last().unwrap().ident.to_string();
             match name.as_str() {
+                "method" => {
+                    new.is_method = true;
+                }
                 "rpc" => {
                     new.is_rpc = true;
                     if let Ok(config) = attr.parse_args::<RpcConfig>() {

@@ -17,6 +17,6 @@ impl DirectFn {
         let tokens = quote! {
             #item
         };
-        language.wrap_fn(tokens, config)
+        language.wrap_fn(tokens, &item, config)
     }
 }

@@ -11,12 +11,23 @@ pub struct IaidoCore {
     api: Api,
 }
 
-#[apigen::ns_impl]
+#[apigen::ns_impl(module)]
 impl IaidoCore {
     #[property]
     pub fn current(&self) -> CurrentObjects {
         CurrentObjects::new(self.api.clone())
     }
+
+    #[rpc]
+    pub fn echo(context: &mut CommandHandlerContext) -> Id {
+        context.state_mut().echom("Hello from Python!");
+        42
+    }
+
+    // #[rpc]
+    // pub fn echo(context: &mut CommandHandlerContext, text: String) {
+    //     context.state_mut().echom(text);
+    // }
 }
 
 impl fmt::Debug for IaidoCore {

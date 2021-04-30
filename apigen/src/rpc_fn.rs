@@ -23,7 +23,7 @@ impl RpcFn {
         ns_name: &Ident,
         language: &L,
     ) -> TokenStream {
-        let ItemFn { sig, .. } = self.item.clone();
+        let ItemFn { sig, vis, .. } = self.item.clone();
         let name = sig.ident.clone();
         let return_type = sig.output.clone();
         let api_type = NsApi::ident_from_ns(ns_name);
@@ -37,7 +37,7 @@ impl RpcFn {
         };
 
         let tokens = quote! {
-            fn #name(&self) #return_type {
+            #vis fn #name(&self) #return_type {
                 match self.api.perform(
                     #api_type,
                     #requests_type::#name#request_params_tokens
@@ -49,7 +49,7 @@ impl RpcFn {
             }
         };
 
-        language.wrap_fn(tokens, &self.config)
+        language.wrap_fn(tokens, &self.item, &self.config)
     }
 
     /// Generate the API handler function that actually invokes the provided block

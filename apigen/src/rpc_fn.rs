@@ -29,6 +29,7 @@ impl RpcFn {
         let api_type = NsApi::ident_from_ns(ns_name);
         let requests_type = NsRequest::ident_from_ns(ns_name);
         let responses_type = NsResponse::ident_from_ns(ns_name);
+        let sig_params = self.non_provided_param_decls();
         let request_params = self.perform_request_param_names();
         let request_params_tokens = if request_params.is_empty() {
             quote! {}
@@ -42,8 +43,14 @@ impl RpcFn {
             quote! { Ok(#responses_type::#name(response)) => response }
         };
 
+        let fn_input = if sig_params.is_empty() {
+            quote! {}
+        } else {
+            quote! {, #(#sig_params),* }
+        };
+
         let tokens = quote! {
-            #vis fn #name(&self) #return_type {
+            #vis fn #name(&self #fn_input) #return_type {
                 match self.api.perform(
                     #api_type,
                     #requests_type::#name#request_params_tokens
@@ -116,6 +123,30 @@ impl RpcFn {
                 #response
             }
         })
+    }
+
+    fn non_provided_param_decls(&self) -> Vec<FnArg> {
+        let params = &self.item.sig.inputs;
+        params
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| match p {
+                FnArg::Typed(param) => {
+                    if is_command_context(&param.ty) {
+                        return None;
+                    }
+
+                    if let Some(config) = &self.config.rpc_config {
+                        if i - 1 < config.rpc_args.len() {
+                            return None;
+                        }
+                    }
+
+                    return Some(p.clone());
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     fn perform_request_param_names(&self) -> Vec<Expr> {

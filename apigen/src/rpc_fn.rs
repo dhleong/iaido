@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Expr, ExprPath, FnArg, Ident, ItemFn, Path};
+use syn::{Expr, ExprPath, FnArg, Ident, ItemFn, Path, ReturnType};
 
 use crate::types::is_command_context;
 use crate::{
@@ -36,13 +36,19 @@ impl RpcFn {
             quote! { (#(#request_params),*) }
         };
 
+        let response_line = if let ReturnType::Default = return_type {
+            quote! { Ok(#responses_type::#name) => return }
+        } else {
+            quote! { Ok(#responses_type::#name(response)) => response }
+        };
+
         let tokens = quote! {
             #vis fn #name(&self) #return_type {
                 match self.api.perform(
                     #api_type,
                     #requests_type::#name#request_params_tokens
                 ) {
-                    Ok(#responses_type::#name(response)) => response,
+                    #response_line,
                     Ok(unexpected) => panic!("Unexpected response: {:?}", unexpected),
                     Err(e) => std::panic::panic_any(e),
                 }
@@ -89,13 +95,25 @@ impl RpcFn {
             quote! { , #(#filtered_params),* }
         };
 
+        let fn_invocation = quote! {
+            #api_type::#name(#context#invocation_params)
+        };
+
+        let response = if let ReturnType::Default = sig.output {
+            // Special case for RPC fns without a return value:
+            quote! {
+                #fn_invocation;
+                Ok(#response_type::#name)
+            }
+        } else {
+            quote! {
+                Ok(#response_type::#name(#fn_invocation))
+            }
+        };
+
         Ok(quote! {
             #request_type::#name#unpack_params => {
-                Ok(
-                    #response_type::#name(
-                        #api_type::#name(#context#invocation_params)
-                    )
-                )
+                #response
             }
         })
     }

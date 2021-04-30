@@ -40,7 +40,7 @@ impl ToTokens for NsResponse {
             let name = f.item.sig.ident.clone();
             match &f.item.sig.output {
                 syn::ReturnType::Default => {
-                    responses.push(quote! {name});
+                    responses.push(quote! {#name});
                 }
                 syn::ReturnType::Type(_, ty) => {
                     responses.push(quote! {

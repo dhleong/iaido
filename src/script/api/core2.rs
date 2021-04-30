@@ -19,9 +19,8 @@ impl IaidoCore {
     }
 
     #[rpc]
-    pub fn echo(context: &mut CommandHandlerContext) -> Id {
+    pub fn echo(context: &mut CommandHandlerContext) {
         context.state_mut().echom("Hello from Python!");
-        42
     }
 
     // #[rpc]

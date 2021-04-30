@@ -11,7 +11,7 @@ pub struct PythonScriptingLang;
 #[cfg(not(feature = "python"))]
 impl IaidoScriptingLang for PythonScriptingLang {}
 
-// #[cfg(feature = "python")]
+#[cfg(feature = "python")]
 impl IaidoScriptingLang for PythonScriptingLang {
     fn wrap_ns(&self, ns: TokenStream, item: &Ns) -> TokenStream {
         let ns_name = &item.name;

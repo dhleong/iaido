@@ -35,6 +35,8 @@ pub fn python_arg_from(arg: &FnArg) -> SynResult<Option<TokenStream>> {
     }
 
     Ok(Some(match simple.name.as_str() {
+        "Id" => quote! { #pat: usize },
+
         "String" => quote! { #pat: rustpython_vm::builtins::PyStrRef },
         "ScriptingFnRef" => quote! { #pat: rustpython_vm::pyobject::PyObjectRef },
         _ => {
@@ -63,6 +65,8 @@ pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
     }
 
     Ok(Some(match simple.name.as_str() {
+        "Id" => quote! { #pat },
+
         "String" => quote! { #pat.to_string() },
         "ScriptingFnRef" => quote! {
             {

@@ -1,8 +1,12 @@
 #![allow(unused_imports)]
-use crate::{methods::MethodConfig, ns::Ns, types::SynResult};
+use crate::{
+    methods::{MethodConfig, RpcConfig},
+    ns::Ns,
+    types::SynResult,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{FnArg, Ident, Item, ItemFn, Signature, Visibility};
+use syn::{FnArg, Ident, Item, ItemFn, PatType, Signature, Visibility};
 
 use super::{ConfiguredNsImpl, IaidoScriptingLang};
 
@@ -79,8 +83,8 @@ impl IaidoScriptingLang for PythonScriptingLang {
             let py_name = py_wrapper_fn_name(name);
             let name_string = name.to_string();
 
-            let args = convert_args_to_python(sig)?;
-            let converted = self.arg_conversions_from_python(sig)?;
+            let args = convert_args_to_python(sig, &config.rpc_config)?;
+            let converted = self.arg_conversions_from_python(sig, &config.rpc_config)?;
 
             return Ok(quote! {
                 #f
@@ -98,8 +102,12 @@ impl IaidoScriptingLang for PythonScriptingLang {
 
 #[cfg(feature = "python")]
 impl PythonScriptingLang {
-    fn arg_conversions_from_python(&self, sig: &Signature) -> SynResult<Vec<TokenStream>> {
-        map_args(sig, types::python_conversion)
+    fn arg_conversions_from_python(
+        &self,
+        sig: &Signature,
+        rpc_config: &Option<RpcConfig>,
+    ) -> SynResult<Vec<TokenStream>> {
+        map_args(sig, rpc_config, types::python_conversion)
     }
 
     fn generate_to_py_module(&self, ns: &ConfiguredNsImpl) -> SynResult<TokenStream> {
@@ -135,12 +143,28 @@ impl PythonScriptingLang {
     }
 }
 
-fn map_args<F>(sig: &Signature, f: F) -> SynResult<Vec<TokenStream>>
+fn map_args<F>(sig: &Signature, rpc_config: &Option<RpcConfig>, f: F) -> SynResult<Vec<TokenStream>>
 where
     F: Fn(&FnArg) -> SynResult<Option<TokenStream>>,
 {
     let mut args = vec![];
+    let skippable_count = if let Some(config) = rpc_config {
+        config.rpc_args.len()
+    } else {
+        0
+    };
+
+    let mut seen = 0;
     for arg in &sig.inputs {
+        if is_command_context(arg) {
+            continue;
+        }
+
+        seen += 1;
+        if seen <= skippable_count {
+            continue;
+        }
+
         if let Some(replacement) = f(arg)? {
             args.push(replacement);
         }
@@ -177,8 +201,11 @@ fn generate_module_property(sig: &Signature) -> TokenStream {
     }
 }
 
-fn convert_args_to_python(sig: &Signature) -> SynResult<Vec<TokenStream>> {
-    map_args(sig, types::python_arg_from)
+fn convert_args_to_python(
+    sig: &Signature,
+    rpc_config: &Option<RpcConfig>,
+) -> SynResult<Vec<TokenStream>> {
+    map_args(sig, rpc_config, types::python_arg_from)
 }
 
 fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
@@ -189,8 +216,8 @@ fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
     let py_name = py_wrapper_fn_name(name);
     let name_str = name.to_string();
 
-    let arg_decls = convert_args_to_python(&item.sig)?;
-    let arg_names = map_args(&item.sig, types::python_arg_name)?;
+    let arg_decls = convert_args_to_python(&item.sig, &None)?;
+    let arg_names = map_args(&item.sig, &None, types::python_arg_name)?;
 
     Ok(quote! {
         {
@@ -204,4 +231,13 @@ fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
             )?;
         }
     })
+}
+
+fn is_command_context(arg: &FnArg) -> bool {
+    let PatType { ty, .. } = match arg {
+        FnArg::Typed(typed) => typed,
+        _ => return false,
+    };
+
+    crate::types::is_command_context(ty)
 }

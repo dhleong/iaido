@@ -5,7 +5,7 @@ use crate::{
     input::{commands::CommandHandlerContext, KeymapContext},
 };
 
-use super::{buffer::BufferApiObject, Api};
+use super::{buffer::BufferApiObject, window::WindowApiObject, Api};
 
 #[apigen::ns]
 pub struct CurrentObjects {
@@ -26,6 +26,16 @@ impl CurrentObjects {
     #[property]
     pub fn buffer(&self) -> BufferApiObject {
         BufferApiObject::new(self.api.clone(), self.buffer_id())
+    }
+
+    #[rpc]
+    fn window_id(context: &mut CommandHandlerContext) -> Id {
+        context.state().current_window().id
+    }
+
+    #[property]
+    pub fn window(&self) -> WindowApiObject {
+        WindowApiObject::new(self.api.clone(), self.window_id())
     }
 }
 

@@ -19,12 +19,9 @@ use crate::{
 use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
-    api::{
-        core::IaidoCore,
-        fns::{FnManager, NativeFn, ScriptingFnRef},
-        manager::ApiManagerDelegate,
-    },
+    api::{core::IaidoCore, ApiManagerDelegate},
     bindings::ScriptFile,
+    fns::{FnManager, NativeFn, ScriptingFnRef},
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 

@@ -67,7 +67,7 @@ pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
         "ScriptingFnRef" => quote! {
             {
                 let mut lock = self.fns.lock().unwrap();
-                lock.create_ref(crate::script::api::fns::NativeFn::Py(#pat))
+                lock.create_ref(crate::script::fns::NativeFn::Py(#pat))
             }
         },
         _ => {

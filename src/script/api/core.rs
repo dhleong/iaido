@@ -6,10 +6,10 @@ use crate::{
         commands::CommandHandlerContext, keys::KeysParsable, maps::UserKeyHandler, KeymapContext,
         RemapMode,
     },
-    script::api::manager::{Api, Fns},
+    script::fns::ScriptingFnRef,
 };
 
-use super::fns::ScriptingFnRef;
+use super::{Api, Fns};
 
 #[apigen::ns]
 #[derive(Clone)]

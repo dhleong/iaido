@@ -1,5 +1,6 @@
 mod api;
 mod bindings;
+mod fns;
 
 #[cfg(feature = "python")]
 mod python;
@@ -12,9 +13,9 @@ use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
-pub use api::manager::ApiManagerRpc;
+pub use api::ApiManagerRpc;
 
-use self::api::{fns::ScriptingFnRef, manager::ApiManagerDelegate};
+use self::{api::ApiManagerDelegate, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult;

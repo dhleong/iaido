@@ -53,7 +53,7 @@ impl NsApi {
                 #(#fns)*
             }
 
-            impl crate::script::api::manager::ApiHandler<
+            impl crate::script::api::ApiHandler<
                 #requests_ident,
                 #responses_ident
             > for #name {

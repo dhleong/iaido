@@ -14,7 +14,7 @@ trait ApiRpcCall: Send {
     fn handle(&self, context: &mut CommandHandlerContext);
 }
 
-struct ApiMessage2<Payload, Response, Handler>
+struct ApiMessage<Payload, Response, Handler>
 where
     Payload: Clone + Send + Sync,
     Response: Clone + Send + Sync,
@@ -28,7 +28,7 @@ where
 // NOTE: the goal here is that each Module can declare its messages and
 // handler of the messages in isolation, so we're essentially passing
 // a closure that operates on the CommandHandlerContext
-impl<Payload, Response, Handler> ApiRpcCall for ApiMessage2<Payload, Response, Handler>
+impl<Payload, Response, Handler> ApiRpcCall for ApiMessage<Payload, Response, Handler>
 where
     Payload: Clone + Send + Sync,
     Response: 'static + Clone + Send + Sync,
@@ -59,8 +59,8 @@ impl Default for ApiManagerRpc {
 }
 
 impl ApiManagerRpc {
-    pub fn delegate(&self) -> ApiManagerDelegate2 {
-        ApiManagerDelegate2 {
+    pub fn delegate(&self) -> ApiManagerDelegate {
+        ApiManagerDelegate {
             to_app: self.to_app.clone(),
         }
     }
@@ -83,11 +83,11 @@ impl ApiManagerRpc {
 }
 
 #[derive(Clone)]
-pub struct ApiManagerDelegate2 {
+pub struct ApiManagerDelegate {
     to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
 }
 
-impl ApiManagerDelegate2 {
+impl ApiManagerDelegate {
     pub fn perform<Payload, Response, Handler>(
         &self,
         handler: Handler,
@@ -99,7 +99,7 @@ impl ApiManagerDelegate2 {
         Handler: 'static + ApiHandler<Payload, Response> + Send + Sync,
     {
         let (tx, rx) = mpsc::channel();
-        let message = Box::new(ApiMessage2 {
+        let message = Box::new(ApiMessage {
             handler,
             payload,
             response: tx,
@@ -122,5 +122,5 @@ impl ApiManagerDelegate2 {
     }
 }
 
-pub type Api = ApiManagerDelegate2;
+pub type Api = ApiManagerDelegate;
 pub type Fns = Arc<Mutex<FnManager>>;

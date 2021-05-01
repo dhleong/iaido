@@ -20,9 +20,9 @@ use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
     api::{
-        core2::IaidoCore,
+        core::IaidoCore,
         fns::{FnManager, NativeFn, ScriptingFnRef},
-        manager::ApiManagerDelegate2,
+        manager::ApiManagerDelegate,
     },
     bindings::ScriptFile,
     ScriptingRuntime, ScriptingRuntimeFactory,
@@ -40,7 +40,7 @@ pub struct PythonScriptingRuntime {
 }
 
 impl PythonScriptingRuntime {
-    fn new(id: Id, api: ApiManagerDelegate2) -> Self {
+    fn new(id: Id, api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
@@ -146,7 +146,7 @@ impl ScriptingRuntime for PythonScriptingRuntime {
 
 pub struct PythonScriptingRuntimeFactory;
 impl ScriptingRuntimeFactory for PythonScriptingRuntimeFactory {
-    fn create(&self, id: Id, app: ApiManagerDelegate2) -> Box<dyn ScriptingRuntime + Send> {
+    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send> {
         Box::new(PythonScriptingRuntime::new(id, app))
     }
 

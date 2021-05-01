@@ -5,7 +5,7 @@ use vm::{
     pyobject::ItemProtocol,
 };
 
-use crate::script::api::core2::IaidoCore;
+use crate::script::api::core::IaidoCore;
 
 /// By default, the warnings module writes to stderr, which messes up the tui
 /// We may want to consider completely swapping out sys.stderr/sys.stdout...

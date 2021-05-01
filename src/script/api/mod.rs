@@ -2,7 +2,7 @@ use crate::{editing::Id, input::maps::KeyResult};
 
 pub mod core;
 pub mod core2;
-mod manager;
+pub mod manager;
 pub mod objects;
 
 pub use manager::{ApiManager, ApiManagerDelegate};

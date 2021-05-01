@@ -12,9 +12,10 @@ use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
+pub use api::manager::ApiManagerRpc;
 pub use api::ApiManager;
 
-use self::api::{core::ScriptingFnRef, ApiManagerDelegate};
+use self::api::{core::ScriptingFnRef, manager::ApiManagerDelegate2};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult;
@@ -24,7 +25,7 @@ pub trait ScriptingRuntime {
 pub trait ScriptingRuntimeFactory {
     fn handles_file(&self, path: &PathBuf) -> bool;
 
-    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
+    fn create(&self, id: Id, app: ApiManagerDelegate2) -> Box<dyn ScriptingRuntime + Send>;
 }
 
 pub struct ScriptingManager {
@@ -73,7 +74,7 @@ impl ScriptingManager {
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: String) -> JobResult<Id> {
+    pub fn load(&self, api: ApiManagerDelegate2, path: String) -> JobResult<Id> {
         let path_buf = PathBuf::from(path.clone());
         if !path_buf.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, path).into());

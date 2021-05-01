@@ -3,17 +3,44 @@ use quote::quote;
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    Ident, Item, Token,
+    AttributeArgs, Ident, Item, Meta, NestedMeta, Token,
 };
 
 use crate::{direct_fn::DirectFn, ns_rpc::NsRpc};
 use crate::{lang::IaidoScriptingLang, methods::MethodConfig};
 use crate::{rpc_fn::RpcFn, types::SynResult};
 
+pub struct NsImplConfig {
+    pub is_module: bool,
+    pub module_name: String,
+}
+
+impl NsImplConfig {
+    pub fn from(attr: AttributeArgs) -> SynResult<Self> {
+        let mut config = Self {
+            is_module: false,
+            module_name: "iaido".to_string(),
+        };
+        for meta in attr {
+            let is_module = match meta {
+                NestedMeta::Meta(Meta::Path(path)) => {
+                    path.segments[0].ident.to_string() == "module"
+                }
+                _ => false,
+            };
+
+            if is_module {
+                config.is_module = true;
+            }
+        }
+        Ok(config)
+    }
+}
+
 pub struct NsImpl {
-    name: Ident,
-    direct_fns: Vec<DirectFn>,
-    rpc_fns: Vec<RpcFn>,
+    pub name: Ident,
+    pub direct_fns: Vec<DirectFn>,
+    pub rpc_fns: Vec<RpcFn>,
     etc: Vec<Item>,
 }
 

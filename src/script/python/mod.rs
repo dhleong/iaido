@@ -19,10 +19,7 @@ use crate::{
 use self::{modules::ModuleContained, util::unwrap_error, wrapper::FnManager};
 
 use super::{
-    api::{
-        core::{IaidoApi, ScriptingFnRef},
-        ApiManagerDelegate,
-    },
+    api::{core::ScriptingFnRef, manager::ApiManagerDelegate2, ApiManagerDelegate},
     bindings::ScriptFile,
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
@@ -42,21 +39,27 @@ pub struct PythonScriptingRuntime {
 }
 
 impl PythonScriptingRuntime {
-    fn new(id: Id, api: ApiManagerDelegate) -> Self {
+    fn new(id: Id, api: ApiManagerDelegate2) -> Self {
         let settings = vm::PySettings::default();
-        let iaido = Arc::new(IaidoApi::new(api.clone()));
+        // let iaido = Arc::new(IaidoApi::new(api.clone()));
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
             fns: fns.clone(),
             vm: None,
         };
 
+        let module_api = api.clone();
         let vm = vm::Interpreter::new_with_init(settings, move |vm| {
             vm.add_native_module(
                 "iaido".to_string(),
                 Box::new(move |vm| {
-                    create_iaido_module(vm, iaido.clone(), fns.clone())
-                        .expect("Unable to initialize iaido module")
+                    match create_iaido_module(vm, module_api.clone(), fns.clone()) {
+                        Ok(module) => module,
+                        Err(e) => panic!(
+                            "Unable to initialize iaido module: {:?}",
+                            Self::format_exception_vm(vm, e)
+                        ),
+                    }
                 }),
             );
 
@@ -139,7 +142,7 @@ impl ScriptingRuntime for PythonScriptingRuntime {
 
 pub struct PythonScriptingRuntimeFactory;
 impl ScriptingRuntimeFactory for PythonScriptingRuntimeFactory {
-    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send> {
+    fn create(&self, id: Id, app: ApiManagerDelegate2) -> Box<dyn ScriptingRuntime + Send> {
         Box::new(PythonScriptingRuntime::new(id, app))
     }
 

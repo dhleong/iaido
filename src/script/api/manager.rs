@@ -56,6 +56,16 @@ pub struct ApiManagerRpc {
     from_script: mpsc::Receiver<Box<dyn ApiRpcCall>>,
 }
 
+impl Default for ApiManagerRpc {
+    fn default() -> Self {
+        let (to_app, from_script) = mpsc::channel();
+        Self {
+            to_app: Arc::new(Mutex::new(to_app)),
+            from_script,
+        }
+    }
+}
+
 impl ApiManagerRpc {
     pub fn delegate(&self) -> ApiManagerDelegate2 {
         ApiManagerDelegate2 {

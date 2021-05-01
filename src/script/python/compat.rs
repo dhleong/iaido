@@ -5,11 +5,13 @@ use vm::{
     pyobject::ItemProtocol,
 };
 
-use crate::script::api::{ApiDelegate, ApiManagerDelegate, ApiRequest};
+use crate::script::api::{
+    manager::ApiManagerDelegate2, ApiDelegate, ApiManagerDelegate, ApiRequest,
+};
 
 /// By default, the warnings module writes to stderr, which messes up the tui
 /// We may want to consider completely swapping out sys.stderr/sys.stdout...
-fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
+fn patch_warnings_module(api: ApiManagerDelegate2, vm: &vm::VirtualMachine) {
     let warnings = vm
         .get_attribute(vm.sys_module.clone(), "modules")
         .expect("Could not access modules")
@@ -27,11 +29,12 @@ fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
                 vm.ctx.exceptions.user_warning.name.clone()
             };
 
-            let _ = api.perform(ApiRequest::Echo(format!(
-                "[py][warn] {}: {}",
-                category,
-                message.downcast_exact::<PyStr>(vm).unwrap().to_string()
-            )));
+            // FIXME STOPSHIP TODO restore this!:
+            // let _ = api.perform(ApiRequest::Echo(format!(
+            //     "[py][warn] {}: {}",
+            //     category,
+            //     message.downcast_exact::<PyStr>(vm).unwrap().to_string()
+            // )));
         },
     );
 
@@ -39,6 +42,6 @@ fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
         .expect("Could not stub warn");
 }
 
-pub fn apply_compat(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
+pub fn apply_compat(api: ApiManagerDelegate2, vm: &vm::VirtualMachine) {
     patch_warnings_module(api, vm);
 }

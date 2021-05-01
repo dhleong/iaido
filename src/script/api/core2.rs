@@ -7,12 +7,17 @@ use crate::{
 };
 
 #[apigen::ns]
+#[derive(Clone)]
 pub struct IaidoCore {
     api: Api,
 }
 
 #[apigen::ns_impl(module)]
 impl IaidoCore {
+    pub fn new(api: Api) -> Self {
+        Self { api }
+    }
+
     #[property]
     pub fn current(&self) -> CurrentObjects {
         CurrentObjects::new(self.api.clone())

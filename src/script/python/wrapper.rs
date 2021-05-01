@@ -5,23 +5,16 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-// NOTE: ItemProtocol needs to be in scope in order to insert things into scope.globals
 use rustpython_vm as vm;
-use vm::{
-    builtins::PyStrRef,
-    pyobject::{IntoPyObject, ItemProtocol, PyObjectRef, PyResult},
-};
+use vm::pyobject::{PyObjectRef, PyResult};
 
-use crate::script::api::{core::ScriptingFnRef, objects::CurrentObjects};
+use crate::script::api::{core::ScriptingFnRef, core2::IaidoCore};
 use crate::{
     editing::{ids::Ids, Id},
-    script::api::{core::IaidoApi, ApiManagerDelegate},
+    script::api::manager::Api,
 };
 
-use super::{
-    objects::{init_objects, CurrentPyObjects},
-    util::KeyResultConvertible,
-};
+use super::objects::init_objects;
 
 pub struct FnManager {
     runtime_id: Id,
@@ -53,42 +46,30 @@ impl FnManager {
 
 pub fn create_iaido_module(
     vm: &vm::VirtualMachine,
-    api: Arc<IaidoApi<ApiManagerDelegate>>,
+    api: Api,
     fns: Arc<Mutex<FnManager>>,
 ) -> PyResult<PyObjectRef> {
     init_objects(vm);
 
-    let dict = vm.ctx.new_dict();
+    let core = IaidoCore::new(api);
 
-    let current_objects = CurrentPyObjects::new(CurrentObjects::new(api.clone()));
-    dict.set_item("current", current_objects.into_pyobject(vm), vm)?;
+    // TODO: restore this
+    // let api_set_keymap = api.clone();
+    // dict.set_item(
+    //     "set_keymap",
+    //     vm.ctx.new_function(
+    //         "set_keymap",
+    //         move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
+    //             let fns = fns.clone();
+    //             let mut lock = fns.lock().unwrap();
+    //             let fn_ref = lock.create_ref(f);
+    //             api_set_keymap
+    //                 .set_keymap(modes.to_string(), from_keys.to_string(), fn_ref)
+    //                 .wrap_err(vm)
+    //         },
+    //     ),
+    //     vm,
+    // )?;
 
-    let api_echo = api.clone();
-    dict.set_item(
-        "echo",
-        vm.ctx
-            .new_function("echo", move |message: PyStrRef, vm: &vm::VirtualMachine| {
-                api_echo.echo(message.to_string()).wrap_err(vm)
-            }),
-        vm,
-    )?;
-
-    let api_set_keymap = api.clone();
-    dict.set_item(
-        "set_keymap",
-        vm.ctx.new_function(
-            "set_keymap",
-            move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
-                let fns = fns.clone();
-                let mut lock = fns.lock().unwrap();
-                let fn_ref = lock.create_ref(f);
-                api_set_keymap
-                    .set_keymap(modes.to_string(), from_keys.to_string(), fn_ref)
-                    .wrap_err(vm)
-            },
-        ),
-        vm,
-    )?;
-
-    Ok(vm.new_module("iaido", dict))
+    return core.to_py_module(vm);
 }

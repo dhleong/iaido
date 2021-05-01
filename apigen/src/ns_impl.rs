@@ -6,9 +6,9 @@ use syn::{
     Ident, Item, Token,
 };
 
-use crate::rpc_fn::RpcFn;
 use crate::{direct_fn::DirectFn, ns_rpc::NsRpc};
 use crate::{lang::IaidoScriptingLang, methods::MethodConfig};
+use crate::{rpc_fn::RpcFn, types::SynResult};
 
 pub struct NsImpl {
     name: Ident,
@@ -64,8 +64,8 @@ impl NsImpl {
             rpc_fns,
         } = self;
 
-        let direct_fn_tokens = direct_fns.iter().map(|f| f.to_tokens(language));
-        let rpc_delegates = rpc_fns.iter().map(|f| f.to_rpc_tokens(name, language));
+        let direct_fn_tokens = map_or_err(direct_fns.iter(), |f| f.to_tokens(language))?;
+        let rpc_delegates = map_or_err(rpc_fns.iter(), |f| f.to_rpc_tokens(name, language))?;
 
         let rpc = NsRpc {
             ns_name: name.clone(),
@@ -83,4 +83,16 @@ impl NsImpl {
             #rpc_tokens
         })
     }
+}
+
+fn map_or_err<E, Iter, F>(iter: Iter, f: F) -> SynResult<Vec<TokenStream>>
+where
+    Iter: Iterator<Item = E>,
+    F: Fn(E) -> SynResult<TokenStream>,
+{
+    let mut results = vec![];
+    for item in iter {
+        results.push(f(item)?);
+    }
+    Ok(results)
 }

@@ -22,7 +22,7 @@ impl RpcFn {
         &self,
         ns_name: &Ident,
         language: &L,
-    ) -> TokenStream {
+    ) -> SynResult<TokenStream> {
         let ItemFn { sig, vis, .. } = self.item.clone();
         let name = sig.ident.clone();
         let return_type = sig.output.clone();

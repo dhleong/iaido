@@ -19,14 +19,9 @@ impl IaidoCore {
     }
 
     #[rpc]
-    pub fn echo(context: &mut CommandHandlerContext) {
-        context.state_mut().echom("Hello from Python!");
+    pub fn echo(context: &mut CommandHandlerContext, text: String) {
+        context.state_mut().echom(text);
     }
-
-    // #[rpc]
-    // pub fn echo(context: &mut CommandHandlerContext, text: String) {
-    //     context.state_mut().echom(text);
-    // }
 }
 
 impl fmt::Debug for IaidoCore {

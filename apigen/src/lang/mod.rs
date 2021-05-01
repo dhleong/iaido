@@ -5,7 +5,7 @@ mod python;
 use python::PythonScriptingLang;
 use syn::ItemFn;
 
-use crate::{methods::MethodConfig, ns::Ns};
+use crate::{methods::MethodConfig, ns::Ns, types::SynResult};
 
 pub trait IaidoScriptingLang {
     fn wrap_ns(&self, ns: TokenStream, _item: &Ns) -> TokenStream {
@@ -14,8 +14,13 @@ pub trait IaidoScriptingLang {
     fn wrap_ns_impl(&self, ns_impl: TokenStream) -> TokenStream {
         ns_impl
     }
-    fn wrap_fn(&self, f: TokenStream, _item: &ItemFn, _config: &MethodConfig) -> TokenStream {
-        f
+    fn wrap_fn(
+        &self,
+        f: TokenStream,
+        _item: &ItemFn,
+        _config: &MethodConfig,
+    ) -> SynResult<TokenStream> {
+        Ok(f)
     }
 }
 
@@ -48,12 +53,20 @@ impl IaidoScriptingLang for ScriptingLangDelegate {
         tokens
     }
 
-    fn wrap_fn(&self, f: TokenStream, item: &ItemFn, config: &MethodConfig) -> TokenStream {
+    fn wrap_fn(
+        &self,
+        f: TokenStream,
+        item: &ItemFn,
+        config: &MethodConfig,
+    ) -> SynResult<TokenStream> {
         let mut tokens = f;
         for lang in &self.languages {
-            tokens = lang.wrap_fn(tokens, item, config);
+            tokens = match lang.wrap_fn(tokens, item, config) {
+                Ok(wrapped) => wrapped,
+                err => return err,
+            };
         }
-        tokens
+        Ok(tokens)
     }
 }
 

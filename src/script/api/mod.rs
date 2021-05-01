@@ -1,6 +1,7 @@
 use std::sync::{mpsc, Arc, Mutex};
 
 mod buffer;
+mod connection;
 pub mod core;
 mod current;
 mod window;
@@ -11,7 +12,7 @@ use super::fns::FnManager;
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
-pub trait ApiHandler<Payload: Clone + Send + Sync, Response: Clone + Send + Sync> {
+pub trait ApiHandler<Payload: Clone + Send + Sync, Response: Send + Sync> {
     fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> KeyResult<Response>;
 }
 
@@ -22,7 +23,7 @@ trait ApiRpcCall: Send {
 struct ApiMessage<Payload, Response, Handler>
 where
     Payload: Clone + Send + Sync,
-    Response: Clone + Send + Sync,
+    Response: Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     handler: Handler,
@@ -36,7 +37,7 @@ where
 impl<Payload, Response, Handler> ApiRpcCall for ApiMessage<Payload, Response, Handler>
 where
     Payload: Clone + Send + Sync,
-    Response: 'static + Clone + Send + Sync,
+    Response: 'static + Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     fn handle(&self, context: &mut CommandHandlerContext) {
@@ -100,7 +101,7 @@ impl ApiManagerDelegate {
     ) -> KeyResult<Response>
     where
         Payload: 'static + Clone + Send + Sync,
-        Response: 'static + Clone + Send + Sync,
+        Response: 'static + Send + Sync,
         Handler: 'static + ApiHandler<Payload, Response> + Send + Sync,
     {
         let (tx, rx) = mpsc::channel();

@@ -1,5 +1,5 @@
 use quote::{quote, ToTokens};
-use syn::{Error, GenericArgument, PathArguments, Type};
+use syn::{Error, GenericArgument, PathArguments, ReturnType, Type};
 
 const COMMAND_HANDLER_CONTEXT: &str = "CommandHandlerContext";
 
@@ -12,6 +12,13 @@ pub struct SimpleType {
 }
 
 impl SimpleType {
+    pub fn from_return(output: &ReturnType) -> Option<SimpleType> {
+        match output {
+            ReturnType::Default => None,
+            ReturnType::Type(_, ty) => Self::from(&ty.as_ref()).ok(),
+        }
+    }
+
     pub fn from(type_ref: &Type) -> SynResult<SimpleType> {
         if is_command_context(type_ref) {
             return Ok(SimpleType {

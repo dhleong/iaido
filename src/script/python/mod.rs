@@ -27,7 +27,7 @@ use super::{
 
 mod compat;
 mod modules;
-mod util;
+pub mod util;
 
 use compat::apply_compat;
 

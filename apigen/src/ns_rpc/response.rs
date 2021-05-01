@@ -52,7 +52,7 @@ impl ToTokens for NsResponse {
 
         let gen = quote! {
             #[allow(non_camel_case_types)]
-            #[derive(Clone, Debug)]
+            #[derive(Debug)]
             enum #name {
                 #(#responses),*
             }

@@ -2,7 +2,7 @@
 use crate::{
     methods::{MethodConfig, RpcConfig},
     ns::Ns,
-    types::SynResult,
+    types::{SimpleType, SynResult},
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -80,18 +80,44 @@ impl IaidoScriptingLang for PythonScriptingLang {
         } else if config.is_method || (is_public(item) && config.is_rpc) {
             let ItemFn { sig, .. } = item;
             let name = &sig.ident;
+            let output = &sig.output;
             let py_name = py_wrapper_fn_name(name);
             let name_string = name.to_string();
 
-            let args = convert_args_to_python(sig, &config.rpc_config)?;
+            let mut args = convert_args_to_python(sig, &config.rpc_config)?;
             let converted = self.arg_conversions_from_python(sig, &config.rpc_config)?;
+
+            let has_result = SimpleType::from_return(output)
+                .and_then(|ty| Some(ty.name))
+                .unwrap_or("".to_string())
+                == "KeyResult";
+
+            let invocation = quote! { self.#name(#(#converted),*) };
+
+            let wrapped_output = if has_result {
+                // TODO: unpack the actual result type to support
+                // KeyResult with more than just the default:
+                quote! { -> rustpython_vm::pyobject::PyResult<()> }
+            } else {
+                quote! { #output }
+            };
+
+            let invocation = if has_result {
+                args.push(quote! { vm: &rustpython_vm::VirtualMachine });
+                quote! {
+                    use crate::script::python::util::KeyResultConvertible;
+                    #invocation.wrap_err(vm)
+                }
+            } else {
+                invocation
+            };
 
             return Ok(quote! {
                 #f
 
                 #[pymethod(name = #name_string)]
-                pub fn #py_name(&self, #(#args),*) {
-                    self.#name(#(#converted),*)
+                pub fn #py_name(&self, #(#args),*) #wrapped_output {
+                    #invocation
                 }
             });
         }

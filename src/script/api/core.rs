@@ -9,7 +9,7 @@ pub struct IaidoApi<A: ApiDelegate> {
     api: A,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ScriptingFnRef {
     pub runtime: Id,
     pub id: Id,

@@ -2,6 +2,7 @@ use crate::{editing::Id, input::maps::KeyResult};
 
 pub mod core;
 pub mod core2;
+pub mod fns;
 pub mod manager;
 pub mod objects;
 

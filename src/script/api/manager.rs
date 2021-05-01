@@ -10,7 +10,9 @@ use crate::input::{
     BoxableKeymap, KeyError, KeymapContext, RemapMode,
 };
 
-use super::{core::ScriptingFnRef, ApiDelegate, ApiRequest, ApiResponse, ApiResult, IdType};
+use super::{
+    core::ScriptingFnRef, fns::FnManager, ApiDelegate, ApiRequest, ApiResponse, ApiResult, IdType,
+};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -131,6 +133,7 @@ impl ApiManagerDelegate2 {
 }
 
 pub type Api = ApiManagerDelegate2;
+pub type Fns = Arc<Mutex<FnManager>>;
 
 struct ApiMessage<T: Send + Sync> {
     payload: T,

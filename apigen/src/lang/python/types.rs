@@ -36,6 +36,7 @@ pub fn python_arg_from(arg: &FnArg) -> SynResult<Option<TokenStream>> {
 
     Ok(Some(match simple.name.as_str() {
         "String" => quote! { #pat: rustpython_vm::builtins::PyStrRef },
+        "ScriptingFnRef" => quote! { #pat: rustpython_vm::pyobject::PyObjectRef },
         _ => {
             return Err(Error::new_spanned(
                 simple,
@@ -63,6 +64,12 @@ pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
 
     Ok(Some(match simple.name.as_str() {
         "String" => quote! { #pat.to_string() },
+        "ScriptingFnRef" => quote! {
+            {
+                let mut lock = self.fns.lock().unwrap();
+                lock.create_ref(NativeFn::Py(#pat))
+            }
+        },
         _ => {
             return Err(Error::new_spanned(
                 simple,

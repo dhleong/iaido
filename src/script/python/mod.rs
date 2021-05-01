@@ -16,10 +16,15 @@ use crate::{
     editing::Id,
 };
 
-use self::{modules::ModuleContained, util::unwrap_error, wrapper::FnManager};
+use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
-    api::{core::ScriptingFnRef, core2::IaidoCore, manager::ApiManagerDelegate2},
+    api::{
+        core::ScriptingFnRef,
+        core2::IaidoCore,
+        fns::{FnManager, NativeFn},
+        manager::ApiManagerDelegate2,
+    },
     bindings::ScriptFile,
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
@@ -46,7 +51,7 @@ impl PythonScriptingRuntime {
             vm: None,
         };
 
-        let iaido = IaidoCore::new(api.clone());
+        let iaido = IaidoCore::new(api.clone(), fns.clone());
 
         let iaido_module = iaido.clone();
         let vm = vm::Interpreter::new_with_init(settings, move |vm| {
@@ -130,7 +135,11 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         let fns = self.fns.clone();
         self.with_vm(move |vm| {
             let lock = fns.lock().unwrap();
-            let f = lock.get(&fn_ref);
+            let native = lock.get(&fn_ref);
+            let f = match native {
+                NativeFn::Py(ref f) => f,
+                _ => panic!("Received non-py Fn ref"),
+            };
 
             unwrap_error(vm, vm.invoke(&f, vec![]))?;
             Ok(())

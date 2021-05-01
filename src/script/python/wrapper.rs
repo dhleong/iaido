@@ -49,27 +49,29 @@ pub fn create_iaido_module(
     api: Api,
     fns: Arc<Mutex<FnManager>>,
 ) -> PyResult<PyObjectRef> {
-    init_objects(vm);
+    panic!("deprecated");
 
-    let core = IaidoCore::new(api);
-
-    // TODO: restore this
-    // let api_set_keymap = api.clone();
-    // dict.set_item(
-    //     "set_keymap",
-    //     vm.ctx.new_function(
-    //         "set_keymap",
-    //         move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
-    //             let fns = fns.clone();
-    //             let mut lock = fns.lock().unwrap();
-    //             let fn_ref = lock.create_ref(f);
-    //             api_set_keymap
-    //                 .set_keymap(modes.to_string(), from_keys.to_string(), fn_ref)
-    //                 .wrap_err(vm)
-    //         },
-    //     ),
-    //     vm,
-    // )?;
-
-    return core.to_py_module(vm);
+    // init_objects(vm);
+    //
+    // let core = IaidoCore::new(api #<{(| , fns |)}>#);
+    //
+    // // TODO: restore this
+    // // let api_set_keymap = api.clone();
+    // // dict.set_item(
+    // //     "set_keymap",
+    // //     vm.ctx.new_function(
+    // //         "set_keymap",
+    // //         move |modes: PyStrRef, from_keys: PyStrRef, f: PyObjectRef, vm: &vm::VirtualMachine| {
+    // //             let fns = fns.clone();
+    // //             let mut lock = fns.lock().unwrap();
+    // //             let fn_ref = lock.create_ref(f);
+    // //             api_set_keymap
+    // //                 .set_keymap(modes.to_string(), from_keys.to_string(), fn_ref)
+    // //                 .wrap_err(vm)
+    // //         },
+    // //     ),
+    // //     vm,
+    // // )?;
+    //
+    // return core.to_py_module(vm);
 }

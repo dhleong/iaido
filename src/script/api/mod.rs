@@ -1,6 +1,8 @@
 use std::sync::{mpsc, Arc, Mutex};
 
+mod buffer;
 pub mod core;
+mod current;
 
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError};
 

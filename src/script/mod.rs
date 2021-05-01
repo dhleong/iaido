@@ -13,9 +13,8 @@ use crate::{
     input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
 pub use api::manager::ApiManagerRpc;
-pub use api::ApiManager;
 
-use self::api::{core::ScriptingFnRef, manager::ApiManagerDelegate2};
+use self::api::{fns::ScriptingFnRef, manager::ApiManagerDelegate2};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult;

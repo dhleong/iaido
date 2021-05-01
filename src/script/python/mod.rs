@@ -20,9 +20,8 @@ use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
     api::{
-        core::ScriptingFnRef,
         core2::IaidoCore,
-        fns::{FnManager, NativeFn},
+        fns::{FnManager, NativeFn, ScriptingFnRef},
         manager::ApiManagerDelegate2,
     },
     bindings::ScriptFile,
@@ -31,9 +30,7 @@ use super::{
 
 mod compat;
 mod modules;
-mod objects;
 mod util;
-mod wrapper;
 
 use compat::apply_compat;
 

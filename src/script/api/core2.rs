@@ -9,7 +9,7 @@ use crate::{
     script::api::manager::{Api, Fns},
 };
 
-use super::{core::ScriptingFnRef, fns::NativeFn};
+use super::fns::ScriptingFnRef;
 
 #[apigen::ns]
 #[derive(Clone)]

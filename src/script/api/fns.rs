@@ -2,12 +2,23 @@ use std::collections::HashMap;
 
 use crate::editing::{ids::Ids, Id};
 
-use super::core::ScriptingFnRef;
+#[derive(Clone, Copy, Debug)]
+pub struct ScriptingFnRef {
+    pub runtime: Id,
+    pub id: Id,
+}
+
+impl ScriptingFnRef {
+    pub fn new(runtime: Id, id: Id) -> Self {
+        Self { runtime, id }
+    }
+}
 
 pub enum NativeFn {
     #[cfg(feature = "python")]
     Py(rustpython_vm::pyobject::PyObjectRef),
 
+    /// NOTE: This exists to avoid "irrefutable" warnings
     _Ignore,
 }
 

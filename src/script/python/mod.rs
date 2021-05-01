@@ -19,7 +19,7 @@ use crate::{
 use self::{modules::ModuleContained, util::unwrap_error, wrapper::FnManager};
 
 use super::{
-    api::{core::ScriptingFnRef, manager::ApiManagerDelegate2, ApiManagerDelegate},
+    api::{core::ScriptingFnRef, core2::IaidoCore, manager::ApiManagerDelegate2},
     bindings::ScriptFile,
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
@@ -31,7 +31,6 @@ mod util;
 mod wrapper;
 
 use compat::apply_compat;
-use wrapper::create_iaido_module;
 
 pub struct PythonScriptingRuntime {
     fns: Arc<Mutex<FnManager>>,
@@ -41,25 +40,24 @@ pub struct PythonScriptingRuntime {
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate2) -> Self {
         let settings = vm::PySettings::default();
-        // let iaido = Arc::new(IaidoApi::new(api.clone()));
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
             fns: fns.clone(),
             vm: None,
         };
 
-        let module_api = api.clone();
+        let iaido = IaidoCore::new(api.clone());
+
+        let iaido_module = iaido.clone();
         let vm = vm::Interpreter::new_with_init(settings, move |vm| {
             vm.add_native_module(
                 "iaido".to_string(),
-                Box::new(move |vm| {
-                    match create_iaido_module(vm, module_api.clone(), fns.clone()) {
-                        Ok(module) => module,
-                        Err(e) => panic!(
-                            "Unable to initialize iaido module: {:?}",
-                            Self::format_exception_vm(vm, e)
-                        ),
-                    }
+                Box::new(move |vm| match iaido_module.to_py_module(vm) {
+                    Ok(module) => module,
+                    Err(e) => panic!(
+                        "Unable to initialize iaido module: {:?}",
+                        Self::format_exception_vm(vm, e)
+                    ),
                 }),
             );
 
@@ -68,7 +66,7 @@ impl PythonScriptingRuntime {
 
         runtime.vm = Some(vm);
 
-        runtime.with_vm(|vm| apply_compat(api, vm));
+        runtime.with_vm(move |vm| apply_compat(iaido, vm));
 
         runtime
     }

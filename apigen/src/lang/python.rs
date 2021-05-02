@@ -72,12 +72,12 @@ impl IaidoScriptingLang for PythonScriptingLang {
         item: &ItemFn,
         config: &MethodConfig,
     ) -> SynResult<TokenStream> {
-        if config.is_property {
+        if config.is_property && !config.is_property_setter {
             return Ok(quote! {
                 #[pyproperty]
                 #f
             });
-        } else if config.is_method || (is_public(item) && config.is_rpc) {
+        } else if config.is_method || (is_public(item) && config.is_rpc) || config.is_property {
             let ItemFn { sig, .. } = item;
             let name = &sig.ident;
             let output = &sig.output;
@@ -112,10 +112,17 @@ impl IaidoScriptingLang for PythonScriptingLang {
                 invocation
             };
 
+            let annotation = if config.is_property {
+                let getter_string = name_string.replace("set_", "");
+                quote! { #[pyproperty(name = #getter_string, setter)] }
+            } else {
+                quote! { #[pymethod(name = #name_string)] }
+            };
+
             return Ok(quote! {
                 #f
 
-                #[pymethod(name = #name_string)]
+                #annotation
                 pub fn #py_name(&self, #(#args),*) #wrapped_output {
                     #invocation
                 }

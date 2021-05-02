@@ -34,6 +34,13 @@ pub fn python_arg_from(arg: &FnArg) -> SynResult<Option<TokenStream>> {
         return Err(Error::new_spanned(arg, "Optional args not supported yet"));
     }
 
+    if simple.is_ref {
+        // is there a better way to handle this?
+        return Ok(Some(
+            quote! { #pat: rustpython_vm::pyobject::PyRef<#simple> },
+        ));
+    }
+
     Ok(Some(match simple.name.as_str() {
         "Id" => quote! { #pat: usize },
 
@@ -62,6 +69,10 @@ pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
     let simple = SimpleType::from(&ty.as_ref())?;
     if simple.is_optional {
         return Err(Error::new_spanned(arg, "Optional args not supported yet"));
+    }
+
+    if simple.is_ref {
+        return Ok(Some(quote! { &#pat }));
     }
 
     Ok(Some(match simple.name.as_str() {

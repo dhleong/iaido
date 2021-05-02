@@ -31,6 +31,16 @@ impl CurrentObjects {
     }
 
     #[rpc]
+    fn set_buffer_id(context: &mut CommandHandlerContext, buffer_id: Id) {
+        context.state_mut().current_window_mut().buffer = buffer_id;
+    }
+
+    #[property(setter)]
+    pub fn set_buffer(&self, buffer: &BufferApiObject) {
+        self.set_buffer_id(buffer.id)
+    }
+
+    #[rpc]
     fn connection_id(context: &mut CommandHandlerContext) -> Option<Id> {
         context
             .state()

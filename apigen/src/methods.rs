@@ -11,6 +11,7 @@ use syn::{
 
 mod kw {
     syn::custom_keyword!(passing);
+    syn::custom_keyword!(setter);
 }
 
 #[derive(Clone)]
@@ -46,10 +47,29 @@ impl Parse for RpcConfig {
 }
 
 #[derive(Clone, Debug)]
+pub struct PropertyConfig {
+    pub is_setter: bool,
+}
+
+impl Parse for PropertyConfig {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        let mut config = Self { is_setter: false };
+        if input.peek(kw::setter) {
+            input.parse::<kw::setter>()?;
+            config.is_setter = true;
+        }
+
+        Ok(config)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct MethodConfig {
     pub is_method: bool,
     pub is_property: bool,
+    pub is_property_setter: bool,
     pub is_rpc: bool,
+    pub has_property_setter: bool,
     pub rpc_config: Option<RpcConfig>,
 }
 
@@ -58,7 +78,9 @@ impl MethodConfig {
         let mut new = Self {
             is_method: false,
             is_property: false,
+            is_property_setter: false,
             is_rpc: false,
+            has_property_setter: false,
             rpc_config: None,
         };
 
@@ -76,6 +98,9 @@ impl MethodConfig {
                 }
                 "property" => {
                     new.is_property = true;
+                    if let Ok(config) = attr.parse_args::<PropertyConfig>() {
+                        new.is_property_setter = config.is_setter;
+                    }
                 }
                 _ => {} // ignore
             }

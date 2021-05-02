@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{
     braced,
     parse::{Parse, ParseStream, Result},
-    AttributeArgs, Ident, Item, Meta, NestedMeta, Token,
+    AttributeArgs, Error, Ident, Item, ItemFn, Meta, NestedMeta, Token,
 };
 
 use crate::{direct_fn::DirectFn, ns_rpc::NsRpc};
@@ -60,6 +60,10 @@ impl Parse for NsImpl {
                 Ok(Item::Fn(mut f)) => {
                     let config = MethodConfig::from(f.attrs)?;
                     f.attrs = vec![];
+
+                    if config.is_property_setter {
+                        validate_setter(&f, &mut rpc_fns, &mut direct_fns)?;
+                    }
 
                     if config.is_rpc {
                         rpc_fns.push(RpcFn { item: f, config });
@@ -122,4 +126,42 @@ where
         results.push(f(item)?);
     }
     Ok(results)
+}
+
+fn validate_setter(
+    f: &ItemFn,
+    rpc_fns: &mut Vec<RpcFn>,
+    direct_fns: &mut Vec<DirectFn>,
+) -> SynResult<()> {
+    let setter_name = f.sig.ident.to_string();
+    if !setter_name.starts_with("set_") {
+        return Err(Error::new_spanned(
+            &f.sig.ident,
+            "Property setter should start with set_",
+        ));
+    }
+
+    let expected = setter_name.replace("set_", "");
+
+    for f in rpc_fns {
+        if f.item.sig.ident.to_string() == expected {
+            f.config.has_property_setter = true;
+            return Ok(());
+        }
+    }
+
+    for f in direct_fns {
+        if f.item.sig.ident.to_string() == expected {
+            f.config.has_property_setter = true;
+            return Ok(());
+        }
+    }
+
+    Err(Error::new_spanned(
+        f,
+        format!(
+            "No associated getter #[property] for {}; make sure the getter is declared before this setter",
+            f.sig.ident,
+        )
+    ))
 }

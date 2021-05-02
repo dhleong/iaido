@@ -47,10 +47,11 @@ pub fn python_arg_from(arg: &FnArg) -> SynResult<Option<TokenStream>> {
         "String" => quote! { #pat: rustpython_vm::builtins::PyStrRef },
         "ScriptingFnRef" => quote! { #pat: rustpython_vm::pyobject::PyObjectRef },
         _ => {
-            return Err(Error::new_spanned(
-                simple,
-                "Python does not support this type",
-            ))
+            let msg = format!(
+                "Python does not support the type {}; try using a ref for API object types",
+                simple.name,
+            );
+            return Err(Error::new_spanned(simple, msg));
         }
     }))
 }

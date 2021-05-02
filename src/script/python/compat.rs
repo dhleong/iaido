@@ -5,11 +5,11 @@ use vm::{
     pyobject::ItemProtocol,
 };
 
-use crate::script::api::{ApiDelegate, ApiManagerDelegate, ApiRequest};
+use crate::script::api::core::IaidoCore;
 
 /// By default, the warnings module writes to stderr, which messes up the tui
 /// We may want to consider completely swapping out sys.stderr/sys.stdout...
-fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
+fn patch_warnings_module(iaido: IaidoCore, vm: &vm::VirtualMachine) {
     let warnings = vm
         .get_attribute(vm.sys_module.clone(), "modules")
         .expect("Could not access modules")
@@ -27,11 +27,11 @@ fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
                 vm.ctx.exceptions.user_warning.name.clone()
             };
 
-            let _ = api.perform(ApiRequest::Echo(format!(
+            iaido.echo(format!(
                 "[py][warn] {}: {}",
                 category,
                 message.downcast_exact::<PyStr>(vm).unwrap().to_string()
-            )));
+            ));
         },
     );
 
@@ -39,6 +39,6 @@ fn patch_warnings_module(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
         .expect("Could not stub warn");
 }
 
-pub fn apply_compat(api: ApiManagerDelegate, vm: &vm::VirtualMachine) {
-    patch_warnings_module(api, vm);
+pub fn apply_compat(iaido: IaidoCore, vm: &vm::VirtualMachine) {
+    patch_warnings_module(iaido, vm);
 }

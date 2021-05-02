@@ -50,6 +50,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "apigen"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -694,6 +703,7 @@ checksum = "79296f72d53a89096cbc9a88c9547ee8dfe793388674620e2207593d370550ac"
 name = "iaido"
 version = "0.1.0"
 dependencies = [
+ "apigen",
  "backtrace",
  "bitflags",
  "bounded-vec-deque",

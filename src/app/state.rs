@@ -18,7 +18,7 @@ use crate::{
         completion::CompletableContext,
         KeyError,
     },
-    script::{ApiManager, ScriptingManager},
+    script::{ApiManagerRpc, ScriptingManager},
 };
 
 use super::{
@@ -46,7 +46,7 @@ pub struct AppState {
     pub connections: Option<Connections>,
 
     pub scripting: Arc<Mutex<ScriptingManager>>,
-    pub api: Option<ApiManager>,
+    pub api: Option<ApiManagerRpc>,
 
     pub jobs: Jobs,
 }
@@ -222,7 +222,7 @@ impl Default for AppState {
             keymap_widget: None,
             connections: Some(Connections::default()),
             scripting: Arc::new(Mutex::new(ScriptingManager::default())),
-            api: Some(ApiManager::default()),
+            api: Some(ApiManagerRpc::default()),
             jobs: Jobs::new(),
         };
 

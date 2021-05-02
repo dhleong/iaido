@@ -1,111 +1,76 @@
+use std::{fmt, io};
+
 use crate::{
-    editing::Id,
-    input::{maps::KeyResult, KeyError},
+    input::{
+        commands::CommandHandlerContext, keys::KeysParsable, maps::UserKeyHandler, KeymapContext,
+        RemapMode,
+    },
+    script::fns::ScriptingFnRef,
 };
 
-use super::{ApiDelegate, ApiRequest, ApiResponse, IdType};
+use super::{current::CurrentObjects, Api, Fns};
 
-pub struct IaidoApi<A: ApiDelegate> {
-    api: A,
+#[apigen::ns]
+#[derive(Clone)]
+pub struct IaidoCore {
+    api: Api,
+    fns: Fns,
 }
 
-#[derive(Clone, Copy)]
-pub struct ScriptingFnRef {
-    pub runtime: Id,
-    pub id: Id,
-}
+#[apigen::ns_impl(module)]
+impl IaidoCore {
+    pub fn new(api: Api, fns: Fns) -> Self {
+        Self { api, fns }
+    }
 
-impl ScriptingFnRef {
-    pub fn new(runtime: Id, id: Id) -> Self {
-        Self { runtime, id }
+    #[property]
+    pub fn current(&self) -> CurrentObjects {
+        CurrentObjects::new(self.api.clone())
+    }
+
+    #[rpc]
+    pub fn echo(context: &mut CommandHandlerContext, text: String) {
+        context.state_mut().echom(text);
+    }
+
+    #[rpc]
+    pub fn set_keymap(
+        context: &mut CommandHandlerContext,
+        mode: String,
+        keys: String,
+        f: ScriptingFnRef,
+    ) {
+        let mode = match mode.as_str() {
+            "n" => RemapMode::VimNormal,
+            "i" => RemapMode::VimInsert,
+            _ => RemapMode::User(mode),
+        };
+        context
+            .keymap
+            .remap_keys_user_fn(mode, keys.into_keys(), create_user_keyhandler(f));
     }
 }
 
-impl<A: ApiDelegate> IaidoApi<A> {
-    pub fn new(api: A) -> Self {
-        Self { api }
+impl fmt::Debug for IaidoCore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<iaido>")
     }
+}
 
-    pub fn buffer_name(&self, buf_id: Id) -> KeyResult<String> {
-        match self.api.perform(ApiRequest::BufferName(buf_id))? {
-            Some(ApiResponse::String(name)) => Ok(name),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
-
-    pub fn connection_close(&self, conn_id: Id) -> KeyResult {
-        self.close_by_type(IdType::Connection, conn_id)
-    }
-
-    pub fn current_buffer(&self) -> KeyResult<Id> {
-        match self.api.perform(ApiRequest::CurrentId(IdType::Buffer))? {
-            Some(ApiResponse::Id(id)) => Ok(id),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
-
-    pub fn set_current_buffer(&self, id: Id) -> KeyResult {
-        match self
-            .api
-            .perform(ApiRequest::SetCurrentId(IdType::Buffer, id))?
-        {
-            Some(_) => Ok(()),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
-
-    pub fn current_connection(&self) -> KeyResult<Option<Id>> {
-        match self
-            .api
-            .perform(ApiRequest::CurrentId(IdType::Connection))?
-        {
-            Some(ApiResponse::Id(id)) => Ok(Some(id)),
-            None => Ok(None),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
-
-    pub fn current_tabpage(&self) -> KeyResult<Id> {
-        self.id_by_type(IdType::Tab)
-    }
-
-    pub fn tabpage_close(&self, tab_id: Id) -> KeyResult {
-        self.close_by_type(IdType::Tab, tab_id)
-    }
-
-    pub fn current_window(&self) -> KeyResult<Id> {
-        self.id_by_type(IdType::Window)
-    }
-
-    pub fn window_close(&self, win_id: Id) -> KeyResult {
-        self.close_by_type(IdType::Window, win_id)
-    }
-
-    pub fn echo(&self, message: String) -> KeyResult {
-        self.api.perform(ApiRequest::Echo(message))?;
-        Ok(())
-    }
-
-    pub fn set_keymap(&self, modes: String, from_keys: String, to: ScriptingFnRef) -> KeyResult {
-        self.api.perform(ApiRequest::SetKeymapFn(
-            modes.to_string(),
-            from_keys.to_string(),
-            to,
-        ))?;
-        Ok(())
-    }
-
-    fn close_by_type(&self, id_type: IdType, id: Id) -> KeyResult {
-        match self.api.perform(ApiRequest::TypedClose(id_type, id))? {
-            Some(_) => Ok(()),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
-
-    fn id_by_type(&self, id_type: IdType) -> KeyResult<Id> {
-        match self.api.perform(ApiRequest::CurrentId(id_type))? {
-            Some(ApiResponse::Id(id)) => Ok(id),
-            _ => Err(KeyError::Interrupted),
-        }
-    }
+fn create_user_keyhandler(f: ScriptingFnRef) -> Box<UserKeyHandler> {
+    Box::new(move |mut ctx| {
+        let scripting = ctx.state().scripting.clone();
+        ctx.state_mut()
+            .jobs
+            .start(move |_| async move {
+                match scripting.try_lock() {
+                    Ok(scripting) => {
+                        scripting.invoke(f)?;
+                        Ok(())
+                    }
+                    Err(_) => Err(io::ErrorKind::WouldBlock.into()),
+                }
+            })
+            .join_interruptably(&mut ctx)
+    })
 }

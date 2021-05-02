@@ -16,25 +16,20 @@ use crate::{
     editing::Id,
 };
 
-use self::{modules::ModuleContained, util::unwrap_error, wrapper::FnManager};
+use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
-    api::{
-        core::{IaidoApi, ScriptingFnRef},
-        ApiManagerDelegate,
-    },
+    api::{core::IaidoCore, ApiManagerDelegate},
     bindings::ScriptFile,
+    fns::{FnManager, NativeFn, ScriptingFnRef},
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
 mod compat;
 mod modules;
-mod objects;
-mod util;
-mod wrapper;
+pub mod util;
 
 use compat::apply_compat;
-use wrapper::create_iaido_module;
 
 pub struct PythonScriptingRuntime {
     fns: Arc<Mutex<FnManager>>,
@@ -44,19 +39,24 @@ pub struct PythonScriptingRuntime {
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
-        let iaido = Arc::new(IaidoApi::new(api.clone()));
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
             fns: fns.clone(),
             vm: None,
         };
 
+        let iaido = IaidoCore::new(api.clone(), fns.clone());
+
+        let iaido_module = iaido.clone();
         let vm = vm::Interpreter::new_with_init(settings, move |vm| {
             vm.add_native_module(
                 "iaido".to_string(),
-                Box::new(move |vm| {
-                    create_iaido_module(vm, iaido.clone(), fns.clone())
-                        .expect("Unable to initialize iaido module")
+                Box::new(move |vm| match iaido_module.to_py_module(vm) {
+                    Ok(module) => module,
+                    Err(e) => panic!(
+                        "Unable to initialize iaido module: {:?}",
+                        Self::format_exception_vm(vm, e)
+                    ),
                 }),
             );
 
@@ -65,7 +65,7 @@ impl PythonScriptingRuntime {
 
         runtime.vm = Some(vm);
 
-        runtime.with_vm(|vm| apply_compat(api, vm));
+        runtime.with_vm(move |vm| apply_compat(iaido, vm));
 
         runtime
     }
@@ -129,7 +129,11 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         let fns = self.fns.clone();
         self.with_vm(move |vm| {
             let lock = fns.lock().unwrap();
-            let f = lock.get(&fn_ref);
+            let native = lock.get(&fn_ref);
+            let f = match native {
+                NativeFn::Py(ref f) => f,
+                _ => panic!("Received non-py Fn ref"),
+            };
 
             unwrap_error(vm, vm.invoke(&f, vec![]))?;
             Ok(())

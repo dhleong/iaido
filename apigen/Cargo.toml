@@ -1,0 +1,19 @@
+[package]
+name = "apigen"
+version = "0.1.0"
+authors = ["Daniel Leong <me@dhleong.net>"]
+edition = "2018"
+
+[features]
+default = ["python"]
+
+python = []
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0.26"
+quote = "1.0.9"
+syn = { version = "1.0.63", features = ["full"] }
+

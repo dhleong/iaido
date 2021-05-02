@@ -2,8 +2,10 @@ use std::{fmt, io};
 
 use crate::{
     input::{
-        commands::CommandHandlerContext, keys::KeysParsable, maps::UserKeyHandler, KeymapContext,
-        RemapMode,
+        commands::{connection, CommandHandlerContext},
+        keys::KeysParsable,
+        maps::{KeyResult, UserKeyHandler},
+        KeymapContext, RemapMode,
     },
     script::fns::ScriptingFnRef,
 };
@@ -26,6 +28,11 @@ impl IaidoCore {
     #[property]
     pub fn current(&self) -> CurrentObjects {
         CurrentObjects::new(self.api.clone())
+    }
+
+    #[rpc]
+    pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
+        connection::connect(context, url)
     }
 
     #[rpc]

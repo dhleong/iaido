@@ -1,5 +1,8 @@
+use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Error, GenericArgument, PathArguments, ReturnType, Type, TypePath, TypeReference};
+use syn::{
+    Error, GenericArgument, PathArguments, ReturnType, Signature, Type, TypePath, TypeReference,
+};
 
 const COMMAND_HANDLER_CONTEXT: &str = "CommandHandlerContext";
 
@@ -10,6 +13,21 @@ pub fn is_command_context(type_ref: &Type) -> bool {
         simple.is_ref && simple.name == COMMAND_HANDLER_CONTEXT
     } else {
         false
+    }
+}
+
+/// Returns a Some with a TokenStream representing the result type of the
+/// given signature, if it returns some sort of KeyResult, else None
+pub fn result_type(signature: &Signature) -> Option<TokenStream> {
+    if SimpleType::from_return(&signature.output)
+        .and_then(|ty| Some(ty.name))
+        .unwrap_or("".to_string())
+        == "KeyResult"
+    {
+        // TODO: property extract the result type, if an explicit one is given
+        Some(quote! { () })
+    } else {
+        None
     }
 }
 

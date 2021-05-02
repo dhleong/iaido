@@ -2,7 +2,7 @@
 use crate::{
     methods::{MethodConfig, RpcConfig},
     ns::Ns,
-    types::{SimpleType, SynResult},
+    types::{result_type, SimpleType, SynResult},
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -83,26 +83,22 @@ impl IaidoScriptingLang for PythonScriptingLang {
             let output = &sig.output;
             let py_name = py_wrapper_fn_name(name);
             let name_string = name.to_string();
+            let result_type = result_type(&sig);
 
             let mut args = convert_args_to_python(sig, &config.rpc_config)?;
             let converted = self.arg_conversions_from_python(sig, &config.rpc_config)?;
 
-            let has_result = SimpleType::from_return(output)
-                .and_then(|ty| Some(ty.name))
-                .unwrap_or("".to_string())
-                == "KeyResult";
-
             let invocation = quote! { self.#name(#(#converted),*) };
 
-            let wrapped_output = if has_result {
+            let wrapped_output = if let Some(result) = &result_type {
                 // TODO: unpack the actual result type to support
                 // KeyResult with more than just the default:
-                quote! { -> rustpython_vm::pyobject::PyResult<()> }
+                quote! { -> rustpython_vm::pyobject::PyResult<#result> }
             } else {
                 quote! { #output }
             };
 
-            let invocation = if has_result {
+            let invocation = if result_type.is_some() {
                 args.push(quote! { vm: &rustpython_vm::VirtualMachine });
                 quote! {
                     use crate::script::python::util::KeyResultConvertible;
@@ -242,23 +238,27 @@ fn convert_args_to_python(
 }
 
 fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
-    // TODO in general, for any module-level properties this
-    // *should* be fine; if not, we may be able to define the
-    // property accessor on the module, instead of in the dict?
     let name = &item.sig.ident;
     let py_name = py_wrapper_fn_name(name);
     let name_str = name.to_string();
+    let result_type = result_type(&item.sig);
 
     let arg_decls = convert_args_to_python(&item.sig, &None)?;
     let arg_names = map_args(&item.sig, &None, types::python_arg_name)?;
+
+    let (vm_arg, vm_usage) = if result_type.is_some() {
+        (quote! {vm: &rustpython_vm::VirtualMachine}, quote! { vm })
+    } else {
+        (quote!(), quote!())
+    };
 
     Ok(quote! {
         {
             let zelf = self.clone();
             dict.set_item(
                 #name_str,
-                vm.ctx.new_function(#name_str, move |#(#arg_decls),*| {
-                    zelf.#py_name(#(#arg_names),*)
+                vm.ctx.new_function(#name_str, move |#(#arg_decls),*, #vm_arg| {
+                    zelf.#py_name(#(#arg_names),*, #vm_usage)
                 }),
                 vm
             )?;

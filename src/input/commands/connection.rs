@@ -26,7 +26,7 @@ fn parse_url(url: &str) -> Result<Url, url::ParseError> {
     }
 }
 
-fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
+pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     let uri = parse_url(url.as_str())?;
     let buffer = context.state().current_buffer();
     let buffer_id = match &buffer.source() {

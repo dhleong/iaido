@@ -13,7 +13,7 @@ impl Renderable for Tabpage {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::CursorPosition;
+    use crate::editing::CursorPosition;
     use tui::layout::Rect;
 
     use crate::{

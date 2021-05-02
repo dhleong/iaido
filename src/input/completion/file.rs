@@ -73,7 +73,12 @@ mod tests {
             .collect();
         assert_eq!(
             suggestions,
-            vec!["log.rs".to_string(), "main.rs".to_string()]
+            vec![
+                "cli.rs".to_string(),
+                "demo.rs".to_string(),
+                "log.rs".to_string(),
+                "main.rs".to_string()
+            ]
         );
     }
 }

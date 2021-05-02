@@ -1,7 +1,7 @@
 use url::Url;
 
 use crate::{
-    editing::source::BufferSource,
+    editing::{source::BufferSource, Id},
     input::{maps::KeyResult, KeyError, KeymapContext},
 };
 use command_decl::declare_commands;
@@ -89,11 +89,7 @@ fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {
             .unwrap()
             .disconnect_buffer(buffer_id)?;
 
-        context
-            .state_mut()
-            .winsbuf_by_id(buffer_id)
-            .expect("Could not find current buffer")
-            .append_line("Disconnected.".into());
+        on_disconnect(context, buffer_id);
 
         Ok(())
     } else {
@@ -101,6 +97,14 @@ fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {
             "No connection for current buffer".to_string(),
         ))
     }
+}
+
+pub fn on_disconnect(context: &mut CommandHandlerContext, buffer_id: Id) {
+    context
+        .state_mut()
+        .winsbuf_by_id(buffer_id)
+        .expect("Could not find current buffer")
+        .append_line("Disconnected.".into());
 }
 
 #[cfg(test)]

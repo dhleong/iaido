@@ -2,7 +2,11 @@ use std::fmt;
 
 use crate::{
     editing::Id,
-    input::{commands::CommandHandlerContext, maps::KeyResult, KeymapContext},
+    input::{
+        commands::{connection::on_disconnect, CommandHandlerContext},
+        maps::KeyResult,
+        KeymapContext,
+    },
 };
 
 use super::Api;
@@ -28,7 +32,9 @@ impl ConnectionApiObject {
     #[rpc(passing(self.id))]
     pub fn close(context: &mut CommandHandlerContext, id: Id) -> KeyResult {
         if let Some(ref mut conns) = context.state_mut().connections {
-            conns.disconnect(id)?;
+            let buffer_id = conns.disconnect(id)?;
+
+            on_disconnect(context, buffer_id);
         }
         Ok(())
     }

@@ -50,6 +50,20 @@ impl Default for ScriptingManager {
 
 impl ScriptingManager {
     pub fn init<K: KeymapContext, KM: BoxableKeymap>(context: &mut K, map: &mut KM) {
+        let init_scripts = {
+            let scripting = context.state().scripting.clone();
+            let lock = scripting.lock().unwrap();
+            lock.find_init_scripts()
+        };
+
+        Self::load_scripts(context, map, init_scripts)
+    }
+
+    pub fn load_scripts<K: KeymapContext, KM: BoxableKeymap>(
+        context: &mut K,
+        map: &mut KM,
+        scripts: Vec<String>,
+    ) {
         let scripting = context.state().scripting.clone();
         let delegate = context.state().api.as_ref().unwrap().delegate();
         let jobs = &mut context.state_mut().jobs;
@@ -57,16 +71,12 @@ impl ScriptingManager {
         let result = jobs
             .start(move |_| async move {
                 let lock = scripting.lock().unwrap();
-                for path in lock.find_init_scripts() {
+                for path in scripts {
                     lock.load(delegate.clone(), path)?;
                 }
                 Ok(())
             })
-            .join_interruptably(&mut CommandHandlerContext::new(
-                context,
-                map,
-                "".to_string(),
-            ));
+            .join_interruptably(&mut CommandHandlerContext::new_blank(context, map));
 
         if let Err(e) = result {
             context.state_mut().echom("INIT ERROR");

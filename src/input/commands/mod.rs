@@ -39,6 +39,13 @@ impl<'a> CommandHandlerContext<'a> {
             input,
         }
     }
+
+    pub fn new_blank<T: KeymapContext, K: BoxableKeymap>(
+        context: &'a mut T,
+        keymap: &'a mut K,
+    ) -> Self {
+        Self::new(context, keymap, "".to_string())
+    }
 }
 
 impl CommandHandlerContext<'_> {

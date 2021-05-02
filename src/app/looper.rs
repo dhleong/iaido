@@ -4,8 +4,13 @@ use std::{sync::Mutex, time::Duration};
 
 use crate::{
     app::{self, App},
+    cli::{self, CliInit},
     editing::text::TextLines,
-    input::{commands::CommandHandlerContext, KeymapContext},
+    input::{
+        commands::{connection::connect, CommandHandlerContext},
+        maps::KeyResult,
+        KeymapContext,
+    },
 };
 use crate::{
     input::BoxableKeymap,
@@ -41,7 +46,7 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
 
         if let Some(ref mut keymap) = keymap {
             // ... and from scripts
-            let mut context = CommandHandlerContext::new(self, keymap, "".to_string());
+            let mut context = CommandHandlerContext::new_blank(self, keymap);
             dirty |= ScriptingManager::process(&mut context)?;
         } else {
             panic!("No keymap provided");
@@ -118,7 +123,7 @@ lazy_static! {
     pub static ref PANICKED: Mutex<bool> = Mutex::new(false);
 }
 
-pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM)
+pub fn app_loop<U, UE, KM>(app: App<U>, events: UE, mut map: KM, args: cli::Args)
 where
     U: UI,
     UE: UiEvents,
@@ -126,15 +131,55 @@ where
 {
     let mut app_keys = AppKeySource { app, events };
 
+    // Initializing scripting first:
     ScriptingManager::init(&mut app_keys, &mut map);
 
+    // Perform any CLI-arg-driven init:
+    if let Err(e) = handle_args(&mut app_keys, &mut map, args) {
+        print_error(&mut app_keys, e);
+    }
+
+    // Main app loop:
+    run_loop(&mut app_keys, map);
+
+    // kill any still-running jobs when the user wants to quit:
+    app_keys.state_mut().jobs.cancel_all();
+}
+
+fn handle_args<U, UE, KM>(
+    app_keys: &mut AppKeySource<U, UE>,
+    map: &mut KM,
+    args: cli::Args,
+) -> KeyResult
+where
+    U: UI,
+    UE: UiEvents,
+    KM: Keymap + BoxableKeymap,
+{
+    match args.init {
+        Some(CliInit::Uri(uri)) => {
+            let mut ctx = CommandHandlerContext::new_blank(app_keys, map);
+            connect(&mut ctx, uri.to_string())?;
+        }
+        Some(CliInit::ScriptFile(path)) => {
+            ScriptingManager::load_scripts(app_keys, map, vec![path]);
+        }
+        None => {} // nop
+    }
+
+    Ok(())
+}
+
+fn run_loop<U, UE, KM>(app_keys: &mut AppKeySource<U, UE>, mut map: KM)
+where
+    U: UI,
+    UE: UiEvents,
+    KM: Keymap + BoxableKeymap,
+{
     loop {
-        if let Err(e) = map.process(&mut app_keys) {
-            let error = format!("ERR: {:?}", e);
-            for line in error.split("\n") {
-                app_keys.state_mut().echom(TextLines::raw(line.to_string()));
-            }
+        if let Err(e) = map.process(app_keys) {
             // TODO fatal errors?
+            print_error(app_keys, e);
             continue;
         }
 
@@ -146,7 +191,15 @@ where
             break;
         }
     }
+}
 
-    // kill any still-running jobs when the user wants to quit:
-    app_keys.state_mut().jobs.cancel_all();
+fn print_error<U, UE>(app_keys: &mut AppKeySource<U, UE>, e: KeyError)
+where
+    U: UI,
+    UE: UiEvents,
+{
+    let error = format!("ERR: {:?}", e);
+    for line in error.split("\n") {
+        app_keys.state_mut().echom(TextLines::raw(line.to_string()));
+    }
 }

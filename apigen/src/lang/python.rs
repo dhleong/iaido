@@ -91,8 +91,6 @@ impl IaidoScriptingLang for PythonScriptingLang {
             let invocation = quote! { self.#name(#(#converted),*) };
 
             let wrapped_output = if let Some(result) = &result_type {
-                // TODO: unpack the actual result type to support
-                // KeyResult with more than just the default:
                 quote! { -> rustpython_vm::pyobject::PyResult<#result> }
             } else {
                 quote! { #output }

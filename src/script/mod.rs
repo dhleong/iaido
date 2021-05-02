@@ -134,7 +134,16 @@ impl ScriptingManager {
             context.state_mut().api = Some(api);
             Ok(dirty)
         } else {
-            panic!("Re-entrant script API access");
+            // FIXME: I'm not 100% we shouldn't keep the panic!(), but in order
+            // to block on jobs (eg: connect()) from within a script, we
+            // have to be able to skip processing other script events....
+            // Alternatively, perhaps we can adjust how we handle this, so
+            // instead of removing the entire API we can just remove the
+            // receiver, but more granularly—only when receiving, then return
+            // before processing? That might properly allow for re-entrant
+            // script handling...
+            // panic!("Re-entrant script API access");
+            Ok(false)
         }
     }
 

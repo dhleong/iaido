@@ -98,11 +98,13 @@ impl std::fmt::Debug for VimMode {
 
 // ======= Keymap =========================================
 
+#[derive(Default)]
 pub struct VimKeymap {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
+    pub selected_register: Option<char>,
     active_completer: Option<Rc<dyn Completer>>,
     user_maps: HashMap<RemapMode, KeyTreeNode>,
 }
@@ -122,6 +124,7 @@ impl VimKeymap {
     pub fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
+        self.selected_register = None;
         self.keys_buffer.clear();
     }
 
@@ -131,19 +134,6 @@ impl VimKeymap {
             Widget::Space,
             Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
         ]));
-    }
-}
-
-impl Default for VimKeymap {
-    fn default() -> Self {
-        Self {
-            pending_linewise_operator_key: None,
-            operator_fn: None,
-            mode_stack: VimModeStack::default(),
-            keys_buffer: Vec::default(),
-            active_completer: None,
-            user_maps: HashMap::new(),
-        }
     }
 }
 

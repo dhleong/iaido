@@ -78,6 +78,19 @@ impl CopiedRange {
     pub fn is_partial(&self) -> bool {
         !self.leading_newline && !self.trailing_newline
     }
+
+    pub fn get_contents(&self) -> String {
+        let mut s = String::default();
+
+        for i in 0..self.text.lines.len() {
+            if i > 0 {
+                s.push_str("\n");
+            }
+            s.push_str(self.text.lines[i].to_string().as_str());
+        }
+
+        s
+    }
 }
 
 pub trait Buffer: HasId + Send + Sync {

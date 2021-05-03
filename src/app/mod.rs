@@ -2,6 +2,7 @@ pub mod bufwin;
 pub mod jobs;
 pub mod looper;
 pub mod prompt;
+pub mod registers;
 pub mod state;
 pub mod widgets;
 pub mod winsbuf;

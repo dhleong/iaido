@@ -25,6 +25,7 @@ use super::{
     bufwin::BufWin,
     jobs::{JobError, Jobs},
     prompt::Prompt,
+    registers::RegisterManager,
     widgets::Widget,
     winsbuf::WinsBuf,
 };
@@ -38,6 +39,7 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
+    pub registers: RegisterManager,
 
     pub keymap_widget: Option<Widget>,
 
@@ -216,6 +218,7 @@ impl Default for AppState {
             requested_redraw: true,
             buffers,
             tabpages,
+            registers: RegisterManager::new(),
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),

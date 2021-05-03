@@ -39,16 +39,16 @@ pub fn mappings() -> KeyTreeNode {
          },
 
         "y" => operator |ctx, motion| {
-            yank(ctx, motion)
+            yank(&mut ctx, motion)
         },
         "Y" => |ctx| {
             let range = FullLineMotion.range(ctx.state());
-            yank(ctx, range)
+            yank(&mut ctx, range)
         },
     }
 }
 
-fn yank(mut ctx: KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult {
+fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult {
     let register = ctx.keymap.selected_register;
     let yanked = ctx.state_mut().current_buffer_mut().get_range(range);
     ctx.state_mut().registers.handle_yanked(register, yanked);

@@ -51,10 +51,38 @@ impl Buffer for MemoryBuffer {
     }
 
     fn get_range(&self, range: MotionRange) -> CopiedRange {
-        todo!("get range")
+        let (first_line, last_line) = range.lines();
+        let ranges = motion_to_line_ranges(range);
+
+        let mut copy = CopiedRange::default();
+        let mut line_index = first_line;
+        let last_line_index = last_line - first_line;
+        for (i, range) in ranges.enumerate() {
+            if range.is_whole_line(line_index, self) {
+                // copy the whole line
+                copy.text
+                    .lines
+                    .push(self.content.lines.get(line_index).unwrap().clone());
+                if i == 0 {
+                    copy.leading_newline = true;
+                }
+                if i == last_line_index {
+                    copy.trailing_newline = true;
+                }
+            } else {
+                // yank within the line
+                let (start, end) = range.resolve(line_index, self);
+                let line = &self.content.lines[line_index];
+                copy.text.lines.push(line.subs(start, end));
+                line_index += 1;
+            }
+        }
+
+        return copy;
     }
 
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
+        // NOTE can/should we remove code shared with get_range?
         let (first_line, last_line) = range.lines();
         let ranges = motion_to_line_ranges(range);
 

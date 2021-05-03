@@ -170,6 +170,7 @@ impl PythonScriptingLang {
     }
 }
 
+#[cfg(feature = "python")]
 fn map_args<F>(sig: &Signature, rpc_config: &Option<RpcConfig>, f: F) -> SynResult<Vec<TokenStream>>
 where
     F: Fn(&FnArg) -> SynResult<Option<TokenStream>>,
@@ -199,6 +200,7 @@ where
     Ok(args)
 }
 
+#[cfg(feature = "python")]
 fn is_public(item: &ItemFn) -> bool {
     if let Visibility::Public(_) = item.vis {
         true
@@ -210,10 +212,12 @@ fn is_public(item: &ItemFn) -> bool {
 /// Given the Ident of a fn name, generate the name of a wrapper
 /// fn that accepts Python-specific type arguments and converts
 /// calls through to the original fn, converting the arguments
+#[cfg(feature = "python")]
 fn py_wrapper_fn_name(name: &Ident) -> Ident {
     Ident::new(format!("{}_py", name).as_str(), name.span())
 }
 
+#[cfg(feature = "python")]
 fn generate_module_property(sig: &Signature) -> TokenStream {
     // TODO in general, for any module-level properties this
     // *should* be fine; if not, we may be able to define the
@@ -228,6 +232,7 @@ fn generate_module_property(sig: &Signature) -> TokenStream {
     }
 }
 
+#[cfg(feature = "python")]
 fn convert_args_to_python(
     sig: &Signature,
     rpc_config: &Option<RpcConfig>,
@@ -235,6 +240,7 @@ fn convert_args_to_python(
     map_args(sig, rpc_config, types::python_arg_from)
 }
 
+#[cfg(feature = "python")]
 fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
     let name = &item.sig.ident;
     let py_name = py_wrapper_fn_name(name);
@@ -264,6 +270,7 @@ fn generate_module_function(item: &ItemFn) -> SynResult<TokenStream> {
     })
 }
 
+#[cfg(feature = "python")]
 fn is_command_context(arg: &FnArg) -> bool {
     let PatType { ty, .. } = match arg {
         FnArg::Typed(typed) => typed,

@@ -1,3 +1,6 @@
+// Allow dead code in this module, in case all languages are disabled:
+#![allow(dead_code)]
+
 use std::sync::{mpsc, Arc, Mutex};
 
 mod buffer;

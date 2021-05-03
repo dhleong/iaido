@@ -18,6 +18,7 @@ pub fn is_command_context(type_ref: &Type) -> bool {
 
 /// Returns a Some with a TokenStream representing the result type of the
 /// given signature, if it returns some sort of KeyResult, else None
+#[allow(dead_code)]
 pub fn result_type(signature: &Signature) -> Option<TokenStream> {
     if SimpleType::from_return(&signature.output)
         .and_then(|ty| Some(ty.name))
@@ -39,6 +40,7 @@ pub struct SimpleType {
 }
 
 impl SimpleType {
+    #[allow(dead_code)]
     pub fn from_return(output: &ReturnType) -> Option<SimpleType> {
         match output {
             ReturnType::Default => None,

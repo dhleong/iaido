@@ -28,6 +28,8 @@ pub struct FnManager {
     fns: HashMap<Id, NativeFn>,
 }
 
+// Allow dead code in case all languages are disabled:
+#[allow(dead_code)]
 impl FnManager {
     pub fn new(runtime_id: Id) -> Self {
         Self {

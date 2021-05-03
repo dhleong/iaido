@@ -1,3 +1,5 @@
+#![cfg(feature = "python")]
+
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Error, FnArg, PatType, Type};

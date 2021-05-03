@@ -7,6 +7,8 @@ pub struct ScriptFile {
     pub code: String,
 }
 
+// Allow dead code in case all languages are disabled:
+#[allow(dead_code)]
 impl ScriptFile {
     pub fn read_from(path: PathBuf) -> io::Result<Self> {
         let code = fs::read_to_string(&path)?;

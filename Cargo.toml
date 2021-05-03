@@ -5,7 +5,13 @@ authors = ["Daniel Leong <me@dhleong.net>"]
 edition = "2018"
 
 [features]
-default = ["python"]
+# Currently, scripting support is enabled per-language via features. We
+# don't enable any by default to improve incremental compile speeds for dev.
+# Some anecdotal benches of `touch src/app/registers.rs && cargo build`:
+#  - python w/ default macOS linker: ~3.5s
+#  -                  python w/ zld: ~2.6s
+#  -            no languages w/ zld: ~1.4s
+default = []
 
 python = ["rustpython-common", "rustpython-vm", "apigen/python"]
 

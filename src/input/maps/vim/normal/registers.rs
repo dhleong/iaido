@@ -1,7 +1,11 @@
 use crate::{
+    editing::motion::{linewise::FullLineMotion, Motion, MotionRange},
     input::{
-        maps::vim::{tree::KeyTreeNode, VimKeymap},
-        Key, KeyCode, KeySource, KeymapContext,
+        maps::{
+            vim::{tree::KeyTreeNode, VimKeymap},
+            KeyHandlerContext, KeyResult,
+        },
+        Key, KeyCode, KeyError, KeySource, KeymapContext,
     },
     vim_tree,
 };
@@ -33,5 +37,21 @@ pub fn mappings() -> KeyTreeNode {
             ctx.keymap.reset();
             Ok(())
          },
+
+        "y" => operator |ctx, motion| {
+            yank(ctx, motion)
+        },
+        "Y" => |ctx| {
+            let range = FullLineMotion.range(ctx.state());
+            yank(ctx, range)
+        },
     }
+}
+
+fn yank(mut ctx: KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult {
+    let register = ctx.keymap.selected_register;
+    let yanked = ctx.state_mut().current_buffer_mut().get_range(range);
+    ctx.state_mut().registers.handle_yanked(register, yanked);
+    ctx.keymap.reset();
+    Ok(())
 }

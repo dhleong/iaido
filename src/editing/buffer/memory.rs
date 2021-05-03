@@ -50,6 +50,10 @@ impl Buffer for MemoryBuffer {
         &self.content.lines[line_index]
     }
 
+    fn get_range(&self, range: MotionRange) -> CopiedRange {
+        todo!("get range")
+    }
+
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
         let (first_line, last_line) = range.lines();
         let ranges = motion_to_line_ranges(range);

@@ -97,6 +97,7 @@ pub trait Buffer: HasId + Send + Sync {
     // read access
     fn lines_count(&self) -> usize;
     fn get(&self, line_index: usize) -> &TextLine;
+    fn get_range(&self, range: MotionRange) -> CopiedRange;
 
     // source
     fn source(&self) -> &BufferSource;

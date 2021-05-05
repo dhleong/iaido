@@ -74,15 +74,14 @@ impl Buffer for MemoryBuffer {
                 let (start, end) = range.resolve(line_index, self);
                 let line = &self.content.lines[line_index];
                 copy.text.lines.push(line.subs(start, end));
-                line_index += 1;
             }
+            line_index += 1;
         }
 
         return copy;
     }
 
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
-        // NOTE can/should we remove code shared with get_range?
         let (first_line, last_line) = range.lines();
         let ranges = motion_to_line_ranges(range);
 
@@ -305,6 +304,63 @@ pub mod tests {
             );
             buf.delete_range(((0, 4), (2, 4)).into());
             assert_visual_match(&buf, "Take me where");
+        }
+    }
+
+    #[cfg(test)]
+    mod get_range {
+        use super::*;
+        use crate::editing::motion::MotionFlags;
+
+        #[test]
+        fn from_line_start() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my land".into());
+            let contents = buf.get_range(((0, 0), (0, 4)).into()).get_contents();
+            assert_eq!(contents, "Take");
+        }
+
+        #[test]
+        fn full_line() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my land".into());
+            let contents = buf
+                .get_range(MotionRange(
+                    (0, 0).into(),
+                    (0, 12).into(),
+                    MotionFlags::LINEWISE,
+                ))
+                .get_contents();
+            assert_eq!(contents, "Take my land");
+        }
+
+        #[test]
+        fn all_lines() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append(
+                indoc! {"
+                    Take my love
+                    Take my land
+                "}
+                .into(),
+            );
+            let contents = buf.get_range(((0, 0), (1, 12)).into()).get_contents();
+            assert_eq!(contents, "Take my love\nTake my land");
+        }
+
+        #[test]
+        fn across_lines() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append(
+                indoc! {"
+                    Take my love
+                    Take my land
+                    Take me where
+                "}
+                .into(),
+            );
+            let contents = buf.get_range(((0, 4), (2, 4)).into()).get_contents();
+            assert_eq!(contents, " my love\nTake my land\nTake");
         }
     }
 

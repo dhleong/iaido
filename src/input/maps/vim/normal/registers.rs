@@ -55,3 +55,25 @@ fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult
     ctx.keymap.reset();
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::editing::motion::tests::window;
+
+    #[cfg(test)]
+    mod y {
+        use super::*;
+
+        #[test]
+        fn yank_into_register() {
+            let ctx = window("Take my |love");
+            let (_, mut state) = ctx.feed_vim_for_state("\"ayw");
+            let contents = state
+                .registers
+                .by_name('a')
+                .read()
+                .expect("Register should have contents set");
+            assert_eq!(contents, "love");
+        }
+    }
+}

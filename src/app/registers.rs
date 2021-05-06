@@ -2,10 +2,17 @@ use std::collections::HashMap;
 
 use crate::editing::buffer::CopiedRange;
 
+mod clipboard;
+mod memory;
+
+use memory::InMemoryRegister;
+
+use self::clipboard::ClipboardRegister;
+
 const UNNAMED_REGISTER: char = '"';
 
 pub trait Register {
-    fn read(&self) -> Option<&str>;
+    fn read(&mut self) -> Option<&str>;
     fn write(&mut self, value: String);
 }
 
@@ -15,16 +22,17 @@ pub struct RegisterManager {
 
 impl RegisterManager {
     pub fn new() -> Self {
-        // TODO some registers are special
-        let registers = HashMap::new();
+        let mut registers = HashMap::new();
+
+        // TODO Some registers are special
+        registers.insert('*', ClipboardRegister::new());
+
         Self { registers }
     }
 
     pub fn handle_yanked(&mut self, selected_register: Option<char>, range: CopiedRange) {
-        self.by_name(UNNAMED_REGISTER).write(range.get_contents());
-        if let Some(name) = selected_register {
-            self.by_name(name).write(range.get_contents());
-        }
+        self.by_name(selected_register.unwrap_or(UNNAMED_REGISTER))
+            .write(range.get_contents());
 
         // TODO numbered registers, etc.
     }
@@ -42,25 +50,5 @@ impl RegisterManager {
         self.registers
             .entry(name)
             .or_insert_with(|| Box::new(InMemoryRegister::new()))
-    }
-}
-
-struct InMemoryRegister {
-    value: Option<String>,
-}
-
-impl InMemoryRegister {
-    pub fn new() -> Self {
-        Self { value: None }
-    }
-}
-
-impl Register for InMemoryRegister {
-    fn read(&self) -> Option<&str> {
-        self.value.as_ref().and_then(|v| Some(v.as_str()))
-    }
-
-    fn write(&mut self, value: String) {
-        self.value = Some(value)
     }
 }

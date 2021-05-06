@@ -299,7 +299,11 @@ pub mod tests {
             self.commands.insert(command_name.to_string(), spec);
         }
 
-        pub fn feed_keys<K: Keymap>(mut self, mut keymap: K, keys: &str) -> Self {
+        pub fn feed_keys_for_state<K: Keymap>(
+            mut self,
+            mut keymap: K,
+            keys: &str,
+        ) -> (Self, app::State) {
             let key_source = MemoryKeySource::from_keys(keys);
             let mut state = app::State::default();
 
@@ -327,11 +331,20 @@ pub mod tests {
             self.buffer = context.state.buffers.replace(self.buffer);
             self.window.cursor = context.state.current_window_mut().cursor;
 
-            self
+            (self, context.state)
+        }
+
+        pub fn feed_keys<K: Keymap>(self, keymap: K, keys: &str) -> Self {
+            let (result, _) = self.feed_keys_for_state(keymap, keys);
+            result
         }
 
         pub fn feed_vim(self, keys: &str) -> Self {
             self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
+        }
+
+        pub fn feed_vim_for_state(self, keys: &str) -> (Self, app::State) {
+            self.feed_keys_for_state(crate::input::maps::vim::VimKeymap::default(), keys)
         }
 
         /// Assert that this Window visually matches the window that would

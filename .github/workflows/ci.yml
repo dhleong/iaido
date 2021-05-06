@@ -22,9 +22,6 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Install build dependencies
-      run: sudo apt-get install xorg-dev
-
     - name: Build
       run: cargo test --all-features --verbose --no-run
 

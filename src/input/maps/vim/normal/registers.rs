@@ -25,18 +25,19 @@ pub fn mappings() -> KeyTreeNode {
          },
 
         "p" => |ctx| {
-            let register = ctx.keymap.selected_register;
-            let reg_contents = ctx.state_mut()
-                .registers
-                .by_optional_name(register)
-                .read()
-                .and_then(|s| Some(s.to_string()));
-            if let Some(to_paste) = reg_contents {
+            if let Some(to_paste) = read_register(&mut ctx) {
                 ctx.state_mut().insert_at_cursor(to_paste.into());
             }
             ctx.keymap.reset();
             Ok(())
-         },
+        },
+        "P" => |ctx| {
+            if let Some(to_paste) = read_register(&mut ctx) {
+                ctx.state_mut().insert_at_cursor(to_paste.into());
+            }
+            ctx.keymap.reset();
+            Ok(())
+        },
 
         "y" => operator |ctx, motion| {
             yank(&mut ctx, motion)
@@ -46,6 +47,15 @@ pub fn mappings() -> KeyTreeNode {
             yank(&mut ctx, range)
         },
     }
+}
+
+fn read_register(ctx: &mut KeyHandlerContext<VimKeymap>) -> Option<String> {
+    let register = ctx.keymap.selected_register;
+    ctx.state_mut()
+        .registers
+        .by_optional_name(register)
+        .read()
+        .and_then(|s| Some(s.to_string()))
 }
 
 fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult {
@@ -74,6 +84,28 @@ mod tests {
                 .read()
                 .expect("Register should have contents set");
             assert_eq!(contents, "love");
+        }
+    }
+
+    #[cfg(test)]
+    mod p {
+        use super::*;
+
+        #[test]
+        fn paste_single_line_after_cursor() {
+            let ctx = window("Take my |love");
+            ctx.feed_vim("ywp").assert_visual_match("Take my llov|eove");
+        }
+    }
+
+    #[cfg(test)]
+    mod capital_p {
+        use super::*;
+
+        #[test]
+        fn paste_single_line_before_cursor() {
+            let ctx = window("Take my |love");
+            ctx.feed_vim("ywP").assert_visual_match("Take my lov|elove");
         }
     }
 }

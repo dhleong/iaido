@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
     connection::connections::Connections,
     editing::{
-        buffer::MemoryBuffer,
+        buffer::{CopiedRange, MemoryBuffer},
         buffers::Buffers,
         motion::char::CharMotion,
         motion::{Motion, MotionContext},
@@ -183,6 +183,12 @@ impl AppState {
         let cursor = self.current_window().cursor;
         let buffer = self.current_buffer_mut();
         buffer.insert(cursor, text);
+    }
+
+    pub fn insert_range_at_cursor(&mut self, text: CopiedRange) {
+        let cursor = self.current_window().cursor;
+        let buffer = self.current_buffer_mut();
+        buffer.insert_range(cursor, text);
     }
 
     pub fn type_at_cursor(&mut self, ch: char) {

@@ -331,7 +331,7 @@ pub mod tests {
                     MotionFlags::LINEWISE,
                 ))
                 .get_contents();
-            assert_eq!(contents, "Take my land");
+            assert_eq!(contents, "\nTake my land\n");
         }
 
         #[test]
@@ -345,7 +345,7 @@ pub mod tests {
                 .into(),
             );
             let contents = buf.get_range(((0, 0), (1, 12)).into()).get_contents();
-            assert_eq!(contents, "Take my love\nTake my land");
+            assert_eq!(contents, "\nTake my love\nTake my land\n");
         }
 
         #[test]
@@ -449,6 +449,29 @@ pub mod tests {
                 (0, 0).into(),
                 CopiedRange {
                     text: TextLines::raw("Take my love\nTake my land"),
+                    leading_newline: true,
+                    trailing_newline: true,
+                },
+            );
+
+            assert_visual_match(
+                &buf,
+                indoc! {"
+                    Take my love
+                    Take my land
+                "},
+            );
+        }
+
+        #[test]
+        fn append() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my love".into());
+
+            buf.insert_range(
+                (1, 0).into(),
+                CopiedRange {
+                    text: TextLines::raw("Take my land"),
                     leading_newline: true,
                     trailing_newline: true,
                 },

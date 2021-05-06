@@ -1,8 +1,9 @@
 use crate::{
     app,
     editing::{
+        buffer::CopiedRange,
         motion::{linewise::FullLineMotion, Motion, MotionRange},
-        text::TextLine,
+        CursorPosition,
     },
     input::{
         maps::{
@@ -70,36 +71,48 @@ fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult
     Ok(())
 }
 
-pub fn paste_before_cursor(state: &mut app::State, text: TextLine) {
-    let single_line_width = if text.0.len() == 1 {
-        text.0[0].width()
-    } else {
-        0
-    };
+fn paste_before_cursor(state: &mut app::State, text: CopiedRange) {
+    let single_line_width = single_line_width(&text);
 
-    state.insert_at_cursor(text);
+    if single_line_width == 0 {
+        state.current_window_mut().cursor.col = 0;
+    }
+
+    state.insert_range_at_cursor(text);
 
     if single_line_width > 0 {
         state.current_window_mut().cursor.col += single_line_width - 1;
     }
 }
 
-pub fn paste_after_cursor(state: &mut app::State, text: TextLine) {
-    let single_line_width = if text.0.len() == 1 {
-        text.0[0].width()
-    } else {
-        0
-    };
+fn paste_after_cursor(state: &mut app::State, text: CopiedRange) {
+    let single_line_width = single_line_width(&text);
 
     if single_line_width > 0 {
         state.current_window_mut().cursor.col += 1;
+    } else {
+        let cursor = state.current_window().cursor;
+        state.current_window_mut().cursor = CursorPosition {
+            line: cursor.line + 1,
+            col: 0,
+        };
     }
     paste_before_cursor(state, text);
+}
+
+fn single_line_width(range: &CopiedRange) -> usize {
+    let text = &range.text;
+    if text.lines.len() == 1 && !(range.leading_newline || range.trailing_newline) {
+        text.lines[0].width()
+    } else {
+        0
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::editing::motion::tests::window;
+    use indoc::indoc;
 
     #[cfg(test)]
     mod y {
@@ -123,9 +136,21 @@ mod tests {
         use super::*;
 
         #[test]
-        fn paste_single_line_after_cursor() {
+        fn paste_partial_line_after_cursor() {
             let ctx = window("Take my |love");
             ctx.feed_vim("ywp").assert_visual_match("Take my llov|eove");
+        }
+
+        #[test]
+        fn paste_full_line_after_cursor() {
+            let ctx = window(indoc! {"
+                ~
+                Take my |love
+            "});
+            ctx.feed_vim("Yp").assert_visual_match(indoc! {"
+                Take my love
+                |Take my love
+            "});
         }
     }
 
@@ -134,9 +159,21 @@ mod tests {
         use super::*;
 
         #[test]
-        fn paste_single_line_before_cursor() {
+        fn paste_partial_line_before_cursor() {
             let ctx = window("Take my |love");
             ctx.feed_vim("ywP").assert_visual_match("Take my lov|elove");
+        }
+
+        #[test]
+        fn paste_full_line_before_cursor() {
+            let ctx = window(indoc! {"
+                ~
+                Take my |love
+            "});
+            ctx.feed_vim("YP").assert_visual_match(indoc! {"
+                |Take my love
+                Take my love
+            "});
         }
     }
 }

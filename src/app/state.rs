@@ -185,6 +185,21 @@ impl AppState {
         buffer.insert(cursor, text);
     }
 
+    pub fn paste_before_cursor(&mut self, text: TextLine) {
+        let single_line_width = if text.0.len() == 1 {
+            text.0[0].width()
+        } else {
+            0
+        };
+
+        self.insert_at_cursor(text);
+
+        if single_line_width > 0 {
+            let cursor = self.current_window().cursor;
+            self.current_window_mut().cursor = cursor.with_col(cursor.col + single_line_width - 1);
+        }
+    }
+
     pub fn type_at_cursor(&mut self, ch: char) {
         self.insert_at_cursor(String::from(ch).into());
         self.current_window_mut().cursor.col += 1;

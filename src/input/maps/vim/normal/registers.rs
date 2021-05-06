@@ -33,7 +33,7 @@ pub fn mappings() -> KeyTreeNode {
         },
         "P" => |ctx| {
             if let Some(to_paste) = read_register(&mut ctx) {
-                ctx.state_mut().insert_at_cursor(to_paste.into());
+                ctx.state_mut().paste_before_cursor(to_paste.into());
             }
             ctx.keymap.reset();
             Ok(())

@@ -40,8 +40,6 @@ impl Register for ClipboardRegister {
     fn write(&mut self, value: String) {
         if let Err(e) = self.clipboard.set_text(value.clone()) {
             log!(log::LogLevel::Error, "Error writing to clipboard: {:?}", e);
-        } else {
-            log!(log::LogLevel::Info, "clipboard <- `{}`", value);
         }
     }
 }

@@ -1,5 +1,9 @@
 use crate::{
-    editing::motion::{linewise::FullLineMotion, Motion, MotionRange},
+    app,
+    editing::{
+        motion::{linewise::FullLineMotion, Motion, MotionRange},
+        text::TextLine,
+    },
     input::{
         maps::{
             vim::{tree::KeyTreeNode, VimKeymap},
@@ -26,14 +30,14 @@ pub fn mappings() -> KeyTreeNode {
 
         "p" => |ctx| {
             if let Some(to_paste) = read_register(&mut ctx) {
-                ctx.state_mut().insert_at_cursor(to_paste.into());
+                paste_after_cursor(ctx.state_mut(), to_paste.into());
             }
             ctx.keymap.reset();
             Ok(())
         },
         "P" => |ctx| {
             if let Some(to_paste) = read_register(&mut ctx) {
-                ctx.state_mut().paste_before_cursor(to_paste.into());
+                paste_before_cursor(ctx.state_mut(), to_paste.into());
             }
             ctx.keymap.reset();
             Ok(())
@@ -64,6 +68,33 @@ fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult
     ctx.state_mut().registers.handle_yanked(register, yanked);
     ctx.keymap.reset();
     Ok(())
+}
+
+pub fn paste_before_cursor(state: &mut app::State, text: TextLine) {
+    let single_line_width = if text.0.len() == 1 {
+        text.0[0].width()
+    } else {
+        0
+    };
+
+    state.insert_at_cursor(text);
+
+    if single_line_width > 0 {
+        state.current_window_mut().cursor.col += single_line_width - 1;
+    }
+}
+
+pub fn paste_after_cursor(state: &mut app::State, text: TextLine) {
+    let single_line_width = if text.0.len() == 1 {
+        text.0[0].width()
+    } else {
+        0
+    };
+
+    if single_line_width > 0 {
+        state.current_window_mut().cursor.col += 1;
+    }
+    paste_before_cursor(state, text);
 }
 
 #[cfg(test)]

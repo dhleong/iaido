@@ -2,11 +2,13 @@ use std::collections::HashMap;
 
 use crate::editing::buffer::CopiedRange;
 
+mod blackhole;
 mod clipboard;
 mod memory;
 
 use memory::InMemoryRegister;
 
+use self::blackhole::BlackholeRegister;
 use self::clipboard::ClipboardRegister;
 
 const UNNAMED_REGISTER: char = '"';
@@ -25,8 +27,9 @@ impl RegisterManager {
     pub fn new() -> Self {
         let mut registers = HashMap::new();
 
-        // TODO Some registers are special
+        // Some registers are special:
         registers.insert('*', ClipboardRegister::new());
+        registers.insert('_', BlackholeRegister::new());
 
         Self { registers }
     }
@@ -35,6 +38,7 @@ impl RegisterManager {
         self.by_optional_name(selected_register)
             .write(range.get_contents());
 
+        // TODO replace/vs append for letter registers
         // TODO numbered registers, etc.
     }
 

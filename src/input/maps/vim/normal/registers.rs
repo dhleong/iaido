@@ -45,7 +45,10 @@ pub fn mappings() -> KeyTreeNode {
         },
 
         "y" => operator |ctx, motion| {
-            yank(&mut ctx, motion)
+            let result = yank(&mut ctx, motion);
+            ctx.state_mut().current_window_mut().cursor =
+                ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
+            result
         },
         "Y" => |ctx| {
             let range = FullLineMotion.range(ctx.state());
@@ -145,6 +148,22 @@ mod tests {
                 .read()
                 .expect("Register should have contents set");
             assert_eq!(contents, "love");
+        }
+
+        #[test]
+        fn yank_forwards_does_not_move_cursor() {
+            let ctx = window("Take |my love");
+            ctx.feed_vim("yw").assert_visual_match(indoc! {"
+                Take |my love
+            "});
+        }
+
+        #[test]
+        fn yank_backwards_moves_cursor() {
+            let ctx = window("Take my |love");
+            ctx.feed_vim("yb").assert_visual_match(indoc! {"
+                Take |my love
+            "});
         }
 
         #[test]

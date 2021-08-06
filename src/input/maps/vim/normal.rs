@@ -156,7 +156,7 @@ fn delete_with_motion<M: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: 
 fn delete_range(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) {
     let register = ctx.keymap.selected_register;
     let yanked = ctx.state_mut().current_buffer_mut().delete_range(range);
-    ctx.state_mut().registers.handle_yanked(register, yanked);
+    ctx.state_mut().registers.handle_deleted(register, yanked);
 }
 
 #[cfg(test)]

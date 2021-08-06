@@ -128,6 +128,23 @@ mod tests {
                 .read()
                 .expect("Register should have contents set");
             assert_eq!(contents, "love");
+
+            // Since we have specified a specific register, 0 should not update
+            let zero_contents = state.registers.by_name('0').read();
+
+            assert!(zero_contents.is_none(), "\"0 should still be empty!");
+        }
+
+        #[test]
+        fn yank_into_zero_register() {
+            let ctx = window("Take my |love");
+            let (_, mut state) = ctx.feed_vim_for_state("yw");
+            let contents = state
+                .registers
+                .by_name('0')
+                .read()
+                .expect("Register should have contents set");
+            assert_eq!(contents, "love");
         }
     }
 

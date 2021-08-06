@@ -31,8 +31,8 @@ impl RegisterManager {
         Self { registers }
     }
 
-        self.by_name(selected_register.unwrap_or(UNNAMED_REGISTER))
     pub fn handle_deleted(&mut self, selected_register: Option<char>, range: CopiedRange) {
+        self.by_optional_name(selected_register)
             .write(range.get_contents());
 
         // TODO numbered registers, etc.

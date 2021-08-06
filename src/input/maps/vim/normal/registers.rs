@@ -146,6 +146,18 @@ mod tests {
                 .expect("Register should have contents set");
             assert_eq!(contents, "love");
         }
+
+        #[test]
+        fn yank_append_into_register() {
+            let ctx = window("Take |my love");
+            let (_, mut state) = ctx.feed_vim_for_state("\"ayww\"Ayw");
+            let contents = state
+                .registers
+                .by_name('a')
+                .read()
+                .expect("Register should have contents set");
+            assert_eq!(contents, "my love");
+        }
     }
 
     #[cfg(test)]

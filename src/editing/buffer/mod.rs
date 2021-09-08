@@ -88,6 +88,10 @@ impl CopiedRange {
         !self.leading_newline && !self.trailing_newline
     }
 
+    pub fn is_multi_line(&self) -> bool {
+        self.leading_newline || self.trailing_newline || self.text.lines.len() > 1
+    }
+
     pub fn get_contents(&self) -> String {
         let mut s = String::default();
 

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
     connection::connections::Connections,
     editing::{
-        buffer::MemoryBuffer,
+        buffer::{CopiedRange, MemoryBuffer},
         buffers::Buffers,
         motion::char::CharMotion,
         motion::{Motion, MotionContext},
@@ -25,6 +25,7 @@ use super::{
     bufwin::BufWin,
     jobs::{JobError, Jobs},
     prompt::Prompt,
+    registers::RegisterManager,
     widgets::Widget,
     winsbuf::WinsBuf,
 };
@@ -38,6 +39,7 @@ pub struct AppState {
     pub echo_buffer: Box<dyn Buffer>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
+    pub registers: RegisterManager,
 
     pub keymap_widget: Option<Widget>,
 
@@ -183,6 +185,12 @@ impl AppState {
         buffer.insert(cursor, text);
     }
 
+    pub fn insert_range_at_cursor(&mut self, text: CopiedRange) {
+        let cursor = self.current_window().cursor;
+        let buffer = self.current_buffer_mut();
+        buffer.insert_range(cursor, text);
+    }
+
     pub fn type_at_cursor(&mut self, ch: char) {
         self.insert_at_cursor(String::from(ch).into());
         self.current_window_mut().cursor.col += 1;
@@ -216,6 +224,7 @@ impl Default for AppState {
             requested_redraw: true,
             buffers,
             tabpages,
+            registers: RegisterManager::new(),
             echo_buffer: Box::new(MemoryBuffer::new(0)),
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),

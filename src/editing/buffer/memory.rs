@@ -50,6 +50,37 @@ impl Buffer for MemoryBuffer {
         &self.content.lines[line_index]
     }
 
+    fn get_range(&self, range: MotionRange) -> CopiedRange {
+        let (first_line, last_line) = range.lines();
+        let ranges = motion_to_line_ranges(range);
+
+        let mut copy = CopiedRange::default();
+        let mut line_index = first_line;
+        let last_line_index = last_line - first_line;
+        for (i, range) in ranges.enumerate() {
+            if range.is_whole_line(line_index, self) {
+                // copy the whole line
+                copy.text
+                    .lines
+                    .push(self.content.lines.get(line_index).unwrap().clone());
+                if i == 0 {
+                    copy.leading_newline = true;
+                }
+                if i == last_line_index {
+                    copy.trailing_newline = true;
+                }
+            } else {
+                // yank within the line
+                let (start, end) = range.resolve(line_index, self);
+                let line = &self.content.lines[line_index];
+                copy.text.lines.push(line.subs(start, end));
+            }
+            line_index += 1;
+        }
+
+        return copy;
+    }
+
     fn delete_range(&mut self, range: MotionRange) -> CopiedRange {
         let (first_line, last_line) = range.lines();
         let ranges = motion_to_line_ranges(range);
@@ -277,6 +308,63 @@ pub mod tests {
     }
 
     #[cfg(test)]
+    mod get_range {
+        use super::*;
+        use crate::editing::motion::MotionFlags;
+
+        #[test]
+        fn from_line_start() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my land".into());
+            let contents = buf.get_range(((0, 0), (0, 4)).into()).get_contents();
+            assert_eq!(contents, "Take");
+        }
+
+        #[test]
+        fn full_line() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my land".into());
+            let contents = buf
+                .get_range(MotionRange(
+                    (0, 0).into(),
+                    (0, 12).into(),
+                    MotionFlags::LINEWISE,
+                ))
+                .get_contents();
+            assert_eq!(contents, "\nTake my land\n");
+        }
+
+        #[test]
+        fn all_lines() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append(
+                indoc! {"
+                    Take my love
+                    Take my land
+                "}
+                .into(),
+            );
+            let contents = buf.get_range(((0, 0), (1, 12)).into()).get_contents();
+            assert_eq!(contents, "\nTake my love\nTake my land\n");
+        }
+
+        #[test]
+        fn across_lines() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append(
+                indoc! {"
+                    Take my love
+                    Take my land
+                    Take me where
+                "}
+                .into(),
+            );
+            let contents = buf.get_range(((0, 4), (2, 4)).into()).get_contents();
+            assert_eq!(contents, " my love\nTake my land\nTake");
+        }
+    }
+
+    #[cfg(test)]
     mod insert {
         use super::*;
 
@@ -361,6 +449,29 @@ pub mod tests {
                 (0, 0).into(),
                 CopiedRange {
                     text: TextLines::raw("Take my love\nTake my land"),
+                    leading_newline: true,
+                    trailing_newline: true,
+                },
+            );
+
+            assert_visual_match(
+                &buf,
+                indoc! {"
+                    Take my love
+                    Take my land
+                "},
+            );
+        }
+
+        #[test]
+        fn append() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my love".into());
+
+            buf.insert_range(
+                (1, 0).into(),
+                CopiedRange {
+                    text: TextLines::raw("Take my land"),
                     leading_newline: true,
                     trailing_newline: true,
                 },

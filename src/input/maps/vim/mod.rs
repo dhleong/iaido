@@ -26,7 +26,7 @@ use self::mode_stack::VimModeStack;
 use super::{KeyHandlerContext, KeyResult, UserKeyHandler};
 
 type KeyHandler = super::KeyHandler<VimKeymap>;
-type OperatorFn = dyn Fn(KeyHandlerContext<'_, VimKeymap>, MotionRange) -> KeyResult;
+type OperatorFn = dyn Fn(&mut KeyHandlerContext<'_, VimKeymap>, MotionRange) -> KeyResult;
 
 // ======= modes ==========================================
 
@@ -98,11 +98,13 @@ impl std::fmt::Debug for VimMode {
 
 // ======= Keymap =========================================
 
+#[derive(Default)]
 pub struct VimKeymap {
     pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
+    pub selected_register: Option<char>,
     active_completer: Option<Rc<dyn Completer>>,
     user_maps: HashMap<RemapMode, KeyTreeNode>,
 }
@@ -122,6 +124,7 @@ impl VimKeymap {
     pub fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
+        self.selected_register = None;
         self.keys_buffer.clear();
     }
 
@@ -131,19 +134,6 @@ impl VimKeymap {
             Widget::Space,
             Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
         ]));
-    }
-}
-
-impl Default for VimKeymap {
-    fn default() -> Self {
-        Self {
-            pending_linewise_operator_key: None,
-            operator_fn: None,
-            mode_stack: VimModeStack::default(),
-            keys_buffer: Vec::default(),
-            active_completer: None,
-            user_maps: HashMap::new(),
-        }
     }
 }
 
@@ -435,17 +425,21 @@ macro_rules! vim_branches {
             use crate::editing::motion::Motion;
             let motion = $factory;
             let operator_fn = $ctx_name.keymap.operator_fn.take();
-            $ctx_name.keymap.reset(); // always clear
 
-            if let Some(op) = operator_fn {
+            let result = if let Some(op) = operator_fn {
                 // execute pending operator fn
                 let range = motion.range($ctx_name.state());
-                op($ctx_name, range)
+                op(&mut $ctx_name, range)
             } else {
                 // no operator fn? just move the cursor
                 motion.apply_cursor($ctx_name.state_mut());
                 Ok(())
-            }
+            };
+
+            // Always reset state *after* executing the operator
+            $ctx_name.keymap.reset();
+
+            result
         }));
         crate::vim_branches! { $root -> $($tail)* }
     };

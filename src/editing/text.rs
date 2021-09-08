@@ -13,7 +13,8 @@ pub trait EditableLine {
         predicate: P,
     ) -> Option<usize>;
     fn subs(&self, start: usize, end: usize) -> Self;
-    fn starts_with(&self, s: &String) -> bool;
+    fn starts_with(&self, s: &str) -> bool;
+    fn ends_with(&self, s: &str) -> bool;
     fn to_string(&self) -> String;
 }
 
@@ -56,7 +57,7 @@ impl EditableLine for TextLine {
         None
     }
 
-    fn starts_with(&self, s: &String) -> bool {
+    fn starts_with(&self, s: &str) -> bool {
         let mut index = 0;
         for span in &self.0 {
             for i in 0..span.content.len() {
@@ -71,6 +72,35 @@ impl EditableLine for TextLine {
             }
 
             index += span.content.len();
+        }
+
+        return true;
+    }
+
+    fn ends_with(&self, s: &str) -> bool {
+        if self.0.is_empty() {
+            return false;
+        }
+
+        let mut index = s.len();
+        for span in self.0.iter().rev() {
+            if span.content.is_empty() {
+                continue;
+            }
+
+            let span_width = span.content.len();
+            for i in (0..span_width).rev() {
+                if i > index {
+                    return true;
+                }
+
+                let desti = index + i - span_width;
+                if span.content[i..i + 1] != s[desti..desti + 1] {
+                    return false;
+                }
+            }
+
+            index -= span.content.len();
         }
 
         return true;
@@ -181,6 +211,45 @@ mod tests {
             let mut part2: TextLine = "nity".into();
             line.append(&mut part2);
             assert_eq!(line.starts_with(&expected), true);
+        }
+    }
+
+    #[cfg(test)]
+    mod ends_with {
+        use super::*;
+
+        #[test]
+        fn single_span() {
+            let s = "serenity";
+            let part1: TextLine = s.clone().into();
+            assert_eq!(part1.ends_with(&s), true);
+        }
+
+        #[test]
+        fn multi_span_equal_len() {
+            let expected = "serenity";
+            let mut line: TextLine = "sere".into();
+            let mut part2: TextLine = "nity".into();
+            line.append(&mut part2);
+            assert_eq!(line.ends_with(&expected), true);
+        }
+
+        #[test]
+        fn multi_span_shorter() {
+            let mut line: TextLine = "sere".into();
+            let mut part2: TextLine = "nity".into();
+            line.append(&mut part2);
+            assert_eq!(line.ends_with("ty"), true);
+            assert_eq!(line.ends_with("enity"), true);
+        }
+
+        #[test]
+        fn multi_span_longer() {
+            let mut line: TextLine = "sere".into();
+            let mut part2: TextLine = "nity".into();
+            line.append(&mut part2);
+            assert_eq!(line.ends_with("trinity"), false);
+            assert_eq!(line.ends_with("serenitude"), false);
         }
     }
 }

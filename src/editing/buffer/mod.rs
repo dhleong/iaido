@@ -20,7 +20,7 @@ use super::{
     CursorPosition, HasId, Id,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct CopiedRange {
     pub text: TextLines,
 
@@ -32,12 +32,21 @@ pub struct CopiedRange {
     pub trailing_newline: bool,
 }
 
-impl Default for CopiedRange {
-    fn default() -> Self {
+impl From<String> for CopiedRange {
+    fn from(s: String) -> Self {
+        let mut start = 0;
+        if s.starts_with("\n") {
+            start += 1;
+        }
+        let mut end = s.len();
+        if s.ends_with("\n") && end > start {
+            end -= 1;
+        }
+
         Self {
-            text: TextLines::default(),
-            leading_newline: false,
-            trailing_newline: false,
+            leading_newline: s.starts_with("\n"),
+            trailing_newline: s.ends_with("\n"),
+            text: s[start..end].to_string().into(),
         }
     }
 }
@@ -78,12 +87,34 @@ impl CopiedRange {
     pub fn is_partial(&self) -> bool {
         !self.leading_newline && !self.trailing_newline
     }
+
+    pub fn is_multi_line(&self) -> bool {
+        self.leading_newline || self.trailing_newline || self.text.lines.len() > 1
+    }
+
+    pub fn get_contents(&self) -> String {
+        let mut s = String::default();
+
+        for i in 0..self.text.lines.len() {
+            if i > 0 || self.leading_newline {
+                s.push_str("\n");
+            }
+            s.push_str(self.text.lines[i].to_string().as_str());
+        }
+
+        if self.trailing_newline {
+            s.push_str("\n");
+        }
+
+        s
+    }
 }
 
 pub trait Buffer: HasId + Send + Sync {
     // read access
     fn lines_count(&self) -> usize;
     fn get(&self, line_index: usize) -> &TextLine;
+    fn get_range(&self, range: MotionRange) -> CopiedRange;
 
     // source
     fn source(&self) -> &BufferSource;

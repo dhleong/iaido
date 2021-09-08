@@ -53,6 +53,7 @@ impl Buffer for UndoableBuffer {
             fn source(&self) -> &crate::editing::source::BufferSource;
             fn set_source(&mut self, source: crate::editing::source::BufferSource);
             fn get(&self, line_index: usize) -> &crate::editing::text::TextLine;
+            fn get_range(&self, range: MotionRange) -> CopiedRange;
             fn lines_count(&self) -> usize;
             fn clear(&mut self);
         }

@@ -1,4 +1,5 @@
 mod change;
+mod registers;
 mod scroll;
 mod window;
 
@@ -70,7 +71,7 @@ pub fn vim_normal_mode() -> VimMode {
         },
 
         "c" => operator |ctx, motion| {
-            ctx.state_mut().current_buffer_mut().delete_range(motion);
+            delete_range(&mut ctx, motion);
 
             let MotionRange(start, _, flags) = motion;
             ctx.state_mut().current_window_mut().cursor = start;
@@ -90,18 +91,19 @@ pub fn vim_normal_mode() -> VimMode {
         "C" => change |ctx| {
             ctx.state_mut().current_window_mut().set_inserting(true);
             let range = ToLineEndMotion.range(ctx.state());
-            ctx.state_mut().current_buffer_mut().delete_range(range);
+            delete_range(&mut ctx, range);
             Ok(())
         },
 
         "d" => operator |ctx, motion| {
-            ctx.state_mut().current_buffer_mut().delete_range(motion);
-            ctx.state_mut().current_window_mut().cursor = ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
+            delete_range(&mut ctx, motion);
+            ctx.state_mut().current_window_mut().cursor =
+                ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
             Ok(())
         },
         "D" => change |ctx| {
             let range = ToLineEndMotion.range(ctx.state());
-            ctx.state_mut().current_buffer_mut().delete_range(range);
+            delete_range(&mut ctx, range);
             ctx.state_mut().current_buffer_mut().end_change();
             Ok(())
         },
@@ -124,9 +126,9 @@ pub fn vim_normal_mode() -> VimMode {
         "X" => change |ctx| {
             delete_with_motion(ctx, CharMotion::Backward(1))
         },
-
     } + cmd_mode_access()
         + change::mappings()
+        + registers::mappings()
         + scroll::mappings()
         + window::mappings()
         + vim_standard_motions()
@@ -142,13 +144,19 @@ pub fn vim_normal_mode() -> VimMode {
 
 fn delete_with_motion<M: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: M) -> KeyResult {
     let range = motion.range(ctx.state());
-    ctx.state_mut().current_buffer_mut().delete_range(range);
+    delete_range(&mut ctx, range);
     ctx.state_mut().current_window_mut().cursor = ctx
         .state()
         .current_window()
         .clamp_cursor(ctx.state().current_buffer(), range.0);
     ctx.state_mut().current_buffer_mut().end_change();
     Ok(())
+}
+
+fn delete_range(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) {
+    let register = ctx.keymap.selected_register;
+    let yanked = ctx.state_mut().current_buffer_mut().delete_range(range);
+    ctx.state_mut().registers.handle_deleted(register, yanked);
 }
 
 #[cfg(test)]

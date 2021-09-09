@@ -208,6 +208,7 @@ pub mod tests {
     };
 
     use super::*;
+    use std::any::Any;
 
     pub struct TestKeymapContext {
         keys: MemoryKeySource,
@@ -233,6 +234,10 @@ pub mod tests {
             _handler: Box<crate::input::maps::UserKeyHandler>,
         ) {
             todo!()
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
         }
     }
 

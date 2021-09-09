@@ -1,6 +1,7 @@
 mod change;
 mod registers;
 mod scroll;
+mod search;
 mod window;
 
 use std::rc::Rc;
@@ -130,6 +131,7 @@ pub fn vim_normal_mode() -> VimMode {
         + change::mappings()
         + registers::mappings()
         + scroll::mappings()
+        + search::mappings()
         + window::mappings()
         + vim_standard_motions()
         + vim_linewise_motions();

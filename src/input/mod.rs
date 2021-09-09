@@ -6,6 +6,7 @@ pub mod source;
 
 pub use source::KeySource;
 
+use std::any::Any;
 use std::io;
 use std::time::Duration;
 
@@ -167,6 +168,7 @@ pub trait Remappable<T: Keymap + BoxableKeymap>: BoxableKeymap {
 pub trait BoxableKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
     fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
@@ -174,6 +176,7 @@ impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
         to (**self) {
             fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
             fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
+            fn as_any_mut(&mut self) -> &mut dyn Any;
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::input::maps::vim::VimKeymap;
-use crate::input::{Key, KeyCode, KeySource, KeymapContext};
+use crate::input::{Key, KeyCode, KeySource};
 use crate::vim_tree;
 use crate::{
     editing::motion::char::CharMotion,

@@ -65,6 +65,16 @@ impl SearchMotion {
 
         cursor
     }
+
+    fn loop_origin<C: super::MotionContext>(&self, context: &C) -> Option<CursorPosition> {
+        if self.loop_to_top {
+            Some(CursorPosition::from((0, 0)))
+        } else if let Some(last_line) = context.buffer().last_index() {
+            Some(CursorPosition::from((last_line, 0)).end_of_line(context.buffer()))
+        } else {
+            None
+        }
+    }
 }
 
 impl Motion for SearchMotion {
@@ -76,21 +86,16 @@ impl Motion for SearchMotion {
         let origin = context.cursor();
         match self.destination_from_cursor(context, origin) {
             result if result == origin => {
-                // TODO: We get one shot to loop around
-                let new_origin = if self.loop_to_top {
-                    CursorPosition::from((0, 0))
-                } else if let Some(last_line) = context.buffer().last_index() {
-                    CursorPosition::from((last_line, 0)).end_of_line(context.buffer())
-                } else {
-                    origin
-                };
+                // NOTE: We get one shot to loop around
+                let new_origin = self.loop_origin(context).unwrap_or(origin);
+                match self.destination_from_cursor(context, new_origin) {
+                    result if result == new_origin => {
+                        // Still nothing; return the original origin to indicate no result
+                        origin
+                    }
 
-                let loop_attempt = self.destination_from_cursor(context, new_origin);
-                if loop_attempt == new_origin {
-                    // Still nothing; return the original origin
-                    origin
-                } else {
-                    loop_attempt
+                    // Success!
+                    loop_result => loop_result,
                 }
             }
             result => result,

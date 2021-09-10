@@ -35,6 +35,7 @@ fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMo
         Ok(()) => {
             let end_cursor = context.state().current_window().cursor;
             if end_cursor == initial_cursor {
+                context.state_mut().clear_echo();
                 Err(KeyError::PatternNotFound(query))
             } else {
                 if end_cursor > initial_cursor && ui == '?' {

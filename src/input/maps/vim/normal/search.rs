@@ -11,10 +11,7 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use crate::vim_tree;
 
-fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMotion) -> KeyResult {
-    let query = context.input.to_string();
-    context.state_mut().echo(format!("{}{}", ui, query).into());
-
+fn perform_motion(context: &mut CommandHandlerContext, motion: SearchMotion) -> KeyResult {
     if let Some(keymap) = context.keymap.as_any_mut().downcast_mut::<VimKeymap>() {
         let ctx = KeyHandlerContext {
             context: Box::new(&mut context.context),
@@ -25,6 +22,38 @@ fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMo
     } else {
         // This shouldn't be possible:
         panic!("Performing vim search without VimKeymap")
+    }
+}
+
+fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMotion) -> KeyResult {
+    let query = context.input.to_string();
+    context.state_mut().echo(format!("{}{}", ui, query).into());
+
+    let initial_cursor = context.state().current_window().cursor;
+    let result = perform_motion(context, motion);
+    match result {
+        Ok(()) => {
+            let end_cursor = context.state().current_window().cursor;
+            if end_cursor == initial_cursor {
+                Err(KeyError::PatternNotFound(query))
+            } else {
+                if end_cursor > initial_cursor && ui == '?' {
+                    context.state_mut().clear_echo();
+                    context
+                        .state_mut()
+                        .echom("Search hit TOP; continuing at BOTTOM");
+                } else if end_cursor < initial_cursor && ui == '/' {
+                    context.state_mut().clear_echo();
+                    context
+                        .state_mut()
+                        .echom("Search hit BOTTOM; continuing at TOP");
+                }
+
+                Ok(())
+            }
+        }
+
+        _ => result,
     }
 }
 

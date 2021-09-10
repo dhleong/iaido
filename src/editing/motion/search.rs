@@ -10,6 +10,7 @@ use super::util::search;
 pub struct SearchMotion {
     step: LineCrossing<CharMotion>,
     query: String,
+    loop_to_top: bool,
 }
 
 impl SearchMotion {
@@ -17,6 +18,7 @@ impl SearchMotion {
         Self {
             step: LineCrossing::new(CharMotion::Backward(1)),
             query: query.into(),
+            loop_to_top: false,
         }
     }
 
@@ -24,22 +26,20 @@ impl SearchMotion {
         Self {
             step: LineCrossing::new(CharMotion::Forward(1)),
             query: query.into(),
+            loop_to_top: true,
         }
     }
-}
 
-impl Motion for SearchMotion {
-    fn flags(&self) -> MotionFlags {
-        MotionFlags::EXCLUSIVE
-    }
-
-    fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
+    fn destination_from_cursor<C: super::MotionContext>(
+        &self,
+        context: &C,
+        origin: CursorPosition,
+    ) -> CursorPosition {
         if context.buffer().lines_count() == 0 {
-            return context.cursor();
+            return origin;
         }
 
-        let origin = context.cursor();
-        let mut cursor = self.step.destination(context);
+        let mut cursor = self.step.destination(&context.with_cursor(origin));
         let first_char = &self.query[0..1];
 
         loop {
@@ -64,6 +64,37 @@ impl Motion for SearchMotion {
         }
 
         cursor
+    }
+}
+
+impl Motion for SearchMotion {
+    fn flags(&self) -> MotionFlags {
+        MotionFlags::EXCLUSIVE
+    }
+
+    fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
+        let origin = context.cursor();
+        match self.destination_from_cursor(context, origin) {
+            result if result == origin => {
+                // TODO: We get one shot to loop around
+                let new_origin = if self.loop_to_top {
+                    CursorPosition::from((0, 0))
+                } else if let Some(last_line) = context.buffer().last_index() {
+                    CursorPosition::from((last_line, 0)).end_of_line(context.buffer())
+                } else {
+                    origin
+                };
+
+                let loop_attempt = self.destination_from_cursor(context, new_origin);
+                if loop_attempt == new_origin {
+                    // Still nothing; return the original origin
+                    origin
+                } else {
+                    loop_attempt
+                }
+            }
+            result => result,
+        }
     }
 }
 
@@ -97,6 +128,17 @@ mod tests {
                 |Take my land
             "});
         }
+
+        #[test]
+        fn loop_to_top() {
+            let mut ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.motion(SearchMotion::forward_until("my"));
+            ctx.assert_visual_match(indoc! {"
+                Take |my land
+            "});
+        }
     }
 
     mod backward_search {
@@ -110,6 +152,17 @@ mod tests {
             ctx.motion(SearchMotion::backward_until("my"));
             ctx.assert_visual_match(indoc! {"
                 Take |my land
+            "});
+        }
+
+        #[test]
+        fn loop_to_bottom() {
+            let mut ctx = window(indoc! {"
+                Take |my land
+            "});
+            ctx.motion(SearchMotion::backward_until("lan"));
+            ctx.assert_visual_match(indoc! {"
+                Take my |land
             "});
         }
     }

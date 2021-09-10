@@ -69,6 +69,7 @@ pub enum KeyError {
     Interrupted,
     InvalidInput(String),
     NoSuchCommand(String),
+    PatternNotFound(String),
 }
 
 impl From<KeyError> for io::Error {

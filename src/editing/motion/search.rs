@@ -1,16 +1,37 @@
 use crate::editing::motion::char::CharMotion;
 use crate::editing::motion::linewise::LineCrossing;
 use crate::editing::motion::Motion;
+use crate::editing::motion::MotionContext;
 use crate::editing::motion::MotionFlags;
 use crate::editing::text::EditableLine;
 use crate::editing::CursorPosition;
 
 use super::util::search;
 
+pub enum LoopBehavior {
+    TopDown,
+    BottomUp,
+}
+
+impl LoopBehavior {
+    fn destination<C: MotionContext>(&self, context: &C) -> Option<CursorPosition> {
+        match self {
+            LoopBehavior::TopDown => Some(CursorPosition::from((0, 0))),
+            LoopBehavior::BottomUp => {
+                if let Some(last_line) = context.buffer().last_index() {
+                    Some(CursorPosition::from((last_line, 0)).end_of_line(context.buffer()))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
 pub struct SearchMotion {
     step: LineCrossing<CharMotion>,
     query: String,
-    loop_to_top: bool,
+    loop_behavior: LoopBehavior,
 }
 
 impl SearchMotion {
@@ -18,7 +39,7 @@ impl SearchMotion {
         Self {
             step: LineCrossing::new(CharMotion::Backward(1)),
             query: query.into(),
-            loop_to_top: false,
+            loop_behavior: LoopBehavior::BottomUp,
         }
     }
 
@@ -26,11 +47,11 @@ impl SearchMotion {
         Self {
             step: LineCrossing::new(CharMotion::Forward(1)),
             query: query.into(),
-            loop_to_top: true,
+            loop_behavior: LoopBehavior::TopDown,
         }
     }
 
-    fn destination_from_cursor<C: super::MotionContext>(
+    fn destination_from_cursor<C: MotionContext>(
         &self,
         context: &C,
         origin: CursorPosition,
@@ -72,16 +93,6 @@ impl SearchMotion {
 
         cursor
     }
-
-    fn loop_origin<C: super::MotionContext>(&self, context: &C) -> Option<CursorPosition> {
-        if self.loop_to_top {
-            Some(CursorPosition::from((0, 0)))
-        } else if let Some(last_line) = context.buffer().last_index() {
-            Some(CursorPosition::from((last_line, 0)).end_of_line(context.buffer()))
-        } else {
-            None
-        }
-    }
 }
 
 impl Motion for SearchMotion {
@@ -89,12 +100,12 @@ impl Motion for SearchMotion {
         MotionFlags::EXCLUSIVE
     }
 
-    fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
+    fn destination<C: MotionContext>(&self, context: &C) -> CursorPosition {
         let origin = context.cursor();
         match self.destination_from_cursor(context, origin) {
             result if result == origin => {
                 // NOTE: We get one shot to loop around
-                let new_origin = self.loop_origin(context).unwrap_or(origin);
+                let new_origin = self.loop_behavior.destination(context).unwrap_or(origin);
                 match self.destination_from_cursor(context, new_origin) {
                     result if result == new_origin => {
                         // Still nothing; return the original origin to indicate no result

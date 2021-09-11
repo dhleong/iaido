@@ -1,10 +1,12 @@
 mod insert;
 mod mode_stack;
+mod motion;
 mod motions;
 mod normal;
 mod prompt;
 mod tree;
 
+use std::any::Any;
 use std::{collections::HashMap, ops, rc::Rc};
 
 use insert::vim_insert_mode;
@@ -17,6 +19,8 @@ use crate::{
     input::{
         commands::CommandHandlerContext,
         completion::{state::BoxedCompleter, Completer},
+        history::StringHistories,
+        maps::vim::normal::search::VimSearchState,
         BoxableKeymap, Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
     },
 };
@@ -107,6 +111,8 @@ pub struct VimKeymap {
     pub selected_register: Option<char>,
     active_completer: Option<Rc<dyn Completer>>,
     user_maps: HashMap<RemapMode, KeyTreeNode>,
+    pub histories: StringHistories,
+    pub search: VimSearchState,
 }
 
 impl VimKeymap {
@@ -270,6 +276,9 @@ impl BoxableKeymap for VimKeymap {
             }),
         );
     }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl Remappable<VimKeymap> for VimKeymap {
@@ -422,24 +431,21 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            use crate::editing::motion::Motion;
             let motion = $factory;
-            let operator_fn = $ctx_name.keymap.operator_fn.take();
+            crate::input::maps::vim::motion::apply_motion($ctx_name, motion)
+        }));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
 
-            let result = if let Some(op) = operator_fn {
-                // execute pending operator fn
-                let range = motion.range($ctx_name.state());
-                op(&mut $ctx_name, range)
-            } else {
-                // no operator fn? just move the cursor
-                motion.apply_cursor($ctx_name.state_mut());
-                Ok(())
-            };
-
-            // Always reset state *after* executing the operator
-            $ctx_name.keymap.reset();
-
-            result
+    (
+        $root:ident ->
+        $keys:literal =>
+            motion |?mut $ctx_name:ident| $factory:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |?mut $ctx_name| {
+            let motion = $factory;
+            crate::input::maps::vim::motion::apply_motion($ctx_name, motion)
         }));
         crate::vim_branches! { $root -> $($tail)* }
     };
@@ -451,7 +457,7 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         crate::vim_branches! { $root ->
-            $keys => motion |ctx| $factory,
+            $keys => motion |?mut ctx| $factory,
             $($tail)*
         };
     };

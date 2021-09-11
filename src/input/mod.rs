@@ -1,11 +1,13 @@
 pub mod commands;
 pub mod completion;
+pub mod history;
 pub mod keys;
 pub mod maps;
 pub mod source;
 
 pub use source::KeySource;
 
+use std::any::Any;
 use std::io;
 use std::time::Duration;
 
@@ -68,6 +70,7 @@ pub enum KeyError {
     Interrupted,
     InvalidInput(String),
     NoSuchCommand(String),
+    PatternNotFound(String),
 }
 
 impl From<KeyError> for io::Error {
@@ -167,6 +170,7 @@ pub trait Remappable<T: Keymap + BoxableKeymap>: BoxableKeymap {
 pub trait BoxableKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
     fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
@@ -174,6 +178,7 @@ impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
         to (**self) {
             fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
             fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
+            fn as_any_mut(&mut self) -> &mut dyn Any;
         }
     }
 }

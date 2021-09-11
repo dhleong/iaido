@@ -12,6 +12,8 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use crate::vim_tree;
 
+const SEARCH_HISTORY_KEY: &str = "/";
+
 #[derive(Default)]
 pub struct VimSearchState {
     pub last_search_forward: bool,
@@ -19,17 +21,15 @@ pub struct VimSearchState {
 
 fn perform_motion(
     context: &mut CommandHandlerContext,
-    history_key: Option<String>,
+    ui: char,
     query: &String,
     motion: SearchMotion,
 ) -> KeyResult {
     if let Some(keymap) = context.keymap.as_any_mut().downcast_mut::<VimKeymap>() {
-        if let Some(history_key) = history_key {
-            keymap.search.last_search_forward = history_key == "/";
-            keymap
-                .histories
-                .maybe_insert(history_key, query.to_string());
-        }
+        keymap.search.last_search_forward = ui == '/';
+        keymap
+            .histories
+            .maybe_insert(SEARCH_HISTORY_KEY.to_string(), query.to_string());
 
         let ctx = KeyHandlerContext {
             context: Box::new(&mut context.context),
@@ -87,7 +87,7 @@ fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMo
     context.state_mut().echo(format!("{}{}", ui, query).into());
 
     let initial_cursor = context.state().current_window().cursor;
-    let result = perform_motion(context, Some(ui.into()), &query, motion);
+    let result = perform_motion(context, ui, &query, motion);
     handle_search_result(context, ui, query, initial_cursor, result)
 }
 
@@ -135,13 +135,12 @@ fn next_search(ctx: KeyHandlerContext<VimKeymap>, match_direction: bool) -> KeyR
     } else {
         '?'
     };
-    let history_key = if ctx.keymap.search.last_search_forward {
-        "/".to_string()
-    } else {
-        "?".to_string()
-    };
 
-    if let Some(query_ref) = ctx.keymap.histories.get_most_recent(history_key) {
+    if let Some(query_ref) = ctx
+        .keymap
+        .histories
+        .get_most_recent(SEARCH_HISTORY_KEY.to_string())
+    {
         let query = query_ref.to_string();
         let initial_cursor = ctx.state().current_window().cursor;
         let motion = if ui == '/' {

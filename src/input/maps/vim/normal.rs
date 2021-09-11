@@ -1,7 +1,7 @@
 mod change;
 mod registers;
 mod scroll;
-mod search;
+pub mod search;
 mod window;
 
 use std::rc::Rc;

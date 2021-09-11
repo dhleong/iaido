@@ -4,7 +4,15 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use crate::VimKeymap;
 
-pub fn apply_motion<T: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: T) -> KeyResult {
+pub fn apply_motion<T: Motion>(ctx: KeyHandlerContext<VimKeymap>, motion: T) -> KeyResult {
+    let (_, result) = apply_motion_returning(ctx, motion);
+    return result;
+}
+
+pub fn apply_motion_returning<T: Motion>(
+    mut ctx: KeyHandlerContext<VimKeymap>,
+    motion: T,
+) -> (KeyHandlerContext<VimKeymap>, KeyResult) {
     let operator_fn = ctx.keymap.operator_fn.take();
 
     let result = if let Some(op) = operator_fn {
@@ -20,5 +28,5 @@ pub fn apply_motion<T: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: T)
     // Always reset state *after* executing the operator
     ctx.keymap.reset();
 
-    result
+    (ctx, result)
 }

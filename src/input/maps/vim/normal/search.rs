@@ -1,6 +1,7 @@
 use crate::editing::motion::search::SearchMotion;
+use crate::editing::CursorPosition;
 use crate::input::commands::CommandHandler;
-use crate::input::maps::vim::motion::apply_motion;
+use crate::input::maps::vim::motion::{apply_motion, apply_motion_returning};
 use crate::input::maps::vim::prompt::VimPromptConfig;
 use crate::input::maps::vim::tree::KeyTreeNode;
 use crate::input::maps::vim::VimKeymap;
@@ -11,8 +12,25 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use crate::vim_tree;
 
-fn perform_motion(context: &mut CommandHandlerContext, motion: SearchMotion) -> KeyResult {
+#[derive(Default)]
+pub struct VimSearchState {
+    pub last_search_forward: bool,
+}
+
+fn perform_motion(
+    context: &mut CommandHandlerContext,
+    history_key: Option<String>,
+    query: &String,
+    motion: SearchMotion,
+) -> KeyResult {
     if let Some(keymap) = context.keymap.as_any_mut().downcast_mut::<VimKeymap>() {
+        if let Some(history_key) = history_key {
+            keymap.search.last_search_forward = history_key == "/";
+            keymap
+                .histories
+                .maybe_insert(history_key, query.to_string());
+        }
+
         let ctx = KeyHandlerContext {
             context: Box::new(&mut context.context),
             keymap,
@@ -25,12 +43,13 @@ fn perform_motion(context: &mut CommandHandlerContext, motion: SearchMotion) -> 
     }
 }
 
-fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMotion) -> KeyResult {
-    let query = context.input.to_string();
-    context.state_mut().echo(format!("{}{}", ui, query).into());
-
-    let initial_cursor = context.state().current_window().cursor;
-    let result = perform_motion(context, motion);
+fn handle_search_result<C: KeymapContext>(
+    context: &mut C,
+    ui: char,
+    query: String,
+    initial_cursor: CursorPosition,
+    result: KeyResult,
+) -> KeyResult {
     match result {
         Ok(()) => {
             let end_cursor = context.state().current_window().cursor;
@@ -56,6 +75,15 @@ fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMo
 
         _ => result,
     }
+}
+
+fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMotion) -> KeyResult {
+    let query = context.input.to_string();
+    context.state_mut().echo(format!("{}{}", ui, query).into());
+
+    let initial_cursor = context.state().current_window().cursor;
+    let result = perform_motion(context, Some(ui.into()), &query, motion);
+    handle_search_result(context, ui, query, initial_cursor, result)
 }
 
 fn handle_forward_search(context: &mut CommandHandlerContext) -> KeyResult {
@@ -94,6 +122,35 @@ fn activate_search(
     Ok(())
 }
 
+fn next_search(ctx: KeyHandlerContext<VimKeymap>, match_direction: bool) -> KeyResult {
+    let ui = if ctx.keymap.search.last_search_forward == match_direction {
+        // Either we were going forward and we want to match that, or we were not
+        // and *don't* want to match that
+        '/'
+    } else {
+        '?'
+    };
+    let history_key = if ctx.keymap.search.last_search_forward {
+        "/".to_string()
+    } else {
+        "?".to_string()
+    };
+
+    if let Some(query_ref) = ctx.keymap.histories.get_most_recent(history_key) {
+        let query = query_ref.to_string();
+        let initial_cursor = ctx.state().current_window().cursor;
+        let motion = if ui == '/' {
+            SearchMotion::forward_until(query.to_string())
+        } else {
+            SearchMotion::backward_until(query.to_string())
+        };
+        let (mut ctx, result) = apply_motion_returning(ctx, motion);
+        handle_search_result(&mut ctx, ui, query.to_string(), initial_cursor, result)
+    } else {
+        Err(KeyError::InvalidInput("No previous search".into()))
+    }
+}
+
 pub fn mappings() -> KeyTreeNode {
     vim_tree! {
         "/" => |?mut ctx| {
@@ -104,12 +161,12 @@ pub fn mappings() -> KeyTreeNode {
             activate_search(ctx, '?', Box::new(handle_backward_search))
         },
 
-        "n" => |?mut _ctx| {
-            Err(KeyError::InvalidInput("Result browsing not yet supported".to_string()))
+        "n" => |?mut ctx| {
+            next_search(ctx, true)
         },
 
-        "N" => |?mut _ctx| {
-            Err(KeyError::InvalidInput("Result browsing not yet supported".to_string()))
+        "N" => |?mut ctx| {
+            next_search(ctx, false)
         },
     }
 }

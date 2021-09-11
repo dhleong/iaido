@@ -19,6 +19,8 @@ use crate::{
     input::{
         commands::CommandHandlerContext,
         completion::{state::BoxedCompleter, Completer},
+        history::StringHistories,
+        maps::vim::normal::search::VimSearchState,
         BoxableKeymap, Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
     },
 };
@@ -109,6 +111,8 @@ pub struct VimKeymap {
     pub selected_register: Option<char>,
     active_completer: Option<Rc<dyn Completer>>,
     user_maps: HashMap<RemapMode, KeyTreeNode>,
+    pub histories: StringHistories,
+    pub search: VimSearchState,
 }
 
 impl VimKeymap {

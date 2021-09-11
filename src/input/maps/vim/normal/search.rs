@@ -79,6 +79,11 @@ fn handle_search_result<C: KeymapContext>(
 
 fn handle_search(context: &mut CommandHandlerContext, ui: char, motion: SearchMotion) -> KeyResult {
     let query = context.input.to_string();
+    if query.len() == 0 {
+        // TODO Repeat the last search
+        return Ok(());
+    }
+
     context.state_mut().echo(format!("{}{}", ui, query).into());
 
     let initial_cursor = context.state().current_window().cursor;

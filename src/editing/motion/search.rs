@@ -44,7 +44,7 @@ impl SearchMotion {
 
         loop {
             let (next_cursor, found) = search(context, cursor, &self.step, |c| c == first_char);
-            if !found || next_cursor == cursor {
+            if !found {
                 return origin;
             }
 
@@ -61,6 +61,13 @@ impl SearchMotion {
                 // Found it! Return the cursor
                 break;
             }
+
+            if next_cursor == cursor {
+                // No match found, and cursor unmoved; this is a sanity check:
+                return origin;
+            }
+
+            cursor = self.step.destination(&context.with_cursor(cursor));
         }
 
         cursor
@@ -120,6 +127,21 @@ mod tests {
             ctx.motion(SearchMotion::forward_until("my"));
             ctx.assert_visual_match(indoc! {"
                 Take |my land
+            "});
+        }
+
+        #[test]
+        fn repeated_within_line() {
+            let mut ctx = window(indoc! {"
+                |Take my land
+            "});
+            ctx.motion(SearchMotion::forward_until("a"));
+            ctx.assert_visual_match(indoc! {"
+                T|ake my land
+            "});
+            ctx.motion(SearchMotion::forward_until("a"));
+            ctx.assert_visual_match(indoc! {"
+                Take my l|and
             "});
         }
 

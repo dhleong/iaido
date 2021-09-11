@@ -157,20 +157,10 @@ fn next_search(ctx: KeyHandlerContext<VimKeymap>, match_direction: bool) -> KeyR
 
 pub fn mappings() -> KeyTreeNode {
     vim_tree! {
-        "/" => |?mut ctx| {
-            activate_search(ctx, '/', Box::new(handle_forward_search))
-        },
+        "/" => |?mut ctx| activate_search(ctx, '/', Box::new(handle_forward_search)),
+        "?" => |?mut ctx| activate_search(ctx, '?', Box::new(handle_backward_search)),
 
-        "?" => |?mut ctx| {
-            activate_search(ctx, '?', Box::new(handle_backward_search))
-        },
-
-        "n" => |?mut ctx| {
-            next_search(ctx, true)
-        },
-
-        "N" => |?mut ctx| {
-            next_search(ctx, false)
-        },
+        "n" => |?mut ctx| next_search(ctx, true),
+        "N" => |?mut ctx| next_search(ctx, false),
     }
 }

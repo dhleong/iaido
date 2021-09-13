@@ -19,7 +19,12 @@ pub fn render(display: &mut Display) {
     // TODO Maybe we can simplify the alignment and formatting of these hints?
     let lines = vec![
         Spans::from("iaido"),
-        Spans::from(format!("version {}", crate_version!())),
+        Spans::from(vec![
+            Span::from("version "),
+            Span::styled(crate_version!(), Style::default().fg(Color::LightMagenta)),
+        ]),
+        Spans::from(""),
+        Spans::from("https://github.com/dhleong/iaido"),
         Spans::from(""),
         Spans::from(vec![
             Span::from("type  :connect "),

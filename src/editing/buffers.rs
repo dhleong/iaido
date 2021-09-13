@@ -58,6 +58,10 @@ impl Buffers {
         self.all.push(boxed);
     }
 
+    pub fn most_recent_id(&self) -> Option<Id> {
+        self.ids.most_recent()
+    }
+
     #[cfg(test)]
     pub fn replace(&mut self, buffer: Box<dyn Buffer>) -> Box<dyn Buffer> {
         let id = buffer.id();

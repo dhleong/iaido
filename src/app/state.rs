@@ -5,6 +5,7 @@ use crate::{
     editing::{
         buffer::{CopiedRange, MemoryBuffer},
         buffers::Buffers,
+        ids::FIRST_USER_BUFFER_ID,
         motion::char::CharMotion,
         motion::{Motion, MotionContext},
         tabpage::Tabpage,
@@ -32,6 +33,7 @@ use super::{
 
 pub struct AppState {
     pub running: bool,
+    pub showing_splash: bool,
     pub requested_redraw: bool,
 
     pub buffers: Buffers,
@@ -136,6 +138,20 @@ impl AppState {
         self.requested_redraw = true;
     }
 
+    pub fn on_pre_draw(&mut self) {
+        if self.showing_splash
+            && (self.buffers.most_recent_id().unwrap_or(0) > FIRST_USER_BUFFER_ID
+                || self.tabpages.len() > 1
+                || self.current_tab().len() > 1
+                || !self
+                    .current_window()
+                    .current_buffer(&self.buffers)
+                    .is_empty())
+        {
+            self.showing_splash = false;
+        }
+    }
+
     // ======= echo ===========================================
 
     pub fn clear_echo(&mut self) {
@@ -221,7 +237,8 @@ impl Default for AppState {
         let tabpages = Tabpages::new(Size { w: 0, h: 0 });
         let mut app = Self {
             running: true,
-            requested_redraw: true,
+            showing_splash: true,
+            requested_redraw: false,
             buffers,
             tabpages,
             registers: RegisterManager::new(),

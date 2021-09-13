@@ -16,6 +16,7 @@ pub mod events;
 pub mod layout;
 pub mod measure;
 pub mod rendering;
+mod splash;
 pub mod tabpage;
 pub mod tabpages;
 pub mod window;
@@ -87,6 +88,10 @@ impl Tui {
                 },
                 &mut display,
             );
+        }
+
+        if app.showing_splash {
+            splash::render(&mut display);
         }
 
         self.render_display(display)

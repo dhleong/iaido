@@ -25,6 +25,10 @@ impl Motion for CharMotion {
     }
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
+        if context.buffer().is_empty() {
+            return context.cursor();
+        }
+
         let from = context.cursor();
         match self {
             &CharMotion::Forward(step) => {

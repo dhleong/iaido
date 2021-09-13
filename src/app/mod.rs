@@ -23,6 +23,7 @@ impl<T: UI> App<T> {
     pub fn render(&mut self) {
         let wanted_redraw = self.state.requested_redraw;
 
+        self.state.on_pre_draw();
         self.ui.render_app(&mut self.state);
         self.state.requested_redraw = false;
 

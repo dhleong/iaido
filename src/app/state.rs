@@ -142,7 +142,7 @@ impl AppState {
         if self.showing_splash
             && (self.buffers.most_recent_id().unwrap_or(0) > FIRST_USER_BUFFER_ID
                 || self.tabpages.len() > 1
-                || self.current_tab().len() > 1
+                || self.current_tab().windows_count() > 1
                 || !self
                     .current_window()
                     .current_buffer(&self.buffers)

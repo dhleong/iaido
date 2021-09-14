@@ -72,11 +72,7 @@ fn mappings(config: VimPromptConfig) -> KeyTreeNode {
              ctx.state_mut().prompt.clear();
 
              // submit to handler
-             let result = (config.handler)(&mut CommandHandlerContext::new(&mut ctx.context, ctx.keymap, input));
-
-             ctx.state_mut().request_redraw();
-
-             result
+             (config.handler)(&mut CommandHandlerContext::new(&mut ctx.context, ctx.keymap, input))
          },
     }
 }

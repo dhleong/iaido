@@ -27,6 +27,7 @@ pub trait Layout: Renderable + Resizable {
     fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id>;
     fn first_focus(&self, direction: FocusDirection) -> Option<Id>;
     fn size(&self) -> Size;
+    fn windows_count(&self) -> usize;
 
     fn by_id_for_split(&mut self, id: Id) -> Option<&mut Box<Window>> {
         self.by_id_mut(id)

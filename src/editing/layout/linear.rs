@@ -218,6 +218,10 @@ impl Layout for LinearLayout {
     fn into_splittable(&mut self) -> Option<Box<&mut dyn SplitableLayout>> {
         Some(Box::new(self))
     }
+
+    fn windows_count(&self) -> usize {
+        self.entries.iter().map(|entry| entry.windows_count()).sum()
+    }
 }
 
 impl SplitableLayout for LinearLayout {

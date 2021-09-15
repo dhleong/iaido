@@ -70,6 +70,10 @@ impl Layout for WinLayout {
     fn size(&self) -> Size {
         self.window.size
     }
+
+    fn windows_count(&self) -> usize {
+        1
+    }
 }
 
 impl Resizable for WinLayout {

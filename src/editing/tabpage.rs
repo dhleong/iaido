@@ -73,6 +73,10 @@ impl Tabpage {
         self.layout.len() > 0
     }
 
+    pub fn windows_count(&self) -> usize {
+        self.layout.windows_count()
+    }
+
     pub fn windows_for_buffer(&mut self, buffer_id: Id) -> impl Iterator<Item = &mut Box<Window>> {
         self.layout.windows_for_buffer(buffer_id)
     }

@@ -85,6 +85,10 @@ impl Layout for ConnLayout {
             h: self.output.size.h + self.input.size.h,
         }
     }
+
+    fn windows_count(&self) -> usize {
+        2
+    }
 }
 
 impl Resizable for ConnLayout {

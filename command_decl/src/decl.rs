@@ -5,9 +5,10 @@ use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parenthesized, Block, Ident, Token};
+use syn::{parenthesized, Attribute, Block, Ident, Token};
 
 struct OneCommandDecl {
+    pub attrs: Vec<Attribute>,
     pub name: Ident,
     pub context_ident: Ident,
     pub args: Vec<CommandArg>,
@@ -26,6 +27,7 @@ impl OneCommandDecl {
             context_ident,
             args,
             body,
+            ..
         } = self;
 
         let arg_parse = if args.is_empty() {
@@ -78,6 +80,8 @@ impl OneCommandDecl {
 
 impl Parse for OneCommandDecl {
     fn parse(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
+
         input.parse::<Token![pub]>()?;
         input.parse::<Token![fn]>()?;
         let name: Ident = input.parse()?;
@@ -97,6 +101,7 @@ impl Parse for OneCommandDecl {
         }
 
         Ok(OneCommandDecl {
+            attrs,
             name,
             context_ident,
             args,

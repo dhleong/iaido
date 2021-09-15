@@ -7,6 +7,7 @@ use super::{
 };
 
 declare_commands!(declare_core {
+    /// Edit buffer `[N]` from the buffer list.
     pub fn buffer(context, id: usize) {
         if context.state().buffers.by_id(id).is_some() {
             context.state_mut().set_current_window_buffer(id);
@@ -16,6 +17,7 @@ declare_commands!(declare_core {
         }
     },
 
+    /// Quit the current window
     pub fn quit(context) {
         quit_window(context, HideBufArgs { force: false })
     },

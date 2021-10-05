@@ -52,7 +52,7 @@ declare_commands!(declare_file {
         Ok(())
     }
 
-    pub fn write(context, given_path: Optional<PathBuf>) {
+    pub fn write(context, given_path: Option<PathBuf>) {
         let current_path = match context.state().current_buffer().source() {
             &BufferSource::LocalFile(ref path) => Some(path.clone()),
             _ => None,

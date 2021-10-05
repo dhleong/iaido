@@ -23,7 +23,7 @@ impl From<&&str> for HelpTopic {
 
 declare_commands!(declare_help {
     /// This command. View help on using iaido on general, or a specific topic.
-    pub fn help(context, subject: Optional<HelpTopic>) {
+    pub fn help(context, subject: Option<HelpTopic>) {
         help(context, subject)
     },
 });

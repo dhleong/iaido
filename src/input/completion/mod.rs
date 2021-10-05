@@ -2,6 +2,7 @@ pub mod args;
 pub mod commands;
 pub mod empty;
 pub mod file;
+pub mod help;
 mod impl_macro;
 pub mod state;
 

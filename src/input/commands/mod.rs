@@ -2,6 +2,7 @@ pub mod colors;
 pub mod connection;
 pub mod core;
 pub mod file;
+pub mod help;
 pub mod log;
 pub mod mapping;
 pub mod registry;
@@ -13,7 +14,8 @@ use std::time::Duration;
 
 use self::{
     colors::declare_colors, connection::declare_connection, core::declare_core, file::declare_file,
-    log::declare_log, mapping::declare_mapping, registry::CommandRegistry, window::declare_window,
+    help::declare_help, log::declare_log, mapping::declare_mapping, registry::CommandRegistry,
+    window::declare_window,
 };
 use crate::delegate_keysource_with_map;
 
@@ -94,5 +96,6 @@ pub fn create_builtin_commands() -> CommandRegistry {
     declare_connection(&mut registry);
     declare_file(&mut registry);
     declare_core(&mut registry);
+    declare_help(&mut registry);
     return registry;
 }

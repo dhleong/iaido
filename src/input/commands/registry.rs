@@ -22,18 +22,11 @@ impl CommandSpec {
     }
 }
 
+#[derive(Default)]
 pub struct CommandRegistry {
     commands: HashMap<String, CommandSpec>,
+    docs: HashMap<String, &'static str>,
     abbreviations: HashMap<String, String>,
-}
-
-impl Default for CommandRegistry {
-    fn default() -> Self {
-        Self {
-            commands: HashMap::new(),
-            abbreviations: HashMap::new(),
-        }
-    }
 }
 
 impl CommandRegistry {
@@ -54,6 +47,10 @@ impl CommandRegistry {
             .get_mut(&name)
             .expect("Adding arg for not-yet-declared command");
         spec.push_arg_completer(completer);
+    }
+
+    pub fn declare_doc(&mut self, name: String, doc: &'static str) {
+        self.docs.insert(name, doc);
     }
 
     pub fn names(&self) -> hash_map::Keys<String, CommandSpec> {

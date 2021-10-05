@@ -23,6 +23,7 @@ impl OneCommandDecl {
         registry_name: Ident,
     ) -> Result<TokenStream> {
         let OneCommandDecl {
+            attrs,
             name,
             context_ident,
             args,
@@ -62,6 +63,24 @@ impl OneCommandDecl {
             );
         }
 
+        let doc = attrs
+            .iter()
+            .filter_map(|attr| match attr.path.segments.first() {
+                Some(ident) if ident.ident.to_string() == "doc" => Some(attr.tokens.to_string()),
+                _ => None,
+            })
+            .fold(String::new(), |mut a, b| {
+                if !a.is_empty() {
+                    a.push_str("\n")
+                }
+                if !b.is_empty() {
+                    let start = b.find("\"").unwrap_or(0) + 1; // Skip the "
+                    let end = b.len() - 1; // Drop the trailing "
+                    a.push_str(&b[start..end]);
+                }
+                a
+            });
+
         let gen = quote! {
             #registry_name.declare(
                 stringify!(#name).to_string(),
@@ -71,7 +90,13 @@ impl OneCommandDecl {
                     #body
                 })
             );
+
             #(#completers)*
+
+            #registry_name.declare_doc(
+                stringify!(#name).to_string(),
+                #doc
+            );
         };
 
         Ok(gen.into())

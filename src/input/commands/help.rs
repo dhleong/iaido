@@ -88,7 +88,10 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyR
                     .expand_name(&topic)
                     .unwrap()
                     .to_string();
-                show_help_window(context, format!("## [{}]\n\n{}", command_name, help_str));
+                show_help_window(
+                    context,
+                    format!("## [{}]({})\n\n{}", command_name, command_name, help_str),
+                );
             }
         }
 
@@ -111,7 +114,9 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyR
             for name in context.state().builtin_commands.names() {
                 s.push_str(" - [");
                 s.push_str(name);
-                s.push_str("]\n");
+                s.push_str("](");
+                s.push_str(name);
+                s.push_str(")\n");
             }
 
             show_help_window(context, s);

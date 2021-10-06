@@ -1,4 +1,4 @@
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag};
 use tui::style::{Color, Modifier, Style};
 use tui::text::Span;
 
@@ -80,16 +80,13 @@ impl HelpFormatter {
 
             Tag::Link(link_type, url, _) => {
                 match link_type {
-                    pulldown_cmark::LinkType::Autolink => {
-                        self.push_keys(url);
-                    }
+                    LinkType::Autolink => self.push_keys(url),
+                    LinkType::Inline => self.add_modifier(Modifier::UNDERLINED),
 
                     _ => {}
                 };
             }
-            _ => {
-                panic!("Unexpected tag: {:?}", tag);
-            } // ignore
+            _ => {}
         };
     }
 
@@ -104,6 +101,8 @@ impl HelpFormatter {
             Tag::Paragraph => self.push_line(),
             Tag::Item => self.push_line(),
             Tag::List(_) => self.push_line(),
+
+            Tag::Link(LinkType::Inline, _, _) => self.remove_modifier(Modifier::UNDERLINED),
 
             Tag::CodeBlock(kind) => {
                 match kind {

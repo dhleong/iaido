@@ -91,11 +91,12 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyR
         _ => {
             let mut s = String::new();
             s.push_str(&format!(
-                "iaido {}\n\nMore help TK\n\nCommands:\n",
+                "iaido {}\n\nMore help TK\nTry :help connect\n\nCommands:\n",
                 crate_version!()
             ));
 
             for name in context.state().builtin_commands.names() {
+                s.push_str(" - ");
                 s.push_str(name);
                 s.push_str("\n");
             }

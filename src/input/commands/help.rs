@@ -1,3 +1,5 @@
+use indoc::indoc;
+
 use crate::editing::layout::Layout;
 use crate::editing::source::BufferSource;
 use crate::editing::Id;
@@ -6,6 +8,8 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use clap::crate_version;
 use command_decl::declare_commands;
+
+mod format;
 
 pub struct HelpTopic {
     pub topic: String,
@@ -69,7 +73,7 @@ fn show_help_window(context: &mut CommandHandlerContext, help: String) {
     let buffer = context.state_mut().current_buffer_mut();
     buffer.set_source(BufferSource::Help);
     buffer.clear();
-    buffer.append(help.into());
+    buffer.append(format::help(help));
 }
 
 fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyResult {
@@ -84,21 +88,30 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyR
                     .expand_name(&topic)
                     .unwrap()
                     .to_string();
-                show_help_window(context, format!("*{}*\n\n{}", command_name, help_str));
+                show_help_window(context, format!("## [{}]\n\n{}", command_name, help_str));
             }
         }
 
         _ => {
             let mut s = String::new();
             s.push_str(&format!(
-                "iaido {}\n\nMore help TK\nTry :help connect\n\nCommands:\n",
+                indoc! {"
+                    # iaido {}
+
+                    ## About
+                    More help TK
+
+                    - Try :help connect<Enter>
+
+                    ## Commands:\n\n
+                "},
                 crate_version!()
             ));
 
             for name in context.state().builtin_commands.names() {
-                s.push_str(" - ");
+                s.push_str(" - [");
                 s.push_str(name);
-                s.push_str("\n");
+                s.push_str("]\n");
             }
 
             show_help_window(context, s);

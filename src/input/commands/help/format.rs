@@ -1,5 +1,5 @@
-use pulldown_cmark::{CowStr, Event, Parser, Tag};
-use tui::style::{Modifier, Style};
+use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
+use tui::style::{Color, Modifier, Style};
 use tui::text::Span;
 
 use crate::editing::text::{TextLine, TextLines};
@@ -38,57 +38,80 @@ impl HelpFormatter {
         self.current_line = Some(TextLine::default());
     }
 
+    fn push_span(&mut self, span: Span<'static>) {
+        self.current_line.as_mut().unwrap().0.push(span);
+    }
+
     fn push_str(&mut self, text: &str) {
-        self.current_line
-            .as_mut()
-            .unwrap()
-            .0
-            .push(Span::styled(text.to_string(), self.style));
+        self.push_span(Span::styled(text.to_string(), self.style));
     }
 
     fn push_text(&mut self, text: CowStr) {
         self.push_str(&text);
     }
+
+    fn push_keys(&mut self, text: CowStr) {
+        let style = Style::default().fg(Color::Magenta);
+        self.push_span(Span::styled(text.to_string(), style));
+    }
+
+    fn start_tag(&mut self, tag: Tag) {
+        match tag {
+            Tag::Emphasis => self.add_modifier(Modifier::ITALIC),
+            Tag::Heading(_) => {
+                if self.has_pending_line() {
+                    self.push_line();
+                }
+                self.add_modifier(Modifier::BOLD);
+            }
+            Tag::Item => self.push_str(" - "),
+            Tag::List(_) => self.push_line(),
+            Tag::Paragraph => self.push_line(),
+
+            Tag::Link(link_type, url, _) => {
+                match link_type {
+                    pulldown_cmark::LinkType::Autolink => {
+                        self.push_keys(url);
+                    }
+
+                    _ => {}
+                };
+            }
+            _ => {
+                panic!("Unexpected tag: {:?}", tag);
+            } // ignore
+        };
+    }
+
+    fn end_tag(&mut self, tag: Tag) {
+        match tag {
+            Tag::Emphasis => self.remove_modifier(Modifier::ITALIC),
+            Tag::Heading(_) => {
+                self.remove_modifier(Modifier::BOLD);
+                self.push_line();
+            }
+
+            Tag::Paragraph => self.push_line(),
+            Tag::Item => self.push_line(),
+            Tag::List(_) => self.push_line(),
+
+            _ => {} // ignore
+        };
+    }
 }
 
 pub fn help(text: String) -> TextLines {
     let mut formatter = HelpFormatter::default();
-    let parser = Parser::new(&text);
+    let options = Options::empty();
+    let parser = Parser::new_ext(&text, options);
 
     for event in parser {
         match event {
-            Event::Start(tag) => {
-                match tag {
-                    Tag::Emphasis => formatter.add_modifier(Modifier::ITALIC),
-                    Tag::Heading(_) => {
-                        if formatter.has_pending_line() {
-                            formatter.push_line();
-                        }
-                        formatter.add_modifier(Modifier::BOLD);
-                    }
-                    Tag::Item => {
-                        formatter.push_line();
-                        formatter.push_str(" - ");
-                    }
-                    _ => {} // ignore
-                };
-            }
-            Event::End(tag) => {
-                match tag {
-                    Tag::Emphasis => formatter.remove_modifier(Modifier::ITALIC),
-                    Tag::Heading(_) => {
-                        formatter.remove_modifier(Modifier::BOLD);
-                        formatter.push_line();
-                    }
-
-                    Tag::Paragraph => formatter.push_line(),
-                    Tag::List(_) => formatter.push_line(),
-
-                    _ => {} // ignore
-                };
-            }
+            Event::Start(tag) => formatter.start_tag(tag),
+            Event::End(tag) => formatter.end_tag(tag),
 
             Event::Text(text) => formatter.push_text(text),
+            Event::Html(html) => formatter.push_keys(html),
 
             Event::HardBreak => {
                 formatter.push_line();

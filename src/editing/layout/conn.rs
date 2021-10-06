@@ -64,6 +64,16 @@ impl Layout for ConnLayout {
         )
     }
 
+    fn iter(&self) -> Box<dyn Iterator<Item = &Box<Window>> + '_> {
+        Box::new(
+            gen!({
+                yield_!(&self.output);
+                yield_!(&self.input);
+            })
+            .into_iter(),
+        )
+    }
+
     fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id> {
         match direction {
             FocusDirection::Down if current_id == self.output.id => Some(self.input.id),

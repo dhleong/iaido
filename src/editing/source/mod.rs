@@ -5,6 +5,7 @@ pub enum BufferSource {
     /// The Buffer is in-memory only
     None,
 
+    Help,
     Log,
 
     /// The Buffer was read from or has been written to a file

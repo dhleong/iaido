@@ -116,6 +116,13 @@ impl Tabpage {
         })
     }
 
+    /// Like hsplit, but always splits at the top-most level
+    pub fn split_top(&mut self) -> Id {
+        self.split_with(|layout, _, new_window| {
+            layout.insert_window(0, new_window);
+        })
+    }
+
     pub fn vsplit(&mut self) -> Id {
         self.split_with(|layout, old_id, new_window| {
             layout.vsplit(old_id, new_window);

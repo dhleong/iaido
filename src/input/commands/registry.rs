@@ -61,15 +61,31 @@ impl CommandRegistry {
         self.commands.insert(name, spec);
     }
 
-    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
-        if let Some(handler) = self.commands.get(name) {
-            return Some(handler);
+    pub fn expand_name<'a>(&'a self, name: &'a String) -> Option<&'a String> {
+        if self.commands.get(name).is_some() {
+            return Some(name);
         }
 
         if let Some(full_name) = self.abbreviations.get(name) {
-            if let Some(handler) = self.commands.get(full_name) {
-                return Some(handler);
+            if self.commands.get(full_name).is_some() {
+                return Some(full_name);
             }
+        }
+
+        None
+    }
+
+    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
+        if let Some(expanded) = self.expand_name(name) {
+            return self.commands.get(expanded);
+        }
+
+        None
+    }
+
+    pub fn get_doc(&self, name: &String) -> Option<&&str> {
+        if let Some(expanded) = self.expand_name(name) {
+            return self.docs.get(expanded);
         }
 
         None

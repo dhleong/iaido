@@ -59,6 +59,15 @@ impl Layout for WinLayout {
         )
     }
 
+    fn iter(&self) -> Box<dyn Iterator<Item = &Box<Window>> + '_> {
+        Box::new(
+            gen!({
+                yield_!(&self.window);
+            })
+            .into_iter(),
+        )
+    }
+
     fn next_focus(&self, _current_id: Id, _direction: FocusDirection) -> Option<Id> {
         None
     }

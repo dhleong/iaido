@@ -153,6 +153,19 @@ impl Layout for LinearLayout {
         )
     }
 
+    fn iter(&self) -> Box<dyn Iterator<Item = &Box<Window>> + '_> {
+        Box::new(
+            gen!({
+                for entry in &self.entries {
+                    for win in entry.iter() {
+                        yield_!(win);
+                    }
+                }
+            })
+            .into_iter(),
+        )
+    }
+
     fn next_focus(&self, current_id: Id, direction: FocusDirection) -> Option<Id> {
         if let Some(index) = self.index_of_window(current_id) {
             let lyt = self.entries.get(index).unwrap();

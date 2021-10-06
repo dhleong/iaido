@@ -1,4 +1,4 @@
-use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 use tui::style::{Color, Modifier, Style};
 use tui::text::Span;
 
@@ -68,6 +68,16 @@ impl HelpFormatter {
             Tag::List(_) => self.push_line(),
             Tag::Paragraph => self.push_line(),
 
+            Tag::CodeBlock(kind) => {
+                match kind {
+                    CodeBlockKind::Fenced(_) => self.add_modifier(Modifier::DIM),
+                    CodeBlockKind::Indented => {
+                        self.push_line();
+                        self.add_modifier(Modifier::DIM);
+                    }
+                };
+            }
+
             Tag::Link(link_type, url, _) => {
                 match link_type {
                     pulldown_cmark::LinkType::Autolink => {
@@ -95,6 +105,13 @@ impl HelpFormatter {
             Tag::Item => self.push_line(),
             Tag::List(_) => self.push_line(),
 
+            Tag::CodeBlock(kind) => {
+                match kind {
+                    CodeBlockKind::Fenced(_) => self.remove_modifier(Modifier::DIM),
+                    _ => {}
+                };
+            }
+
             _ => {} // ignore
         };
     }
@@ -112,6 +129,11 @@ pub fn help(text: String) -> TextLines {
 
             Event::Text(text) => formatter.push_text(text),
             Event::Html(html) => formatter.push_keys(html),
+            Event::Code(text) => {
+                formatter.add_modifier(Modifier::DIM);
+                formatter.push_text(text);
+                formatter.remove_modifier(Modifier::DIM);
+            }
 
             Event::HardBreak => {
                 formatter.push_line();

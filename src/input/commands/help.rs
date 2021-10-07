@@ -1,4 +1,5 @@
 use indoc::indoc;
+use std::fmt::Write;
 
 use crate::app::help::{self, HelpQuery, HelpTopic};
 use crate::editing::layout::Layout;
@@ -59,15 +60,23 @@ fn show_help_window(context: &mut CommandHandlerContext, help: String) {
 }
 
 fn generate_help_entry(help: &HelpTopic) -> String {
-    let help_str = help.doc;
+    let mut help_str = help.doc;
     let command_name = help.topic;
+
+    if help_str.is_empty() {
+        help_str = "TK";
+    }
+
     return format!("## [{}]({})\n\n{}", command_name, command_name, help_str);
 }
 
 fn generate_help_file(context: &mut CommandHandlerContext, filename: &str) -> String {
     let mut file = String::new();
-    file.push_str("# ");
+    file.push_str("# Help Topic: **");
     file.push_str(filename);
+    file.push_str("**");
+
+    // TODO help files should be able to have an intro section
 
     let entries = context
         .state()
@@ -75,7 +84,7 @@ fn generate_help_file(context: &mut CommandHandlerContext, filename: &str) -> St
         .help
         .entries_for_file(filename);
     for entry in entries {
-        file.push_str("\n");
+        file.push_str("\n\n");
         file.push_str(&generate_help_entry(entry));
     }
 
@@ -93,17 +102,23 @@ fn generate_help_index(context: &mut CommandHandlerContext) -> String {
 
             - Try :help connect<Enter>
 
-            ## Commands:\n\n
+            ## Help files
+
+            Try :help [filename]()<Enter>
         "},
         crate_version!()
     ));
 
+    s.push_str("\n\n");
+
+    for name in context.state().builtin_commands.help.filenames() {
+        write!(&mut s, " - [{}]({})\n", name, name).unwrap();
+    }
+
+    s.push_str("\n\n## Commands:\n\n");
+
     for name in context.state().builtin_commands.names() {
-        s.push_str(" - [");
-        s.push_str(name);
-        s.push_str("](");
-        s.push_str(name);
-        s.push_str(")\n");
+        write!(&mut s, " - [{}]({})\n", name, name).unwrap();
     }
 
     return s;

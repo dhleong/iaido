@@ -1,11 +1,12 @@
 use indoc::indoc;
 
-use crate::app::help::{self, HelpQuery};
+use crate::app::help::{self, HelpQuery, HelpTopic};
 use crate::editing::layout::Layout;
 use crate::editing::source::BufferSource;
 use crate::editing::Id;
 use crate::input::commands::CommandHandlerContext;
 use crate::input::maps::KeyResult;
+use crate::input::KeyError;
 use crate::input::KeymapContext;
 use clap::crate_version;
 use command_decl::declare_commands;
@@ -57,45 +58,82 @@ fn show_help_window(context: &mut CommandHandlerContext, help: String) {
     buffer.append(help::format(help));
 }
 
+fn generate_help_entry(help: &HelpTopic) -> String {
+    let help_str = help.doc;
+    let command_name = help.topic;
+    return format!("## [{}]({})\n\n{}", command_name, command_name, help_str);
+}
+
+fn generate_help_file(context: &mut CommandHandlerContext, filename: &str) -> String {
+    let mut file = String::new();
+    file.push_str("# ");
+    file.push_str(filename);
+
+    let entries = context
+        .state()
+        .builtin_commands
+        .help
+        .entries_for_file(filename);
+    for entry in entries {
+        file.push_str("\n");
+        file.push_str(&generate_help_entry(entry));
+    }
+
+    return file;
+}
+
+fn generate_help_index(context: &mut CommandHandlerContext) -> String {
+    let mut s = String::new();
+    s.push_str(&format!(
+        indoc! {"
+            # iaido {}
+
+            ## About
+            More help TK
+
+            - Try :help connect<Enter>
+
+            ## Commands:\n\n
+        "},
+        crate_version!()
+    ));
+
+    for name in context.state().builtin_commands.names() {
+        s.push_str(" - [");
+        s.push_str(name);
+        s.push_str("](");
+        s.push_str(name);
+        s.push_str(")\n");
+    }
+
+    return s;
+}
+
 fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyResult {
     match subject {
         Some(HelpQuery { query }) => {
-            // TODO Get a whole page on which topic appears
             if let Some(help) = context.state().builtin_commands.get_doc(&query) {
-                let help_str = help.doc;
-                let command_name = help.topic;
-                show_help_window(
-                    context,
-                    format!("## [{}]({})\n\n{}", command_name, command_name, help_str),
-                );
+                // TODO Get a whole page on which topic appears, and link to
+                // where the topic is
+                let help = generate_help_entry(help);
+                show_help_window(context, help);
+            } else if context.state().builtin_commands.help.has_filename(&query) {
+                // Generate full help file
+                let help = generate_help_file(context, &query);
+                show_help_window(context, help);
+            } else {
+                context
+                    .state_mut()
+                    .echom_error(KeyError::PatternNotFound(format!(
+                        "No help matching: '{}'",
+                        query
+                    )));
             }
         }
 
         _ => {
-            let mut s = String::new();
-            s.push_str(&format!(
-                indoc! {"
-                    # iaido {}
-
-                    ## About
-                    More help TK
-
-                    - Try :help connect<Enter>
-
-                    ## Commands:\n\n
-                "},
-                crate_version!()
-            ));
-
-            for name in context.state().builtin_commands.names() {
-                s.push_str(" - [");
-                s.push_str(name);
-                s.push_str("](");
-                s.push_str(name);
-                s.push_str(")\n");
-            }
-
-            show_help_window(context, s);
+            let help = generate_help_index(context);
+            show_help_window(context, help);
         }
     };
     Ok(())

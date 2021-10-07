@@ -19,6 +19,7 @@ pub trait CompletableContext {
     fn commands(&self) -> &CommandRegistry;
 }
 
+#[derive(Clone)]
 pub struct CompletionContext {
     pub text: String,
     pub cursor: usize,

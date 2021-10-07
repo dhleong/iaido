@@ -13,6 +13,10 @@ impl HelpRegistry {
         self.entries.get(name)
     }
 
+    pub fn has_filename(&self, name: &String) -> bool {
+        self.filenames.contains(name)
+    }
+
     pub fn filenames(&self) -> hash_set::Iter<String> {
         self.filenames.iter()
     }

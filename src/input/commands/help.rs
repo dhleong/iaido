@@ -1,6 +1,6 @@
 use indoc::indoc;
 
-use crate::app::help::{self, HelpTopic};
+use crate::app::help::{self, HelpQuery};
 use crate::editing::layout::Layout;
 use crate::editing::source::BufferSource;
 use crate::editing::Id;
@@ -12,7 +12,7 @@ use command_decl::declare_commands;
 
 declare_commands!(declare_help {
     /// This command. View help on using iaido on general, or a specific topic.
-    pub fn help(context, subject: Option<HelpTopic>) {
+    pub fn help(context, subject: Option<HelpQuery>) {
         help(context, subject)
     },
 });
@@ -57,16 +57,16 @@ fn show_help_window(context: &mut CommandHandlerContext, help: String) {
     buffer.append(help::format(help));
 }
 
-fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyResult {
+fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyResult {
     match subject {
-        Some(HelpTopic { topic }) => {
+        Some(HelpQuery { query }) => {
             // TODO Get a whole page on which topic appears
-            if let Some(help) = context.state().builtin_commands.get_doc(&topic) {
+            if let Some(help) = context.state().builtin_commands.get_doc(&query) {
                 let help_str = help.to_string();
                 let command_name = context
                     .state()
                     .builtin_commands
-                    .expand_name(&topic)
+                    .expand_name(&query)
                     .unwrap()
                     .to_string();
                 show_help_window(

@@ -47,7 +47,7 @@ fn create_completion_manager() -> CompletionManager {
 
     build_completion_manager! { map ->
         PathBuf => crate::input::completion::file::FileCompleter,
-        HelpTopic => crate::input::completion::help::HelpTopicCompleter,
+        HelpQuery => crate::input::completion::help::HelpTopicCompleter,
     };
 
     CompletionManager { map }

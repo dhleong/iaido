@@ -19,7 +19,9 @@ impl DeclareCommands {
     pub fn to_tokens(&self) -> Result<TokenStream> {
         let module_name = &self.module_name;
         let registry_name = Ident::new("registry", Span::call_site());
-        let body = self.decls.to_tokens(registry_name.clone())?;
+        let body = self
+            .decls
+            .to_tokens(module_name.clone(), registry_name.clone())?;
         let body_tokens: proc_macro2::TokenStream = body.into();
 
         let gen = quote! {

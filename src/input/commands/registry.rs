@@ -1,5 +1,6 @@
 use std::collections::{hash_map, HashMap};
 
+use crate::app::help::{registry::HelpRegistry, HelpTopic};
 use crate::input::completion::{args::CommandArgsCompleter, Completer};
 
 use super::CommandHandler;
@@ -25,8 +26,8 @@ impl CommandSpec {
 #[derive(Default)]
 pub struct CommandRegistry {
     commands: HashMap<String, CommandSpec>,
-    docs: HashMap<String, &'static str>,
     abbreviations: HashMap<String, String>,
+    pub help: HelpRegistry,
 }
 
 impl CommandRegistry {
@@ -47,10 +48,6 @@ impl CommandRegistry {
             .get_mut(&name)
             .expect("Adding arg for not-yet-declared command");
         spec.push_arg_completer(completer);
-    }
-
-    pub fn declare_doc(&mut self, name: String, doc: &'static str) {
-        self.docs.insert(name, doc);
     }
 
     pub fn names(&self) -> hash_map::Keys<String, CommandSpec> {
@@ -83,9 +80,9 @@ impl CommandRegistry {
         None
     }
 
-    pub fn get_doc(&self, name: &String) -> Option<&&str> {
+    pub fn get_doc(&self, name: &String) -> Option<&HelpTopic> {
         if let Some(expanded) = self.expand_name(name) {
-            return self.docs.get(expanded);
+            return self.help.get(expanded);
         }
 
         None

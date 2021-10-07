@@ -18,6 +18,7 @@ struct OneCommandDecl {
 impl OneCommandDecl {
     pub fn to_tokens(
         &self,
+        help_file_name: &str,
         arg_parser: &ArgParser,
         completions: &CompletionManager,
         registry_name: Ident,
@@ -93,9 +94,12 @@ impl OneCommandDecl {
 
             #(#completers)*
 
-            #registry_name.declare_doc(
-                stringify!(#name).to_string(),
-                #doc
+            #registry_name.help.insert(
+                crate::app::help::HelpTopic {
+                    filename: #help_file_name,
+                    topic: stringify!(#name),
+                    doc: #doc,
+                }
             );
         };
 
@@ -160,12 +164,18 @@ impl Parse for CommandDecl {
 }
 
 impl CommandDecl {
-    pub fn to_tokens(&self, registry_name: Ident) -> Result<TokenStream> {
+    pub fn to_tokens(&self, module_name: Ident, registry_name: Ident) -> Result<TokenStream> {
         let mut output = TokenStream::new();
         let args = ArgParser::default();
         let completions = CompletionManager::default();
+        let help_file_name = module_name.to_string().replace("declare_", "");
         for command in &self.commands {
-            output.extend(command.to_tokens(&args, &completions, registry_name.clone())?);
+            output.extend(command.to_tokens(
+                &help_file_name,
+                &args,
+                &completions,
+                registry_name.clone(),
+            )?);
         }
         Ok(output)
     }

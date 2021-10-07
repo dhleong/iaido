@@ -62,13 +62,8 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyR
         Some(HelpQuery { query }) => {
             // TODO Get a whole page on which topic appears
             if let Some(help) = context.state().builtin_commands.get_doc(&query) {
-                let help_str = help.to_string();
-                let command_name = context
-                    .state()
-                    .builtin_commands
-                    .expand_name(&query)
-                    .unwrap()
-                    .to_string();
+                let help_str = help.doc;
+                let command_name = help.topic;
                 show_help_window(
                     context,
                     format!("## [{}]({})\n\n{}", command_name, command_name, help_str),

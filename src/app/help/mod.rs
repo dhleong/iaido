@@ -1,4 +1,5 @@
 mod format;
+pub mod registry;
 
 pub use format::format_help as format;
 
@@ -12,4 +13,10 @@ impl From<&&str> for HelpQuery {
             query: query.to_string(),
         }
     }
+}
+
+pub struct HelpTopic {
+    pub filename: &'static str,
+    pub topic: &'static str,
+    pub doc: &'static str,
 }

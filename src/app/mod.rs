@@ -1,4 +1,5 @@
 pub mod bufwin;
+pub mod help;
 pub mod jobs;
 pub mod looper;
 pub mod prompt;

@@ -1,5 +1,6 @@
 use indoc::indoc;
 
+use crate::app::help::{self, HelpTopic};
 use crate::editing::layout::Layout;
 use crate::editing::source::BufferSource;
 use crate::editing::Id;
@@ -8,26 +9,6 @@ use crate::input::maps::KeyResult;
 use crate::input::KeymapContext;
 use clap::crate_version;
 use command_decl::declare_commands;
-
-mod format;
-
-pub struct HelpTopic {
-    pub topic: String,
-}
-
-impl From<String> for HelpTopic {
-    fn from(topic: String) -> HelpTopic {
-        HelpTopic { topic }
-    }
-}
-
-impl From<&&str> for HelpTopic {
-    fn from(topic: &&str) -> HelpTopic {
-        HelpTopic {
-            topic: topic.to_string(),
-        }
-    }
-}
 
 declare_commands!(declare_help {
     /// This command. View help on using iaido on general, or a specific topic.
@@ -73,7 +54,7 @@ fn show_help_window(context: &mut CommandHandlerContext, help: String) {
     let buffer = context.state_mut().current_buffer_mut();
     buffer.set_source(BufferSource::Help);
     buffer.clear();
-    buffer.append(format::help(help));
+    buffer.append(help::format(help));
 }
 
 fn help(context: &mut CommandHandlerContext, subject: Option<HelpTopic>) -> KeyResult {

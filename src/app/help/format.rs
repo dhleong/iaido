@@ -116,7 +116,7 @@ impl HelpFormatter {
     }
 }
 
-pub fn help(text: String) -> TextLines {
+pub fn format_help(text: String) -> TextLines {
     let mut formatter = HelpFormatter::default();
     let options = Options::empty();
     let parser = Parser::new_ext(&text, options);

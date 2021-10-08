@@ -40,6 +40,9 @@ fn ensure_help_window(context: &mut CommandHandlerContext) -> Id {
 
     // TODO If the current window uses the full width of the screen or is at least
     // 80 characters wide, split upward
+    if context.state().current_window().size.w >= 80 {
+        return context.state_mut().current_tab_mut().hsplit();
+    }
 
     // Otherwise, just create the help window at the very top
     return context.state_mut().current_tab_mut().split_top();

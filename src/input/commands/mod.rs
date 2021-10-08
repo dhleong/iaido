@@ -69,7 +69,7 @@ impl CommandHandlerContext<'_> {
 
     fn split_input(&self) -> impl Iterator<Item = &str> {
         // TODO handle quoted input
-        self.input.split(" ")
+        self.input.split_ascii_whitespace()
     }
 }
 

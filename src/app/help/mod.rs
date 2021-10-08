@@ -10,7 +10,7 @@ pub struct HelpQuery {
 impl From<&&str> for HelpQuery {
     fn from(query: &&str) -> Self {
         Self {
-            query: query.to_string(),
+            query: query.trim().to_string(),
         }
     }
 }

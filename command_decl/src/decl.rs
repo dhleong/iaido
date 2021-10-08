@@ -1,5 +1,6 @@
 use super::args::ArgParser;
 use super::completers::CompletionManager;
+use super::doc::DocString;
 use super::parse::CommandArg;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
@@ -64,23 +65,7 @@ impl OneCommandDecl {
             );
         }
 
-        let doc = attrs
-            .iter()
-            .filter_map(|attr| match attr.path.segments.first() {
-                Some(ident) if ident.ident.to_string() == "doc" => Some(attr.tokens.to_string()),
-                _ => None,
-            })
-            .fold(String::new(), |mut a, b| {
-                if !a.is_empty() {
-                    a.push_str("\n")
-                }
-                if !b.is_empty() {
-                    let start = b.find("\"").unwrap_or(0) + 1; // Skip the "
-                    let end = b.len() - 1; // Drop the trailing "
-                    a.push_str(&b[start..end]);
-                }
-                a
-            });
+        let doc: DocString = attrs.into();
 
         let gen = quote! {
             #registry_name.declare(
@@ -140,11 +125,13 @@ impl Parse for OneCommandDecl {
 }
 
 pub struct CommandDecl {
+    pub attrs: Vec<Attribute>,
     commands: Vec<OneCommandDecl>,
 }
 
 impl Parse for CommandDecl {
     fn parse(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_inner)?;
         let mut commands: Vec<OneCommandDecl> = vec![];
 
         loop {
@@ -159,7 +146,7 @@ impl Parse for CommandDecl {
             }
         }
 
-        Ok(CommandDecl { commands })
+        Ok(CommandDecl { attrs, commands })
     }
 }
 
@@ -169,6 +156,14 @@ impl CommandDecl {
         let args = ArgParser::default();
         let completions = CompletionManager::default();
         let help_file_name = module_name.to_string().replace("declare_", "");
+
+        let doc: DocString = (&self.attrs).into();
+        let filename_doc: TokenStream = quote! {
+            #registry_name.help.insert_filename_doc(#help_file_name, #doc);
+        }
+        .into();
+        output.extend(filename_doc);
+
         for command in &self.commands {
             output.extend(command.to_tokens(
                 &help_file_name,

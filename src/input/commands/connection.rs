@@ -9,6 +9,8 @@ use command_decl::declare_commands;
 use super::CommandHandlerContext;
 
 declare_commands!(declare_connection {
+    //! Connection-management commands
+
     /// Connect to a telnet server at the given `url`. This will replace your current [Window] with
     /// a new Connection [Window] that has an input [Buffer] and an output [Buffer].
     /// The url can be in one of the following formats:

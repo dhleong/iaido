@@ -75,11 +75,16 @@ fn generate_help_entry(help: &HelpTopic) -> String {
 
 fn generate_help_file(context: &mut CommandHandlerContext, filename: &str) -> String {
     let mut file = String::new();
-    file.push_str("# Help Topic: **");
+    file.push_str("# Help Topic: ***");
     file.push_str(filename);
-    file.push_str("**");
+    file.push_str("***");
 
-    // TODO help files should be able to have an intro section
+    // Help files may have an intro section using inner doc comments
+    if let Some(intro) = context.state().builtin_commands.help.doc_for_file(filename) {
+        file.push_str("\n\n");
+        file.push_str(intro);
+        file.push_str("\n\n");
+    }
 
     let entries = context
         .state()
@@ -131,7 +136,7 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyR
     match subject {
         Some(HelpQuery { query }) => {
             if let Some(help) = context.state().builtin_commands.get_doc(&query) {
-                // TODO Get a whole page on which topic appears, and link to
+                // TODO Get a whole page on which topic appears, and jump to
                 // where the topic is
                 let help = generate_help_entry(help);
                 show_help_window(context, help);

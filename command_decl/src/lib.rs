@@ -1,14 +1,16 @@
 mod args;
 mod completers;
 mod decl;
+mod doc;
 mod parse;
 
-use decl::CommandDecl;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Ident};
+
+use decl::CommandDecl;
 
 struct DeclareCommands {
     pub module_name: Ident,

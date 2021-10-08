@@ -61,11 +61,11 @@ impl HelpFormatter {
             Tag::Heading(_) => {
                 if self.has_pending_line() {
                     self.push_line();
+                    self.push_line();
                 }
                 self.add_modifier(Modifier::BOLD);
             }
             Tag::Item => self.push_str(" - "),
-            Tag::List(_) => self.push_line(),
             Tag::Paragraph => self.push_line(),
 
             Tag::CodeBlock(kind) => {
@@ -98,7 +98,10 @@ impl HelpFormatter {
                 self.push_line();
             }
 
-            Tag::Paragraph => self.push_line(),
+            Tag::Paragraph => {
+                self.push_line();
+                self.push_line();
+            }
             Tag::Item => self.push_line(),
             Tag::List(_) => self.push_line(),
 
@@ -134,7 +137,9 @@ pub fn format_help(text: String) -> TextLines {
                 formatter.remove_modifier(Modifier::DIM);
             }
 
-            Event::HardBreak => {
+            Event::SoftBreak => formatter.push_str(" "),
+            Event::Rule | Event::HardBreak => {
+                formatter.push_line();
                 formatter.push_line();
             }
             _ => {} // Ignore, otherwise

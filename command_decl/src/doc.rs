@@ -1,9 +1,17 @@
+use std::fmt::Display;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::Attribute;
 
 pub struct DocString {
     content: String,
+}
+
+impl Display for DocString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.content)
+    }
 }
 
 impl From<&Vec<Attribute>> for DocString {

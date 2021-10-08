@@ -70,7 +70,17 @@ fn generate_help_entry(help: &HelpTopic) -> String {
         help_str = "TK";
     }
 
-    return format!("## [{}]({})\n\n{}", command_name, command_name, help_str);
+    let mut entry = String::new();
+    write!(&mut entry, "## [{}]({})", command_name, command_name).unwrap();
+
+    if let Some(usage) = help.usage {
+        entry.push(' ');
+        entry.push_str(usage);
+    }
+
+    entry.push_str("\n\n");
+    entry.push_str(help_str);
+    return entry;
 }
 
 fn generate_help_file(context: &mut CommandHandlerContext, filename: &str) -> String {

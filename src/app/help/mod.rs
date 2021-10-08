@@ -19,4 +19,5 @@ pub struct HelpTopic {
     pub filename: &'static str,
     pub topic: &'static str,
     pub doc: &'static str,
+    pub usage: Option<&'static str>,
 }

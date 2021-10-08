@@ -33,6 +33,7 @@ impl OneCommandDecl {
             ..
         } = self;
 
+        let mut help_signature = String::new();
         let arg_parse = if args.is_empty() {
             quote! {}
         } else {
@@ -43,6 +44,8 @@ impl OneCommandDecl {
 
             let args_ident = Ident::new("args", Span::call_site());
             for arg in args {
+                help_signature.push_str(&format!(" `{}`: [{}]()", arg.name, arg.type_name));
+
                 let stmt = arg.to_tokens(arg_parser, name.clone(), args_ident.clone())?;
                 let tokens: proc_macro2::TokenStream = stmt.into();
                 gen.extend(tokens);
@@ -66,6 +69,12 @@ impl OneCommandDecl {
         }
 
         let doc: DocString = attrs.into();
+        let trimed_signature = help_signature.trim();
+        let usage = if trimed_signature.is_empty() {
+            quote!(None)
+        } else {
+            quote!(Some(#trimed_signature))
+        };
 
         let gen = quote! {
             #registry_name.declare(
@@ -84,6 +93,7 @@ impl OneCommandDecl {
                     filename: #help_file_name,
                     topic: stringify!(#name),
                     doc: #doc,
+                    usage: #usage,
                 }
             );
         };

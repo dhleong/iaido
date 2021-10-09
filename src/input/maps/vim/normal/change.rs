@@ -163,7 +163,7 @@ mod tests {
             "});
 
             ctx.feed_vim("Cland<esc>b.").assert_visual_match(indoc! {"
-                Take my lan|d
+                ake my lan|d
             "});
         }
     }

@@ -1,13 +1,15 @@
 use super::args::ArgParser;
 use super::completers::CompletionManager;
+use super::doc::DocString;
 use super::parse::CommandArg;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parenthesized, Block, Ident, Token};
+use syn::{parenthesized, Attribute, Block, Ident, Token};
 
 struct OneCommandDecl {
+    pub attrs: Vec<Attribute>,
     pub name: Ident,
     pub context_ident: Ident,
     pub args: Vec<CommandArg>,
@@ -17,17 +19,21 @@ struct OneCommandDecl {
 impl OneCommandDecl {
     pub fn to_tokens(
         &self,
+        help_file_name: &str,
         arg_parser: &ArgParser,
         completions: &CompletionManager,
         registry_name: Ident,
     ) -> Result<TokenStream> {
         let OneCommandDecl {
+            attrs,
             name,
             context_ident,
             args,
             body,
+            ..
         } = self;
 
+        let mut help_signature = String::new();
         let arg_parse = if args.is_empty() {
             quote! {}
         } else {
@@ -38,6 +44,8 @@ impl OneCommandDecl {
 
             let args_ident = Ident::new("args", Span::call_site());
             for arg in args {
+                help_signature.push_str(&format!(" `{}`: [{}]()", arg.name, arg.type_name));
+
                 let stmt = arg.to_tokens(arg_parser, name.clone(), args_ident.clone())?;
                 let tokens: proc_macro2::TokenStream = stmt.into();
                 gen.extend(tokens);
@@ -60,6 +68,14 @@ impl OneCommandDecl {
             );
         }
 
+        let doc: DocString = attrs.into();
+        let trimed_signature = help_signature.trim();
+        let usage = if trimed_signature.is_empty() {
+            quote!(None)
+        } else {
+            quote!(Some(#trimed_signature))
+        };
+
         let gen = quote! {
             #registry_name.declare(
                 stringify!(#name).to_string(),
@@ -69,7 +85,17 @@ impl OneCommandDecl {
                     #body
                 })
             );
+
             #(#completers)*
+
+            #registry_name.help.insert(
+                crate::app::help::HelpTopic {
+                    filename: #help_file_name,
+                    topic: stringify!(#name),
+                    doc: #doc,
+                    usage: #usage,
+                }
+            );
         };
 
         Ok(gen.into())
@@ -78,6 +104,8 @@ impl OneCommandDecl {
 
 impl Parse for OneCommandDecl {
     fn parse(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
+
         input.parse::<Token![pub]>()?;
         input.parse::<Token![fn]>()?;
         let name: Ident = input.parse()?;
@@ -97,6 +125,7 @@ impl Parse for OneCommandDecl {
         }
 
         Ok(OneCommandDecl {
+            attrs,
             name,
             context_ident,
             args,
@@ -106,11 +135,13 @@ impl Parse for OneCommandDecl {
 }
 
 pub struct CommandDecl {
+    pub attrs: Vec<Attribute>,
     commands: Vec<OneCommandDecl>,
 }
 
 impl Parse for CommandDecl {
     fn parse(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_inner)?;
         let mut commands: Vec<OneCommandDecl> = vec![];
 
         loop {
@@ -125,17 +156,31 @@ impl Parse for CommandDecl {
             }
         }
 
-        Ok(CommandDecl { commands })
+        Ok(CommandDecl { attrs, commands })
     }
 }
 
 impl CommandDecl {
-    pub fn to_tokens(&self, registry_name: Ident) -> Result<TokenStream> {
+    pub fn to_tokens(&self, module_name: Ident, registry_name: Ident) -> Result<TokenStream> {
         let mut output = TokenStream::new();
         let args = ArgParser::default();
         let completions = CompletionManager::default();
+        let help_file_name = module_name.to_string().replace("declare_", "");
+
+        let doc: DocString = (&self.attrs).into();
+        let filename_doc: TokenStream = quote! {
+            #registry_name.help.insert_filename_doc(#help_file_name, #doc);
+        }
+        .into();
+        output.extend(filename_doc);
+
         for command in &self.commands {
-            output.extend(command.to_tokens(&args, &completions, registry_name.clone())?);
+            output.extend(command.to_tokens(
+                &help_file_name,
+                &args,
+                &completions,
+                registry_name.clone(),
+            )?);
         }
         Ok(output)
     }

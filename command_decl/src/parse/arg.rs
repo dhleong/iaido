@@ -23,7 +23,7 @@ impl CommandArg {
             let first = &stream.path.segments[0];
             let type_ident = first.ident.clone();
             let type_name = type_ident.to_string();
-            if type_name.find("Optional").is_some() {
+            if type_name.find("Option").is_some() {
                 match first.arguments {
                     PathArguments::AngleBracketed(ref args) => {
                         if let GenericArgument::Type(Type::Path(ref actual_type)) = args.args[0] {

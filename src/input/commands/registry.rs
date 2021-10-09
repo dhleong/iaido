@@ -1,5 +1,6 @@
 use std::collections::{hash_map, HashMap};
 
+use crate::app::help::{registry::HelpRegistry, HelpTopic};
 use crate::input::completion::{args::CommandArgsCompleter, Completer};
 
 use super::CommandHandler;
@@ -22,18 +23,11 @@ impl CommandSpec {
     }
 }
 
+#[derive(Default)]
 pub struct CommandRegistry {
     commands: HashMap<String, CommandSpec>,
     abbreviations: HashMap<String, String>,
-}
-
-impl Default for CommandRegistry {
-    fn default() -> Self {
-        Self {
-            commands: HashMap::new(),
-            abbreviations: HashMap::new(),
-        }
-    }
+    pub help: HelpRegistry,
 }
 
 impl CommandRegistry {
@@ -64,15 +58,31 @@ impl CommandRegistry {
         self.commands.insert(name, spec);
     }
 
-    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
-        if let Some(handler) = self.commands.get(name) {
-            return Some(handler);
+    pub fn expand_name<'a>(&'a self, name: &'a String) -> Option<&'a String> {
+        if self.commands.get(name).is_some() {
+            return Some(name);
         }
 
         if let Some(full_name) = self.abbreviations.get(name) {
-            if let Some(handler) = self.commands.get(full_name) {
-                return Some(handler);
+            if self.commands.get(full_name).is_some() {
+                return Some(full_name);
             }
+        }
+
+        None
+    }
+
+    pub fn get(&self, name: &String) -> Option<&CommandSpec> {
+        if let Some(expanded) = self.expand_name(name) {
+            return self.commands.get(expanded);
+        }
+
+        None
+    }
+
+    pub fn get_doc(&self, name: &String) -> Option<&HelpTopic> {
+        if let Some(expanded) = self.expand_name(name) {
+            return self.help.get(expanded);
         }
 
         None

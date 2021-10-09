@@ -32,12 +32,17 @@ pub fn render(display: &mut Display) {
             Span::from(":"),
             Span::styled("<port>", var_style),
             Span::styled("<Enter>", enter_style),
-            Span::from("  to connect"),
+            Span::from("  to connect     "),
         ]),
         Spans::from(vec![
             Span::from("type  :q"),
             Span::styled("<Enter>", enter_style),
-            Span::from("                      to exit   "),
+            Span::from("                      to exit        "),
+        ]),
+        Spans::from(vec![
+            Span::from("type  :help"),
+            Span::styled("<Enter>", enter_style),
+            Span::from("                   for on-line help"),
         ]),
     ];
 

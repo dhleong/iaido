@@ -29,6 +29,8 @@ pub trait Layout: Renderable + Resizable {
     fn size(&self) -> Size;
     fn windows_count(&self) -> usize;
 
+    fn iter(&self) -> Box<dyn Iterator<Item = &Box<Window>> + '_>;
+
     fn by_id_for_split(&mut self, id: Id) -> Option<&mut Box<Window>> {
         self.by_id_mut(id)
     }

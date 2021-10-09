@@ -60,6 +60,7 @@ fn create_arg_parser() -> ArgParser {
     build_arg_handler! { map ->
         String => |raw| raw.to_string(),
         PathBuf => |raw| std::path::PathBuf::from(raw),
+        HelpQuery => |raw| crate::app::help::HelpQuery::from(raw),
         usize => |ctx, raw| {
             let command = ctx.command_name;
             let arg = ctx.arg.name.clone();

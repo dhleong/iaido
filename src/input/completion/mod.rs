@@ -2,6 +2,7 @@ pub mod args;
 pub mod commands;
 pub mod empty;
 pub mod file;
+pub mod help;
 mod impl_macro;
 pub mod state;
 
@@ -18,6 +19,7 @@ pub trait CompletableContext {
     fn commands(&self) -> &CommandRegistry;
 }
 
+#[derive(Clone)]
 pub struct CompletionContext {
     pub text: String,
     pub cursor: usize,

@@ -1,11 +1,13 @@
+use native_tls::TlsConnector;
 use std::io;
+use std::net::TcpStream;
 
 use telnet::Telnet;
 use url::Url;
 
 use crate::editing::Id;
 
-use super::{ansi::AnsiPipeline, Connection, ConnectionFactory, ReadValue};
+use super::{ansi::AnsiPipeline, tls, Connection, ConnectionFactory, ReadValue};
 
 const BUFFER_SIZE: usize = 2048;
 
@@ -51,6 +53,19 @@ impl Connection for TelnetConnection {
     }
 }
 
+fn connect(host: &str, port: u16, secure: bool, buffer_size: usize) -> io::Result<Telnet> {
+    let tcp = TcpStream::connect((host, port))?;
+    if !secure {
+        Ok(Telnet::from_stream(Box::new(tcp), buffer_size))
+    } else {
+        let connector = TlsConnector::new().expect("Failed to initialize TLS");
+        match connector.connect(host, tcp) {
+            Ok(raw_tls) => Ok(tls::create_telnet(raw_tls, buffer_size)),
+            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+        }
+    }
+}
+
 pub struct TelnetConnectionFactory;
 impl ConnectionFactory for TelnetConnectionFactory {
     fn clone_boxed(&self) -> Box<dyn ConnectionFactory> {
@@ -63,26 +78,21 @@ impl ConnectionFactory for TelnetConnectionFactory {
             "ssl" => true,
             _ => return None,
         };
-        if secure {
-            todo!("tls");
-        }
 
-        if let Some(host) = uri.host_str() {
-            if let Some(port) = uri.port() {
-                return match Telnet::connect((host, port), BUFFER_SIZE) {
-                    Ok(conn) => Some(Ok(Box::new(TelnetConnection {
-                        id,
-                        telnet: conn,
-                        pipeline: AnsiPipeline::new(),
-                    }))),
-                    Err(e) => Some(Err(e)),
-                };
-            }
-        }
+        match (uri.host_str(), uri.port()) {
+            (Some(host), Some(port)) => match connect(host, port, secure, BUFFER_SIZE) {
+                Ok(conn) => Some(Ok(Box::new(TelnetConnection {
+                    id,
+                    telnet: conn,
+                    pipeline: AnsiPipeline::new(),
+                }))),
+                Err(e) => Some(Err(e)),
+            },
 
-        Some(Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("{}: invalid telnet uri", uri),
-        )))
+            _ => Some(Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("{}: invalid telnet uri", uri),
+            ))),
+        }
     }
 }

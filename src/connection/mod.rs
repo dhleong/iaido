@@ -9,6 +9,7 @@ use self::telnet::TelnetConnectionFactory;
 mod ansi;
 pub mod connections;
 mod telnet;
+mod tls;
 
 #[derive(Debug, PartialEq)]
 pub enum ReadValue {

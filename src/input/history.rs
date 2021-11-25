@@ -52,8 +52,8 @@ impl StringHistories {
             .or_insert_with(|| Default::default())
     }
 
-    pub fn get_most_recent(&self, key: String) -> Option<&String> {
-        if let Some(history) = self.histories.get(&key) {
+    pub fn get_most_recent(&self, key: &str) -> Option<&String> {
+        if let Some(history) = self.histories.get(key) {
             history.first()
         } else {
             None
@@ -61,6 +61,7 @@ impl StringHistories {
     }
 
     pub fn maybe_insert(&mut self, key: String, entry: String) {
+        // TODO This should actually *remove* older matching entries, per :help cmdline-history
         let history = self.get(key);
         if let Some(existing) = history.first() {
             if existing.to_owned() == entry {

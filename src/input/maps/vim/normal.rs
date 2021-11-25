@@ -50,6 +50,7 @@ fn cmd_mode_access() -> KeyTreeNode {
 
             ctx.keymap.push_mode(VimPromptConfig{
                 prompt: ":".into(),
+                history_key: ":".into(),
                 handler: Box::new(handle_command),
                 completer: Some(Rc::new(CommandsCompleter)),
             }.into());

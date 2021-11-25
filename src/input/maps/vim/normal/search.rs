@@ -118,6 +118,7 @@ fn activate_search(
     ctx.keymap.push_mode(
         VimPromptConfig {
             prompt: ui.to_string(),
+            history_key: "/".to_string(),
             handler,
             completer: None,
         }
@@ -136,11 +137,7 @@ fn next_search(ctx: KeyHandlerContext<VimKeymap>, match_direction: bool) -> KeyR
         '?'
     };
 
-    if let Some(query_ref) = ctx
-        .keymap
-        .histories
-        .get_most_recent(SEARCH_HISTORY_KEY.to_string())
-    {
+    if let Some(query_ref) = ctx.keymap.histories.get_most_recent(SEARCH_HISTORY_KEY) {
         let query = query_ref.to_string();
         let initial_cursor = ctx.state().current_window().cursor;
         let motion = if ui == '/' {

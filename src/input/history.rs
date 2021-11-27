@@ -9,7 +9,7 @@ pub struct History<T> {
     pub limit: usize,
 }
 
-impl<T> History<T> {
+impl<T: PartialEq> History<T> {
     pub fn with_limit(limit: usize) -> Self {
         Self {
             items: Default::default(),
@@ -26,19 +26,24 @@ impl<T> History<T> {
     }
 
     pub fn insert(&mut self, item: T) {
+        // Per :help cmdline-history, inserting items that exactly match existing
+        // items first removes the existing item
+        if let Some(index) = self.items.iter().position(|candidate| &item == candidate) {
+            self.items.remove(index);
+        }
+
         while self.items.len() >= self.limit {
             self.items.pop_back();
         }
         self.items.push_front(item);
     }
 
-    #[allow(dead_code)] // NOTE: We use it in a test, and will need it later
     pub fn iter(&self) -> Iter<T> {
         self.items.iter()
     }
 }
 
-impl<T> Default for History<T> {
+impl<T: Eq> Default for History<T> {
     fn default() -> Self {
         Self::with_limit(DEFAULT_HISTORY_LIMIT)
     }
@@ -75,15 +80,7 @@ impl StringHistories {
     }
 
     pub fn maybe_insert(&mut self, key: String, entry: String) {
-        // TODO This should actually *remove* older matching entries, per :help cmdline-history
-        let history = self.get(key);
-        if let Some(existing) = history.first() {
-            if existing.to_owned() == entry {
-                return;
-            }
-        }
-
-        history.insert(entry)
+        self.get(key).insert(entry)
     }
 }
 
@@ -104,12 +101,12 @@ impl HistoryCursorable for &str {
 }
 
 #[derive(Default)]
-pub struct HistoryCursor<T: HistoryCursorable> {
+pub struct HistoryCursor<T: HistoryCursorable + PartialEq> {
     index: Option<usize>,
     stashed_input: Option<T>,
 }
 
-impl<T: HistoryCursorable> HistoryCursor<T> {
+impl<T: HistoryCursorable + PartialEq> HistoryCursor<T> {
     pub fn back<'h, 'a: 'h>(
         &mut self,
         stash_input: impl Fn() -> T,
@@ -174,6 +171,20 @@ mod tests {
         history.insert("Third");
         let contents: Vec<String> = history.iter().map(|s| s.to_string()).collect();
         assert_eq!(contents, vec!["Third", "Second"]);
+    }
+
+    #[test]
+    fn inserts_deduped() {
+        let mut history = History::<&str>::default();
+        history.insert("First");
+        history.insert("Second");
+        history.insert("Third");
+        let contents: Vec<String> = history.iter().map(|s| s.to_string()).collect();
+        assert_eq!(contents, vec!["Third", "Second", "First"]);
+
+        history.insert("First");
+        let contents: Vec<String> = history.iter().map(|s| s.to_string()).collect();
+        assert_eq!(contents, vec!["First", "Third", "Second"]);
     }
 
     mod cursor_tests {

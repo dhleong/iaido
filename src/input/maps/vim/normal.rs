@@ -99,6 +99,10 @@ fn cmd_mode_access() -> KeyTreeNode {
         "q:" => |?mut ctx| {
             open_cmdline_mode(ctx, ":".to_string())
         },
+
+        "q/" => |?mut ctx| {
+            open_cmdline_mode(ctx, "/".to_string())
+        },
     }
 }
 

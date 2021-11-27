@@ -2,8 +2,6 @@ use std::collections::vec_deque::Iter;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-use crate::app::prompt::Prompt;
-
 const DEFAULT_HISTORY_LIMIT: usize = 10000;
 
 pub struct History<T> {
@@ -89,17 +87,32 @@ impl StringHistories {
     }
 }
 
-#[derive(Default)]
-pub struct HistoryCursor {
-    index: Option<usize>,
-    stashed_input: Option<String>,
+pub trait HistoryCursorable {
+    fn filter(&self, stashed: &Self) -> bool;
 }
 
-impl HistoryCursor {
-    pub fn back<'h, T>(
+impl HistoryCursorable for String {
+    fn filter(&self, stashed: &String) -> bool {
+        stashed.starts_with(self)
+    }
+}
+
+impl HistoryCursorable for &str {
+    fn filter(&self, stashed: &&str) -> bool {
+        stashed.starts_with(self)
+    }
+}
+
+#[derive(Default)]
+pub struct HistoryCursor<T: HistoryCursorable> {
+    index: Option<usize>,
+    stashed_input: Option<T>,
+}
+
+impl<T: HistoryCursorable> HistoryCursor<T> {
+    pub fn back<'h>(
         &mut self,
-        prompt: &Prompt,
-        prompt_len: usize,
+        stash_input: impl Fn() -> T,
         history: &'h History<T>,
     ) -> Option<&'h T> {
         if let Some(previous_index) = self.index {
@@ -112,7 +125,7 @@ impl HistoryCursor {
                 None
             }
         } else if let Some(first_history) = history.nth(0) {
-            self.stashed_input = Some((&prompt.buffer.get_contents()[prompt_len..]).to_string());
+            self.stashed_input = Some(stash_input());
             self.index = Some(0);
             Some(first_history)
         } else {
@@ -120,7 +133,7 @@ impl HistoryCursor {
         }
     }
 
-    pub fn forward<'h, T>(&mut self, history: &'h History<T>) -> Option<&'h T> {
+    pub fn forward<'h, 'a: 'h>(&'a mut self, history: &'h History<T>) -> Option<&'h T> {
         if let Some(previous_index) = self.index {
             // TODO If stashed_input is not None, vim would search for a prefix match
             if previous_index > 0 {
@@ -129,15 +142,11 @@ impl HistoryCursor {
                 history.nth(new_index)
             } else {
                 self.index = None;
-                None
+                self.stashed_input.as_ref()
             }
         } else {
             None
         }
-    }
-
-    pub fn take_stashed_input(&mut self) -> Option<String> {
-        self.stashed_input.take()
     }
 }
 
@@ -153,5 +162,48 @@ mod tests {
         history.insert("Third");
         let contents: Vec<String> = history.iter().map(|s| s.to_string()).collect();
         assert_eq!(contents, vec!["Third", "Second"]);
+    }
+
+    mod cursor_tests {
+        use super::*;
+
+        #[test]
+        fn navigate_simple() {
+            let mut history = History::<&str>::with_limit(2);
+            history.insert("First");
+            history.insert("Second");
+
+            let stash_input = || "";
+
+            let mut cursor = HistoryCursor::<&str>::default();
+            let entry = cursor.back(stash_input, &history);
+            assert_eq!(entry.unwrap().to_owned(), "Second");
+
+            let entry = cursor.back(stash_input, &history);
+            assert_eq!(entry.unwrap().to_owned(), "First");
+
+            // No more history returns None
+            assert_eq!(cursor.back(stash_input, &history), None);
+
+            let entry = cursor.forward(&history);
+            assert_eq!(entry.unwrap().to_owned(), "Second");
+
+            // We had no input in the prompt, so we get a blank string back:
+            let entry = cursor.forward(&history);
+            assert_eq!(entry.unwrap().to_owned(), "");
+
+            // And no further to go:
+            assert_eq!(cursor.forward(&history), None);
+            assert_eq!(cursor.forward(&history), None);
+
+            // If we go back again with new content...
+            let stash_input = || "Sec";
+            let entry = cursor.back(stash_input, &history);
+            assert_eq!(entry.unwrap().to_owned(), "Second");
+
+            // ... we should return to the new content
+            let entry = cursor.forward(&history);
+            assert_eq!(entry.unwrap().to_owned(), "Sec");
+        }
     }
 }

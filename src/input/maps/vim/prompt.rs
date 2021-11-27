@@ -67,7 +67,7 @@ fn mappings(config: VimPromptConfig) -> KeyTreeNode {
     let up_history_key = config.history_key.to_string();
     let down_history_key = config.history_key.to_string();
 
-    let cursor = Arc::new(Mutex::new(HistoryCursor::default()));
+    let cursor = Arc::new(Mutex::new(HistoryCursor::<String>::default()));
     let up_cursor = cursor.clone();
     let down_cursor = cursor.clone();
 
@@ -81,7 +81,8 @@ fn mappings(config: VimPromptConfig) -> KeyTreeNode {
         "<up>" => move |ctx| {
             let mut cursor = up_cursor.lock().unwrap();
             let history = ctx.keymap.histories.take(&up_history_key);
-            if let Some(previous) = cursor.back(&mut ctx.state_mut().prompt, prompt_len, &history) {
+            let stash_input = || (&ctx.state().prompt.buffer.get_contents()[prompt_len..]).to_string();
+            if let Some(previous) = cursor.back(stash_input, &history) {
                 let mut new_content = String::new();
                 new_content.push_str(&up_prompt);
                 new_content.push_str(previous);
@@ -99,12 +100,6 @@ fn mappings(config: VimPromptConfig) -> KeyTreeNode {
                 let mut new_content = String::new();
                 new_content.push_str(&down_prompt);
                 new_content.push_str(previous);
-
-                ctx.state_mut().prompt.activate(new_content.into());
-            } else if let Some(original) = cursor.take_stashed_input() {
-                let mut new_content = String::new();
-                new_content.push_str(&down_prompt);
-                new_content.push_str(&original);
 
                 ctx.state_mut().prompt.activate(new_content.into());
             }

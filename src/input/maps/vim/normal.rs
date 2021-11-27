@@ -5,6 +5,8 @@ pub mod search;
 mod window;
 
 use std::rc::Rc;
+use tui::style::{Color, Style};
+use tui::text::Spans;
 
 use crate::input::{
     commands::CommandHandlerContext,
@@ -12,7 +14,9 @@ use crate::input::{
     maps::{KeyHandlerContext, KeyResult},
     KeyError, KeymapContext,
 };
+use crate::tui::text::Span;
 use crate::{
+    editing::gutter::Gutter,
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
@@ -44,20 +48,35 @@ fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
 
 fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String) -> KeyResult<()> {
     ctx.state_mut().clear_echo();
-    ctx.state_mut().current_tab_mut().split_bottom();
+    let win_id = ctx.state_mut().current_tab_mut().split_bottom();
     let history = ctx.keymap.histories.take(&history_key);
+
+    let gutter_prefix = vec![Span::styled(
+        history_key.to_string(),
+        Style::default().fg(Color::DarkGray),
+    )];
 
     let buffer = ctx.state_mut().buffers.create_mut();
     let buf_id = buffer.id();
 
     // TODO Resize to cmdwinheight
 
+    let mut count = 0;
     for entry in history.iter().rev() {
         buffer.append_line(entry.to_string());
+        count += 1;
     }
 
     ctx.state_mut().set_current_window_buffer(buf_id);
     ctx.keymap.histories.replace(history_key, history);
+
+    let win = ctx.state_mut().current_tab_mut().by_id_mut(win_id).unwrap();
+
+    win.gutter = Some(Gutter {
+        width: 1,
+        get_content: Box::new(move |_line| Spans(gutter_prefix.clone())),
+    });
+    win.cursor = (count, 0).into();
 
     Ok(())
 }

@@ -25,7 +25,9 @@ struct RenderableContent<'a> {
     start: WrappedLineOffset,
     end: WrappedLineOffset,
     candidate_text: text::Text<'a>,
+    gutter_width: u16,
     inner_height: u16,
+    inner_width: u16,
 
     scroll_offset: u16,
     scrolled_lines: usize,
@@ -38,6 +40,13 @@ struct RenderableContent<'a> {
 impl<'a> RenderableContent<'a> {
     fn new(window: &Window, buf: &Box<dyn Buffer>) -> Self {
         let count = buf.lines_count();
+
+        let gutter_width = if let Some(gutter) = window.gutter.as_ref() {
+            gutter.width.into()
+        } else {
+            0
+        };
+        let available_width = window.size.w.checked_sub(gutter_width).unwrap_or(0);
 
         // ensure scrolled_lines isn't excessive (we should always
         // be able to render at least one line)
@@ -52,7 +61,7 @@ impl<'a> RenderableContent<'a> {
         let lines: Vec<text::Spans> = (start..end).map(|i| buf.get(i).clone()).collect();
         let line_heights: Vec<u16> = lines
             .iter()
-            .map(|line| line.measure_height(window.size.w))
+            .map(|line| line.measure_height(available_width))
             .collect();
 
         // make sure we aren't scrolled too far due to an "undo," etc
@@ -89,7 +98,9 @@ impl<'a> RenderableContent<'a> {
                 visual_offset: end_visual_offset,
             },
             candidate_text,
+            gutter_width,
             inner_height,
+            inner_width: available_width,
             scroll_offset,
             scrolled_lines,
             line_heights,
@@ -154,7 +165,8 @@ impl Renderable for Window {
             Some(line) => line,
             None => return, // nothing we can do
         };
-        let (_, cursor_y_offset) = wrap_cursor(cursor_line, self.size.w, self.cursor.col);
+        let (_, cursor_y_offset) =
+            wrap_cursor(cursor_line, renderable.inner_width, self.cursor.col);
 
         if self.cursor.line < renderable.start.line {
             self.scroll_offset = 0;
@@ -202,6 +214,10 @@ impl Renderable for Window {
             area.height = renderable.inner_height;
         }
 
+        let gutter_x = area.x;
+        area.x += renderable.gutter_width;
+        area.width -= renderable.gutter_width;
+
         if self.focused {
             let (x, y) = if buf.lines_count() > 0 {
                 let (cursor_x, cursor_y_offset) =
@@ -236,6 +252,16 @@ impl Renderable for Window {
             }
         }
 
+        if let Some(gutter) = self.gutter.as_ref() {
+            let width: u16 = gutter.width.into();
+            for y in area.y..area.y + area.height {
+                let content = (gutter.get_content)(y.into());
+                context
+                    .display
+                    .buffer
+                    .set_spans(gutter_x, y, &content, width);
+            }
+        }
         paragraph.render(area, &mut context.display.buffer);
     }
 }

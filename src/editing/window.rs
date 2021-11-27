@@ -2,6 +2,7 @@ use bitflags::bitflags;
 
 use std::cmp::{max, min};
 
+use crate::editing::gutter::Gutter;
 use crate::{
     input::completion::{state::CompletionState, Completion},
     tui::measure::Measurable,
@@ -28,6 +29,7 @@ pub struct Window {
     pub focused: bool,
     pub inserting: bool,
     pub flags: WindowFlags,
+    pub gutter: Option<Gutter>,
 
     pub cursor: CursorPosition,
 
@@ -51,6 +53,7 @@ impl Window {
             size: Size { w: 0, h: 0 },
             focused,
             flags: WindowFlags::NONE,
+            gutter: None,
             inserting: false,
             cursor: CursorPosition { line: 0, col: 0 },
             scrolled_lines: 0,

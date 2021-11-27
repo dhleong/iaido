@@ -42,6 +42,26 @@ fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
     }
 }
 
+fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String) -> KeyResult<()> {
+    ctx.state_mut().clear_echo();
+    ctx.state_mut().current_tab_mut().split_bottom();
+    let history = ctx.keymap.histories.take(&history_key);
+
+    let buffer = ctx.state_mut().buffers.create_mut();
+    let buf_id = buffer.id();
+
+    // TODO Resize to cmdwinheight
+
+    for entry in history.iter().rev() {
+        buffer.append_line(entry.to_string());
+    }
+
+    ctx.state_mut().set_current_window_buffer(buf_id);
+    ctx.keymap.histories.replace(history_key, history);
+
+    Ok(())
+}
+
 fn cmd_mode_access() -> KeyTreeNode {
     vim_tree! {
         ":" => |ctx| {
@@ -55,7 +75,11 @@ fn cmd_mode_access() -> KeyTreeNode {
                 completer: Some(Rc::new(CommandsCompleter)),
             }.into());
             Ok(())
-         },
+        },
+
+        "q:" => |?mut ctx| {
+            open_cmdline_mode(ctx, ":".to_string())
+        },
     }
 }
 

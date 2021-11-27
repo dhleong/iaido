@@ -88,18 +88,18 @@ impl StringHistories {
 }
 
 pub trait HistoryCursorable {
-    fn filter(&self, stashed: &Self) -> bool;
+    fn filter_history(&self, candidate: &Self) -> bool;
 }
 
 impl HistoryCursorable for String {
-    fn filter(&self, stashed: &String) -> bool {
-        stashed.starts_with(self)
+    fn filter_history(&self, candidate: &String) -> bool {
+        (&self[..]).filter_history(&&candidate[..])
     }
 }
 
 impl HistoryCursorable for &str {
-    fn filter(&self, stashed: &&str) -> bool {
-        stashed.starts_with(self)
+    fn filter_history(&self, candidate: &&str) -> bool {
+        candidate.starts_with(self)
     }
 }
 
@@ -110,24 +110,25 @@ pub struct HistoryCursor<T: HistoryCursorable> {
 }
 
 impl<T: HistoryCursorable> HistoryCursor<T> {
-    pub fn back<'h>(
+    pub fn back<'h, 'a: 'h>(
         &mut self,
         stash_input: impl Fn() -> T,
         history: &'h History<T>,
     ) -> Option<&'h T> {
-        if let Some(previous_index) = self.index {
-            // TODO If stashed_input is not None, vim would search for a prefix match
-            let next_index = previous_index + 1;
-            if let Some(next) = history.iter().skip(next_index).next() {
-                self.index = Some(next_index);
-                Some(next)
-            } else {
-                None
-            }
-        } else if let Some(first_history) = history.nth(0) {
+        let next_index = if let Some(previous_index) = self.index {
+            previous_index + 1
+        } else {
             self.stashed_input = Some(stash_input());
-            self.index = Some(0);
-            Some(first_history)
+            0
+        };
+
+        let mut iter = history
+            .iter()
+            .filter(|candidate| self.filter_history(candidate))
+            .skip(next_index);
+        if let Some(next) = iter.next() {
+            self.index = Some(next_index);
+            Some(next)
         } else {
             None
         }
@@ -135,17 +136,28 @@ impl<T: HistoryCursorable> HistoryCursor<T> {
 
     pub fn forward<'h, 'a: 'h>(&'a mut self, history: &'h History<T>) -> Option<&'h T> {
         if let Some(previous_index) = self.index {
-            // TODO If stashed_input is not None, vim would search for a prefix match
             if previous_index > 0 {
                 let new_index = previous_index - 1;
                 self.index = Some(new_index);
-                history.nth(new_index)
+                history
+                    .iter()
+                    .filter(|candidate| self.filter_history(candidate))
+                    .nth(new_index)
             } else {
                 self.index = None;
                 self.stashed_input.as_ref()
             }
         } else {
             None
+        }
+    }
+
+    fn filter_history(&self, candidate: &T) -> bool {
+        // NOTE: If stashed_input is not empty, vim searches for a prefix match:
+        if let Some(stashed) = self.stashed_input.as_ref() {
+            stashed.filter_history(candidate)
+        } else {
+            true
         }
     }
 }
@@ -204,6 +216,31 @@ mod tests {
             // ... we should return to the new content
             let entry = cursor.forward(&history);
             assert_eq!(entry.unwrap().to_owned(), "Sec");
+        }
+
+        #[test]
+        fn navigate_filtered() {
+            let mut history = History::<&str>::with_limit(2);
+            history.insert("First");
+            history.insert("Second");
+
+            let stash_input = || "Fir";
+
+            let mut cursor = HistoryCursor::<&str>::default();
+            let entry = cursor.back(stash_input, &history);
+            assert_eq!(entry.unwrap().to_owned(), "First");
+
+            // No more filtered history returns None
+            assert_eq!(cursor.back(stash_input, &history), None);
+            assert_eq!(cursor.back(stash_input, &history), None);
+
+            // Skip back over Second to our stashed input
+            let entry = cursor.forward(&history);
+            assert_eq!(entry.unwrap().to_owned(), "Fir");
+
+            // And no further to go:
+            assert_eq!(cursor.forward(&history), None);
+            assert_eq!(cursor.forward(&history), None);
         }
     }
 }

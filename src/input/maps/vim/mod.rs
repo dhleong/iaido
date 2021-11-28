@@ -157,15 +157,15 @@ impl VimKeymap {
         config: KeymapConfig,
         mode: &RemapMode,
     ) -> Option<KeyTreeNode> {
+        if !config.allow_remap {
+            return None;
+        }
+
         let user_maps = self.user_maps.get(&mode);
         let buffer_maps = self
             .buffer_maps
             .get(&buf_id)
             .and_then(|maps| maps.get(&mode));
-
-        if !config.allow_remap {
-            return buffer_maps.and_then(|maps| Some(maps.clone()));
-        }
 
         match (user_maps, buffer_maps) {
             (None, None) => None,

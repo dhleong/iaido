@@ -132,6 +132,21 @@ impl AppState {
         }
     }
 
+    pub fn delete_buffer(&mut self, buffer_id: Id) {
+        if let Some(_) = self.buffers.remove(buffer_id) {
+            let window_ids: Vec<Id> = self
+                .tabpages
+                .windows_for_buffer(buffer_id)
+                .map(|win| win.id)
+                .collect();
+            for id in window_ids {
+                if let Some(tab) = self.tabpages.containing_window_mut(id) {
+                    tab.close_window(id);
+                }
+            }
+        }
+    }
+
     // ======= redraw =========================================
 
     pub fn request_redraw(&mut self) {

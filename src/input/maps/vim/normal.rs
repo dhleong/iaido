@@ -56,8 +56,10 @@ fn submit_cmdline(mut ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> 
         .checked_get(ctx.state().current_window().cursor.line)
     {
         let cmd = cmd_spans.to_string();
-        let win_id = ctx.state().current_window().id;
-        ctx.state_mut().current_tab_mut().close_window(win_id);
+
+        // Release the buffer
+        let buffer_id = ctx.state().current_buffer().id();
+        ctx.state_mut().delete_buffer(buffer_id);
 
         // Is this *too* hacky? Just feed each char as a key:
         // Perhaps we should match on prompt_key and invoke eg `handle_command`,

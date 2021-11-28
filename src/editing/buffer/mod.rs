@@ -221,12 +221,7 @@ pub trait Buffer: HasId + Send + Sync {
     }
 
     fn is_read_only(&self) -> bool {
-        match self.source() {
-            BufferSource::Connection(_) => true,
-            BufferSource::Help => true,
-            BufferSource::Log => true,
-            _ => false,
-        }
+        self.source().is_read_only()
     }
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {

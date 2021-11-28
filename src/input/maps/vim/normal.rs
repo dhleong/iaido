@@ -6,20 +6,22 @@ mod window;
 
 use std::rc::Rc;
 use tui::style::{Color, Style};
-use tui::text::Spans;
+use tui::text::{Span, Spans};
 
+use crate::editing::text::EditableLine;
 use crate::input::{
     commands::CommandHandlerContext,
     completion::commands::CommandsCompleter,
+    keys::KeysParsable,
     maps::{KeyHandlerContext, KeyResult},
-    KeyError, KeymapContext,
+    KeyError, KeymapContext, RemapMode, Remappable,
 };
-use crate::tui::text::Span;
 use crate::{
     editing::gutter::Gutter,
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
+    editing::source::BufferSource,
     editing::text::TextLine,
 };
 use crate::{key_handler, vim_tree};
@@ -46,13 +48,32 @@ fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
     }
 }
 
-fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String) -> KeyResult<()> {
+fn submit_cmdline(mut ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> KeyResult {
+    if let Some(cmd_spans) = ctx
+        .state()
+        .current_buffer()
+        .checked_get(ctx.state().current_window().cursor.line)
+    {
+        // TODO Submit the cmd
+        let cmd = cmd_spans.to_string();
+        ctx.state_mut()
+            .echom(format!("TEST {} {}", prompt_key, cmd));
+    }
+    Ok(())
+}
+
+fn open_cmdline_mode(
+    mut ctx: KeyHandlerContext<VimKeymap>,
+    history_key: String,
+    prompt_key: String,
+) -> KeyResult<()> {
     ctx.state_mut().clear_echo();
     let win_id = ctx.state_mut().current_tab_mut().split_bottom();
     let history = ctx.keymap.histories.take(&history_key);
 
     let buffer = ctx.state_mut().buffers.create_mut();
     let buf_id = buffer.id();
+    buffer.set_source(BufferSource::Cmdline);
 
     let mut count = 0;
     for entry in history.iter().rev() {
@@ -64,6 +85,21 @@ fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String)
     ctx.keymap
         .histories
         .replace(history_key.to_string(), history);
+
+    // Bind <cr> to submit the input
+    let normal_prompt_key = prompt_key.clone();
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimNormal,
+        "<cr>".into_keys(),
+        Box::new(move |ctx| submit_cmdline(ctx, normal_prompt_key.to_string())),
+    );
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimInsert,
+        "<cr>".into_keys(),
+        Box::new(move |ctx| submit_cmdline(ctx, prompt_key.to_string())),
+    );
 
     let win = ctx.state_mut().current_tab_mut().by_id_mut(win_id).unwrap();
 
@@ -99,11 +135,14 @@ fn cmd_mode_access() -> KeyTreeNode {
         },
 
         "q:" => |?mut ctx| {
-            open_cmdline_mode(ctx, ":".to_string())
+            open_cmdline_mode(ctx, ":".to_string(), ":".into())
         },
 
         "q/" => |?mut ctx| {
-            open_cmdline_mode(ctx, "/".to_string())
+            open_cmdline_mode(ctx, "/".to_string(), "/".into())
+        },
+        "q?" => |?mut ctx| {
+            open_cmdline_mode(ctx, "/".to_string(), "?".into())
         },
     }
 }

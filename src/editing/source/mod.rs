@@ -4,6 +4,7 @@ use super::Id;
 pub enum BufferSource {
     /// The Buffer is in-memory only
     None,
+    Cmdline,
 
     Help,
     Log,
@@ -25,6 +26,16 @@ impl BufferSource {
     pub fn is_none(&self) -> bool {
         match self {
             &BufferSource::None => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_read_only(&self) -> bool {
+        match self {
+            BufferSource::Connection(_) => true,
+            BufferSource::Help => true,
+            BufferSource::Log => true,
+
             _ => false,
         }
     }

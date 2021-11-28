@@ -44,34 +44,42 @@ impl KeyTreeNode {
     }
 }
 
-impl ops::Add<KeyTreeNode> for KeyTreeNode {
+impl ops::Add<&KeyTreeNode> for &KeyTreeNode {
     type Output = KeyTreeNode;
 
-    fn add(self, mut rhs: KeyTreeNode) -> Self::Output {
+    fn add(self, rhs: &KeyTreeNode) -> Self::Output {
         let mut result = KeyTreeNode::root();
 
-        if let Some(rhs_handler) = rhs.handler {
-            result.handler = Some(rhs_handler);
+        if let Some(rhs_handler) = &rhs.handler {
+            result.handler = Some(rhs_handler.clone());
         } else {
-            result.handler = self.handler;
+            result.handler = self.handler.clone();
         }
 
         // combine shared child nodes and insert our unmatched nodes
-        for (key, child) in self.children {
-            if let Some(rhs_child) = rhs.children.remove(&key) {
-                result.children.insert(key, child + rhs_child);
+        for (key, child) in &self.children {
+            if let Some(rhs_child) = rhs.children.get(&key) {
+                result.children.insert(key.clone(), child + rhs_child);
             } else {
-                result.children.insert(key, child);
+                result.children.insert(key.clone(), child.clone());
             }
         }
 
         // insert their unmatched nodes
-        for (key, child) in rhs.children {
+        for (key, child) in &rhs.children {
             if !result.children.contains_key(&key) {
-                result.children.insert(key, child);
+                result.children.insert(key.clone(), child.clone());
             }
         }
 
         result
+    }
+}
+
+impl ops::Add<KeyTreeNode> for KeyTreeNode {
+    type Output = KeyTreeNode;
+
+    fn add(self, rhs: KeyTreeNode) -> Self::Output {
+        &self + &rhs
     }
 }

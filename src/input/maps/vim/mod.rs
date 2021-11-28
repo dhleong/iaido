@@ -16,6 +16,7 @@ use tree::KeyTreeNode;
 use crate::{
     app::widgets::Widget,
     editing::motion::MotionRange,
+    editing::Id,
     input::{
         commands::CommandHandlerContext,
         completion::{state::BoxedCompleter, Completer},
@@ -81,12 +82,19 @@ impl ops::Add<Option<&KeyTreeNode>> for VimMode {
     }
 }
 
+impl ops::Add<Option<KeyTreeNode>> for VimMode {
+    type Output = VimMode;
+
+    fn add(self, rhs: Option<KeyTreeNode>) -> Self::Output {
+        self + rhs.as_ref()
+    }
+}
+
 impl ops::Add<&KeyTreeNode> for VimMode {
     type Output = VimMode;
 
     fn add(self, rhs: &KeyTreeNode) -> Self::Output {
-        let cloned: KeyTreeNode = rhs.clone();
-        let mut new = VimMode::new(self.id, self.mappings + cloned);
+        let mut new = VimMode::new(self.id, &self.mappings + rhs);
         new.after_handler = self.after_handler;
         new.completer = self.completer;
         new.default_handler = self.default_handler;
@@ -111,6 +119,7 @@ pub struct VimKeymap {
     pub selected_register: Option<char>,
     active_completer: Option<Rc<dyn Completer>>,
     user_maps: HashMap<RemapMode, KeyTreeNode>,
+    buffer_maps: HashMap<Id, HashMap<RemapMode, KeyTreeNode>>,
     pub histories: StringHistories,
     pub search: VimSearchState,
 }
@@ -141,10 +150,25 @@ impl VimKeymap {
             Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
         ]));
     }
+
+    fn buffer_maps(&self, buf_id: Id, mode: &RemapMode) -> Option<KeyTreeNode> {
+        let user_maps = self.user_maps.get(&mode);
+        let buffer_maps = self
+            .buffer_maps
+            .get(&buf_id)
+            .and_then(|maps| maps.get(&mode));
+        match (user_maps, buffer_maps) {
+            (None, None) => None,
+            (Some(user), None) => Some(user.clone()),
+            (None, Some(buffer)) => Some(buffer.clone()),
+            (Some(user), Some(buffer)) => Some(user + buffer),
+        }
+    }
 }
 
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
+        let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
             context.state_mut().keymap_widget = None;
@@ -152,14 +176,14 @@ impl Keymap for VimKeymap {
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
-                vim_insert_mode(&buffer_source) + self.user_maps.get(&RemapMode::VimInsert),
+                vim_insert_mode(&buffer_source) + self.buffer_maps(buf_id, &RemapMode::VimInsert),
                 false,
                 false,
             )
         } else {
             self.render_keys_buffer(context);
             (
-                vim_normal_mode() + self.user_maps.get(&RemapMode::VimNormal),
+                vim_normal_mode() + self.buffer_maps(buf_id, &RemapMode::VimNormal),
                 false,
                 true,
             )
@@ -258,6 +282,28 @@ impl BoxableKeymap for VimKeymap {
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
         crate::input::remap_keys_to_fn(self, mode, from, to)
     }
+
+    fn buf_remap_keys_user_fn(
+        &mut self,
+        buf_id: Id,
+        mode: RemapMode,
+        from: Vec<Key>,
+        handler: Box<UserKeyHandler>,
+    ) {
+        self.buf_remap_keys_fn(
+            buf_id,
+            mode,
+            from,
+            Box::new(move |mut ctx| {
+                handler(CommandHandlerContext {
+                    context: Box::new(&mut ctx.context),
+                    keymap: Box::new(ctx.keymap),
+                    input: "".to_string(),
+                })
+            }),
+        );
+    }
+
     fn remap_keys_user_fn(
         &mut self,
         mode: RemapMode,
@@ -281,17 +327,37 @@ impl BoxableKeymap for VimKeymap {
     }
 }
 
+fn insert_mapping(
+    map: &mut HashMap<RemapMode, KeyTreeNode>,
+    mode: RemapMode,
+    keys: Vec<Key>,
+    handler: Box<KeyHandler>,
+) {
+    let tree = if let Some(tree) = map.get_mut(&mode) {
+        tree
+    } else {
+        let new_tree = KeyTreeNode::root();
+        map.insert(mode.clone(), new_tree);
+        map.get_mut(&mode).unwrap()
+    };
+
+    tree.insert(&keys, handler);
+}
+
 impl Remappable<VimKeymap> for VimKeymap {
     fn remap_keys_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<KeyHandler>) {
-        let tree = if let Some(tree) = self.user_maps.get_mut(&mode) {
-            tree
-        } else {
-            let new_tree = KeyTreeNode::root();
-            self.user_maps.insert(mode.clone(), new_tree);
-            self.user_maps.get_mut(&mode).unwrap()
-        };
+        insert_mapping(&mut self.user_maps, mode, keys, handler)
+    }
 
-        tree.insert(&keys, handler);
+    fn buf_remap_keys_fn(
+        &mut self,
+        id: Id,
+        mode: RemapMode,
+        keys: Vec<Key>,
+        handler: Box<KeyHandler>,
+    ) {
+        let maps = self.buffer_maps.entry(id).or_insert(HashMap::default());
+        insert_mapping(maps, mode, keys, handler)
     }
 }
 

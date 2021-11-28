@@ -227,6 +227,16 @@ pub mod tests {
             todo!()
         }
 
+        fn buf_remap_keys_user_fn(
+            &mut self,
+            _id: crate::editing::Id,
+            _mode: crate::input::RemapMode,
+            _keys: Vec<crate::input::Key>,
+            _handler: Box<crate::input::maps::UserKeyHandler>,
+        ) {
+            todo!()
+        }
+
         fn remap_keys_user_fn(
             &mut self,
             _mode: crate::input::RemapMode,

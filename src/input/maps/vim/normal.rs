@@ -8,7 +8,6 @@ use std::rc::Rc;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 
-use crate::editing::text::EditableLine;
 use crate::input::{
     commands::CommandHandlerContext,
     completion::commands::CommandsCompleter,
@@ -18,12 +17,13 @@ use crate::input::{
 };
 use crate::input::{Key, KeyCode};
 use crate::{
+    editing::buffer::BufHidden,
     editing::gutter::Gutter,
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
     editing::source::BufferSource,
-    editing::text::TextLine,
+    editing::text::{EditableLine, TextLine},
 };
 use crate::{key_handler, vim_tree};
 
@@ -86,6 +86,7 @@ fn open_cmdline_mode(
     let buffer = ctx.state_mut().buffers.create_mut();
     let buf_id = buffer.id();
     buffer.set_source(BufferSource::Cmdline);
+    buffer.config_mut().bufhidden = BufHidden::Delete;
 
     let mut count = 0;
     for entry in history.iter().rev() {

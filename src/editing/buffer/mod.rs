@@ -110,7 +110,26 @@ impl CopiedRange {
     }
 }
 
+pub enum BufHidden {
+    Hide,
+    Delete,
+}
+
+impl Default for BufHidden {
+    fn default() -> Self {
+        BufHidden::Hide
+    }
+}
+
+#[derive(Default)]
+pub struct BufferConfig {
+    pub bufhidden: BufHidden,
+}
+
 pub trait Buffer: HasId + Send + Sync {
+    fn config(&self) -> &BufferConfig;
+    fn config_mut(&mut self) -> &mut BufferConfig;
+
     // read access
     fn lines_count(&self) -> usize;
     fn get(&self, line_index: usize) -> &TextLine;

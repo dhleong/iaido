@@ -51,15 +51,8 @@ fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String)
     let win_id = ctx.state_mut().current_tab_mut().split_bottom();
     let history = ctx.keymap.histories.take(&history_key);
 
-    let gutter_prefix = vec![Span::styled(
-        history_key.to_string(),
-        Style::default().fg(Color::DarkGray),
-    )];
-
     let buffer = ctx.state_mut().buffers.create_mut();
     let buf_id = buffer.id();
-
-    // TODO Resize to cmdwinheight
 
     let mut count = 0;
     for entry in history.iter().rev() {
@@ -68,9 +61,18 @@ fn open_cmdline_mode(mut ctx: KeyHandlerContext<VimKeymap>, history_key: String)
     }
 
     ctx.state_mut().set_current_window_buffer(buf_id);
-    ctx.keymap.histories.replace(history_key, history);
+    ctx.keymap
+        .histories
+        .replace(history_key.to_string(), history);
 
     let win = ctx.state_mut().current_tab_mut().by_id_mut(win_id).unwrap();
+
+    // TODO Resize to cmdwinheight
+
+    let gutter_prefix = vec![Span::styled(
+        history_key,
+        Style::default().fg(Color::DarkGray),
+    )];
 
     win.gutter = Some(Gutter {
         width: 1,

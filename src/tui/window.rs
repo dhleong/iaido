@@ -242,7 +242,7 @@ impl Renderable for Window {
                 (x, y)
             } else {
                 // simple case
-                (area.x, area.y)
+                (area.x, area.y.checked_sub(1).unwrap_or(0))
             };
 
             if self.inserting {

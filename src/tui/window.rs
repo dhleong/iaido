@@ -214,6 +214,12 @@ impl Renderable for Window {
             area.height = renderable.inner_height;
         }
 
+        // Windows should never appear to have 0 height
+        if area.height == 0 {
+            area.height = 1;
+            area.y -= 1;
+        }
+
         let gutter_x = area.x;
         area.x += renderable.gutter_width;
         area.width -= renderable.gutter_width;
@@ -242,7 +248,7 @@ impl Renderable for Window {
                 (x, y)
             } else {
                 // simple case
-                (area.x, area.y.checked_sub(1).unwrap_or(0))
+                (area.x, area.y)
             };
 
             if self.inserting {
@@ -254,8 +260,14 @@ impl Renderable for Window {
 
         if let Some(gutter) = self.gutter.as_ref() {
             let width: u16 = gutter.width.into();
-            for y in area.y..area.y + area.height {
-                let content = (gutter.get_content)(y.into());
+            for y in context.area.y..context.area.y + context.area.height {
+                let line = if y >= area.y {
+                    let relative: usize = (y - area.y).into();
+                    Some(renderable.start.line + relative)
+                } else {
+                    None
+                };
+                let content = (gutter.get_content)(line);
                 context
                     .display
                     .buffer

@@ -148,6 +148,8 @@ fn open_cmdline_mode(
 
     // TODO Resize to cmdwinheight
 
+    let non_line_prefix = vec![Span::styled("~", Style::default().fg(Color::DarkGray))];
+
     let gutter_prefix = vec![Span::styled(
         history_key,
         Style::default().fg(Color::DarkGray),
@@ -155,7 +157,12 @@ fn open_cmdline_mode(
 
     win.gutter = Some(Gutter {
         width: 1,
-        get_content: Box::new(move |_line| Spans(gutter_prefix.clone())),
+        get_content: Box::new(move |line| {
+            Spans(match line {
+                Some(_) => gutter_prefix.clone(),
+                None => non_line_prefix.clone(),
+            })
+        }),
     });
     win.cursor = (count, 0).into();
 

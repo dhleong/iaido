@@ -50,6 +50,8 @@ impl HasId for UndoableBuffer {
 impl Buffer for UndoableBuffer {
     delegate! {
         to self.base {
+            fn config(&self) -> &crate::editing::buffer::BufferConfig;
+            fn config_mut(&mut self) -> &mut crate::editing::buffer::BufferConfig;
             fn source(&self) -> &crate::editing::source::BufferSource;
             fn set_source(&mut self, source: crate::editing::source::BufferSource);
             fn get(&self, line_index: usize) -> &crate::editing::text::TextLine;

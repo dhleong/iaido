@@ -39,9 +39,7 @@ impl WindowApiObject {
 
     #[rpc(passing(self.id))]
     pub fn close(context: &mut CommandHandlerContext, id: Id) {
-        if let Some(tab) = context.state_mut().tabpages.containing_window_mut(id) {
-            tab.close_window(id);
-        }
+        context.state_mut().close_window(id);
     }
 }
 

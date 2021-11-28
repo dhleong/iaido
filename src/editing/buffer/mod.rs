@@ -110,7 +110,26 @@ impl CopiedRange {
     }
 }
 
+pub enum BufHidden {
+    Hide,
+    Delete,
+}
+
+impl Default for BufHidden {
+    fn default() -> Self {
+        BufHidden::Hide
+    }
+}
+
+#[derive(Default)]
+pub struct BufferConfig {
+    pub bufhidden: BufHidden,
+}
+
 pub trait Buffer: HasId + Send + Sync {
+    fn config(&self) -> &BufferConfig;
+    fn config_mut(&mut self) -> &mut BufferConfig;
+
     // read access
     fn lines_count(&self) -> usize;
     fn get(&self, line_index: usize) -> &TextLine;
@@ -221,12 +240,7 @@ pub trait Buffer: HasId + Send + Sync {
     }
 
     fn is_read_only(&self) -> bool {
-        match self.source() {
-            BufferSource::Connection(_) => true,
-            BufferSource::Help => true,
-            BufferSource::Log => true,
-            _ => false,
-        }
+        self.source().is_read_only()
     }
 
     fn get_char(&self, pos: CursorPosition) -> Option<&str> {

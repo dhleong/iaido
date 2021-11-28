@@ -62,6 +62,14 @@ impl Buffers {
         self.ids.most_recent()
     }
 
+    pub fn remove(&mut self, id: Id) -> Option<Box<dyn Buffer>> {
+        if let Some(index) = self.all.iter_mut().position(|buf| buf.id() == id) {
+            Some(self.all.remove(index))
+        } else {
+            None
+        }
+    }
+
     #[cfg(test)]
     pub fn replace(&mut self, buffer: Box<dyn Buffer>) -> Box<dyn Buffer> {
         let id = buffer.id();

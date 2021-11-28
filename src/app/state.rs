@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
     connection::connections::Connections,
     editing::{
-        buffer::{CopiedRange, MemoryBuffer},
+        buffer::{BufHidden, CopiedRange, MemoryBuffer},
         buffers::Buffers,
         ids::FIRST_USER_BUFFER_ID,
         motion::char::CharMotion,
@@ -129,6 +129,49 @@ impl AppState {
             Some(WinsBuf::new(windows.collect(), buffer))
         } else {
             None
+        }
+    }
+
+    pub fn close_window(&mut self, window_id: Id) {
+        let buffer_id = if let Some(tab) = self.tabpages.containing_window_mut(window_id) {
+            let buffer_id = if let Some(window) = tab.by_id(window_id) {
+                Some(window.buffer)
+            } else {
+                None
+            };
+
+            tab.close_window(window_id);
+
+            buffer_id
+        } else {
+            None
+        };
+
+        if let Some(buffer_id) = buffer_id {
+            if self.tabpages.windows_for_buffer(buffer_id).count() == 0 {
+                // No more windows; perform bufhidden (if the buffer still exists)
+                if let Some(buffer) = self.buffers.by_id(buffer_id) {
+                    match buffer.config().bufhidden {
+                        BufHidden::Delete => {
+                            self.buffers.remove(buffer_id);
+                        }
+                        _ => {} // nop
+                    };
+                }
+            }
+        }
+    }
+
+    pub fn delete_buffer(&mut self, buffer_id: Id) {
+        if let Some(_) = self.buffers.remove(buffer_id) {
+            let window_ids: Vec<Id> = self
+                .tabpages
+                .windows_for_buffer(buffer_id)
+                .map(|win| win.id)
+                .collect();
+            for id in window_ids {
+                self.close_window(id);
+            }
         }
     }
 

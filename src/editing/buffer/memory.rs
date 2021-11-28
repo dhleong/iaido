@@ -6,11 +6,12 @@ use crate::editing::{
     Buffer, CursorPosition, HasId,
 };
 
-use super::{util::motion_to_line_ranges, CopiedRange};
+use super::{util::motion_to_line_ranges, BufferConfig, CopiedRange};
 
 pub struct MemoryBuffer {
     id: usize,
     content: TextLines,
+    config: BufferConfig,
     pub source: BufferSource,
 }
 
@@ -18,6 +19,7 @@ impl MemoryBuffer {
     pub fn new(id: usize) -> MemoryBuffer {
         MemoryBuffer {
             id,
+            config: BufferConfig::default(),
             content: TextLines::default(),
             source: BufferSource::None,
         }
@@ -31,6 +33,14 @@ impl HasId for MemoryBuffer {
 }
 
 impl Buffer for MemoryBuffer {
+    fn config(&self) -> &BufferConfig {
+        &self.config
+    }
+
+    fn config_mut(&mut self) -> &mut BufferConfig {
+        &mut self.config
+    }
+
     fn source(&self) -> &BufferSource {
         &self.source
     }
@@ -210,6 +220,7 @@ pub mod tests {
         fn assert_visual_match(&self, s: &'static str) {
             let expected = MemoryBuffer {
                 id: 0,
+                config: BufferConfig::default(),
                 content: s.into(),
                 source: BufferSource::None,
             }

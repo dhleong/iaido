@@ -5,18 +5,25 @@ pub mod search;
 mod window;
 
 use std::rc::Rc;
+use tui::style::{Color, Style};
+use tui::text::{Span, Spans};
 
 use crate::input::{
     commands::CommandHandlerContext,
     completion::commands::CommandsCompleter,
+    keys::KeysParsable,
     maps::{KeyHandlerContext, KeyResult},
-    KeyError, KeymapContext,
+    KeyError, KeymapContext, RemapMode, Remappable,
 };
+use crate::input::{Key, KeyCode};
 use crate::{
+    editing::buffer::BufHidden,
+    editing::gutter::Gutter,
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
-    editing::text::TextLine,
+    editing::source::BufferSource,
+    editing::text::{EditableLine, TextLine},
 };
 use crate::{key_handler, vim_tree};
 
@@ -42,6 +49,119 @@ fn handle_command(mut context: &mut CommandHandlerContext) -> KeyResult {
     }
 }
 
+fn cmdline_to_prompt(
+    mut ctx: KeyHandlerContext<VimKeymap>,
+    prompt_key: String,
+) -> KeyResult<KeyHandlerContext<VimKeymap>> {
+    let cmd = if let Some(cmd_spans) = ctx
+        .state()
+        .current_buffer()
+        .checked_get(ctx.state().current_window().cursor.line)
+    {
+        cmd_spans.to_string()
+    } else {
+        "".to_string()
+    };
+
+    // Release the buffer
+    let buffer_id = ctx.state().current_buffer().id();
+    ctx.state_mut().delete_buffer(buffer_id);
+
+    // Is this *too* hacky? Just feed each char as a key:
+    // Perhaps we should match on prompt_key and invoke eg `handle_command`,
+    // `handle_forward_search`, etc. directly...
+    ctx = ctx.feed_keys_noremap(prompt_key.into_keys())?;
+
+    let cmd_as_keys: Vec<Key> = cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
+    ctx = ctx.feed_keys_noremap(cmd_as_keys)?;
+    Ok(ctx)
+}
+
+fn cancel_cmdline(ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> KeyResult {
+    cmdline_to_prompt(ctx, prompt_key)?;
+    Ok(())
+}
+
+fn submit_cmdline(ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> KeyResult {
+    let ctx = cmdline_to_prompt(ctx, prompt_key)?;
+    ctx.feed_keys_noremap("<cr>".into_keys())?;
+    Ok(())
+}
+
+fn open_cmdline_mode(
+    mut ctx: KeyHandlerContext<VimKeymap>,
+    history_key: String,
+    prompt_key: String,
+) -> KeyResult<()> {
+    ctx.state_mut().clear_echo();
+    let win_id = ctx.state_mut().current_tab_mut().split_bottom();
+    let history = ctx.keymap.histories.take(&history_key);
+
+    let buffer = ctx.state_mut().buffers.create_mut();
+    let buf_id = buffer.id();
+    buffer.set_source(BufferSource::Cmdline);
+    buffer.config_mut().bufhidden = BufHidden::Delete;
+
+    let mut count = 0;
+    for entry in history.iter().rev() {
+        buffer.append_line(entry.to_string());
+        count += 1;
+    }
+
+    ctx.state_mut().set_current_window_buffer(buf_id);
+    ctx.keymap
+        .histories
+        .replace(history_key.to_string(), history);
+
+    // Bind <cr> to submit the input
+    let normal_prompt_key = prompt_key.clone();
+    let insert_prompt_key = prompt_key.clone();
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimNormal,
+        "<cr>".into_keys(),
+        Box::new(move |ctx| submit_cmdline(ctx, normal_prompt_key.to_string())),
+    );
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimInsert,
+        "<cr>".into_keys(),
+        Box::new(move |ctx| submit_cmdline(ctx, insert_prompt_key.to_string())),
+    );
+
+    // Bind <ctrl-c> to cancel the mode
+    let normal_prompt_key = prompt_key.clone();
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimNormal,
+        "<ctrl-c>".into_keys(),
+        Box::new(move |ctx| cancel_cmdline(ctx, normal_prompt_key.to_string())),
+    );
+    ctx.keymap.buf_remap_keys_fn(
+        buf_id,
+        RemapMode::VimInsert,
+        "<ctrl-c>".into_keys(),
+        Box::new(move |ctx| cancel_cmdline(ctx, prompt_key.to_string())),
+    );
+
+    let win = ctx.state_mut().current_tab_mut().by_id_mut(win_id).unwrap();
+
+    // TODO Resize to cmdwinheight
+
+    let gutter_prefix = vec![Span::styled(
+        history_key,
+        Style::default().fg(Color::DarkGray),
+    )];
+
+    win.gutter = Some(Gutter {
+        width: 1,
+        get_content: Box::new(move |_line| Spans(gutter_prefix.clone())),
+    });
+    win.cursor = (count, 0).into();
+
+    Ok(())
+}
+
 fn cmd_mode_access() -> KeyTreeNode {
     vim_tree! {
         ":" => |ctx| {
@@ -55,7 +175,18 @@ fn cmd_mode_access() -> KeyTreeNode {
                 completer: Some(Rc::new(CommandsCompleter)),
             }.into());
             Ok(())
-         },
+        },
+
+        "q:" => |?mut ctx| {
+            open_cmdline_mode(ctx, ":".to_string(), ":".into())
+        },
+
+        "q/" => |?mut ctx| {
+            open_cmdline_mode(ctx, "/".to_string(), "/".into())
+        },
+        "q?" => |?mut ctx| {
+            open_cmdline_mode(ctx, "/".to_string(), "?".into())
+        },
     }
 }
 

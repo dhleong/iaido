@@ -1,8 +1,8 @@
 use crate::input::maps::vim::VimKeymap;
 use crate::input::maps::{vim::tree::KeyTreeNode, KeyHandlerContext};
-use crate::input::KeymapContext;
+use crate::input::{KeyError, KeymapContext};
 use crate::vim_tree;
-use crate::{editing::FocusDirection, input::maps::KeyResult};
+use crate::{editing::source::BufferSource, editing::FocusDirection, input::maps::KeyResult};
 
 pub fn mappings() -> KeyTreeNode {
     vim_tree! {
@@ -24,6 +24,13 @@ pub fn mappings() -> KeyTreeNode {
 }
 
 fn focus(mut ctx: KeyHandlerContext<VimKeymap>, direction: FocusDirection) -> KeyResult {
-    ctx.state_mut().current_tab_mut().move_focus(direction);
-    Ok(())
+    match ctx.state().current_buffer().source() {
+        &BufferSource::Cmdline => Err(KeyError::NotPermitted(
+            "Invalid in command-line window; <CR> executes, CTRL-C quits".to_string(),
+        )),
+        _ => {
+            ctx.state_mut().current_tab_mut().move_focus(direction);
+            Ok(())
+        }
+    }
 }

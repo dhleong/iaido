@@ -16,6 +16,7 @@ use crate::input::{
     maps::{KeyHandlerContext, KeyResult},
     KeyError, KeymapContext, RemapMode, Remappable,
 };
+use crate::input::{Key, KeyCode};
 use crate::{
     editing::gutter::Gutter,
     editing::motion::char::CharMotion,
@@ -54,10 +55,17 @@ fn submit_cmdline(mut ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> 
         .current_buffer()
         .checked_get(ctx.state().current_window().cursor.line)
     {
-        // TODO Submit the cmd
         let cmd = cmd_spans.to_string();
-        ctx.state_mut()
-            .echom(format!("TEST {} {}", prompt_key, cmd));
+        let win_id = ctx.state().current_window().id;
+        ctx.state_mut().current_tab_mut().close_window(win_id);
+
+        ctx = ctx.feed_keys(prompt_key.into_keys())?;
+
+        // Is this *too* hacky? Just feed each char as a key:
+        let cmd_as_keys: Vec<Key> = cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
+        ctx = ctx.feed_keys(cmd_as_keys)?;
+
+        ctx.feed_keys("<cr>".into_keys())?;
     }
     Ok(())
 }

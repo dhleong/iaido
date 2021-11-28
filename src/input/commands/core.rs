@@ -28,7 +28,7 @@ fn quit_window(context: &mut CommandHandlerContext, args: HideBufArgs) -> KeyRes
 
     let connection_buffer_id = context.state().current_buffer().connection_buffer_id();
     let win_id = context.state().current_window().id;
-    context.state_mut().current_tab_mut().close_window(win_id);
+    context.state_mut().close_window(win_id);
 
     if let Some(id) = connection_buffer_id {
         // make sure we disconnect if there are no more windows

@@ -92,7 +92,21 @@ impl From<url::ParseError> for KeyError {
     }
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub struct KeymapConfig {
+    pub allow_remap: bool,
+}
+
+impl Default for KeymapConfig {
+    fn default() -> Self {
+        Self { allow_remap: true }
+    }
+}
+
 pub trait KeymapContext: KeySource {
+    fn config(&self) -> KeymapConfig {
+        KeymapConfig::default()
+    }
     fn state(&self) -> &crate::app::State;
     fn state_mut(&mut self) -> &mut crate::app::State;
 }
@@ -119,12 +133,13 @@ impl KeySource for Box<&mut dyn KeymapContext> {
 
 pub struct KeymapContextWithKeys<'a, K: KeySource> {
     base: Box<&'a mut dyn KeymapContext>,
+    pub config: KeymapConfig,
     keys: K,
 }
 
 impl<'a, K: KeySource> KeymapContextWithKeys<'a, K> {
-    pub fn new(base: Box<&'a mut dyn KeymapContext>, keys: K) -> Self {
-        Self { base, keys }
+    pub fn new(base: Box<&'a mut dyn KeymapContext>, keys: K, config: KeymapConfig) -> Self {
+        Self { base, keys, config }
     }
 }
 
@@ -134,6 +149,9 @@ impl<'a, K: KeySource> KeymapContext for KeymapContextWithKeys<'a, K> {
             fn state(&self) -> &crate::app::State;
             fn state_mut(&mut self) -> &mut crate::app::State;
         }
+    }
+    fn config(&self) -> KeymapConfig {
+        self.config
     }
 }
 

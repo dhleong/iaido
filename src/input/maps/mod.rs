@@ -4,7 +4,7 @@ use crate::delegate_keysource_with_map;
 
 use super::{
     commands::CommandHandlerContext, source::memory::MemoryKeySource, BoxableKeymap, Key, KeyError,
-    KeySource, Keymap, KeymapContext, KeymapContextWithKeys,
+    KeySource, Keymap, KeymapConfig, KeymapContext, KeymapContextWithKeys,
 };
 
 pub mod actions;
@@ -17,9 +17,22 @@ pub struct KeyHandlerContext<'a, T: BoxableKeymap> {
 }
 
 impl<T: BoxableKeymap + Keymap> KeyHandlerContext<'_, T> {
-    pub fn feed_keys(mut self, keys: Vec<Key>) -> Result<Self, KeyError> {
+    pub fn feed_keys(self, keys: Vec<Key>) -> Result<Self, KeyError> {
+        self.feed_keys_with_config(keys, true)
+    }
+
+    pub fn feed_keys_noremap(self, keys: Vec<Key>) -> Result<Self, KeyError> {
+        self.feed_keys_with_config(keys, false)
+    }
+
+    fn feed_keys_with_config(
+        mut self,
+        keys: Vec<Key>,
+        allow_remap: bool,
+    ) -> Result<Self, KeyError> {
         let source = MemoryKeySource::from(keys);
-        let mut context = KeymapContextWithKeys::new(self.context, source);
+        let config = KeymapConfig { allow_remap };
+        let mut context = KeymapContextWithKeys::new(self.context, source, config);
 
         while context.keys.poll_key(Duration::from_millis(0))? {
             self.keymap.process(&mut context)?;

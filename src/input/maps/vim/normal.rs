@@ -59,13 +59,15 @@ fn submit_cmdline(mut ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> 
         let win_id = ctx.state().current_window().id;
         ctx.state_mut().current_tab_mut().close_window(win_id);
 
-        ctx = ctx.feed_keys(prompt_key.into_keys())?;
-
         // Is this *too* hacky? Just feed each char as a key:
-        let cmd_as_keys: Vec<Key> = cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
-        ctx = ctx.feed_keys(cmd_as_keys)?;
+        // Perhaps we should match on prompt_key and invoke eg `handle_command`,
+        // `handle_forward_search`, etc. directly...
+        ctx = ctx.feed_keys_noremap(prompt_key.into_keys())?;
 
-        ctx.feed_keys("<cr>".into_keys())?;
+        let cmd_as_keys: Vec<Key> = cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
+        ctx = ctx.feed_keys_noremap(cmd_as_keys)?;
+
+        ctx.feed_keys_noremap("<cr>".into_keys())?;
     }
     Ok(())
 }

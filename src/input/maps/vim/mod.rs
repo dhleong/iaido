@@ -22,7 +22,7 @@ use crate::{
         completion::{state::BoxedCompleter, Completer},
         history::StringHistories,
         maps::vim::normal::search::VimSearchState,
-        BoxableKeymap, Key, KeyError, Keymap, KeymapContext, RemapMode, Remappable,
+        BoxableKeymap, Key, KeyError, Keymap, KeymapConfig, KeymapContext, RemapMode, Remappable,
     },
 };
 
@@ -151,12 +151,22 @@ impl VimKeymap {
         ]));
     }
 
-    fn buffer_maps(&self, buf_id: Id, mode: &RemapMode) -> Option<KeyTreeNode> {
+    fn buffer_maps(
+        &self,
+        buf_id: Id,
+        config: KeymapConfig,
+        mode: &RemapMode,
+    ) -> Option<KeyTreeNode> {
         let user_maps = self.user_maps.get(&mode);
         let buffer_maps = self
             .buffer_maps
             .get(&buf_id)
             .and_then(|maps| maps.get(&mode));
+
+        if !config.allow_remap {
+            return buffer_maps.and_then(|maps| Some(maps.clone()));
+        }
+
         match (user_maps, buffer_maps) {
             (None, None) => None,
             (Some(user), None) => Some(user.clone()),
@@ -176,14 +186,16 @@ impl Keymap for VimKeymap {
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
-                vim_insert_mode(&buffer_source) + self.buffer_maps(buf_id, &RemapMode::VimInsert),
+                vim_insert_mode(&buffer_source)
+                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert),
                 false,
                 false,
             )
         } else {
             self.render_keys_buffer(context);
             (
-                vim_normal_mode() + self.buffer_maps(buf_id, &RemapMode::VimNormal),
+                vim_normal_mode()
+                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal),
                 false,
                 true,
             )

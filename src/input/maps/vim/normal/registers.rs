@@ -122,6 +122,13 @@ mod tests {
         use super::*;
 
         #[test]
+        fn yank_in_empty() {
+            // Sanity check:
+            let ctx = window("");
+            ctx.feed_vim("yw").assert_visual_match("");
+        }
+
+        #[test]
         fn yank_into_register() {
             let ctx = window("Take my |love");
             let (_, mut state) = ctx.feed_vim_for_state("\"ayw");

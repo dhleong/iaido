@@ -359,6 +359,13 @@ mod tests {
         use super::*;
 
         #[test]
+        fn d_in_empty() {
+            // Sanity check:
+            let ctx = window("");
+            ctx.feed_vim("dw").assert_visual_match("");
+        }
+
+        #[test]
         fn dd() {
             let ctx = window(indoc! {"
                 Take my love

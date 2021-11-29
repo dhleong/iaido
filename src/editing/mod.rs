@@ -45,10 +45,14 @@ impl CursorPosition {
     }
 
     pub fn end_of_line(&self, buffer: &Box<dyn Buffer>) -> CursorPosition {
-        let line_width = buffer.get(self.line).width();
+        let col = if let Some(line) = buffer.checked_get(self.line) {
+            line.width()
+        } else {
+            0
+        };
         CursorPosition {
             line: self.line,
-            col: line_width,
+            col,
         }
     }
 }

@@ -208,8 +208,12 @@ pub trait Buffer: HasId + Send + Sync {
         };
     }
 
+    fn has_line(&self, line_index: usize) -> bool {
+        !self.is_empty() && line_index < self.lines_count()
+    }
+
     fn checked_get(&self, line_index: usize) -> Option<&TextLine> {
-        if !self.is_empty() && line_index < self.lines_count() {
+        if self.has_line(line_index) {
             Some(self.get(line_index))
         } else {
             None

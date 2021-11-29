@@ -79,7 +79,7 @@ impl Buffer for MemoryBuffer {
                 if i == last_line_index {
                     copy.trailing_newline = true;
                 }
-            } else {
+            } else if self.has_line(line_index) {
                 // yank within the line
                 let (start, end) = range.resolve(line_index, self);
                 let line = &self.content.lines[line_index];
@@ -108,7 +108,7 @@ impl Buffer for MemoryBuffer {
                 if i == last_line_index {
                     copy.trailing_newline = true;
                 }
-            } else {
+            } else if self.has_line(line_index) {
                 // delete within the line
                 let (start, end) = range.resolve(line_index, self);
                 let line = &self.content.lines[line_index];

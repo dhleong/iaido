@@ -122,6 +122,7 @@ pub struct VimKeymap {
     buffer_maps: HashMap<Id, HashMap<RemapMode, KeyTreeNode>>,
     pub histories: StringHistories,
     pub search: VimSearchState,
+    pub count: u32,
 }
 
 impl VimKeymap {
@@ -141,6 +142,7 @@ impl VimKeymap {
         self.operator_fn = None;
         self.selected_register = None;
         self.keys_buffer.clear();
+        self.count = 0;
     }
 
     fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
@@ -173,6 +175,10 @@ impl VimKeymap {
             (None, Some(buffer)) => Some(buffer.clone()),
             (Some(user), Some(buffer)) => Some(user + buffer),
         }
+    }
+
+    fn push_count_digit(&mut self, digit: u32) {
+        self.count = self.count * 10 + digit;
     }
 }
 
@@ -254,8 +260,14 @@ impl Keymap for VimKeymap {
                         }
                     }
                 } else if at_root {
-                    // use the default mapping, if any
-                    if let Some(handler) = &mode.default_handler {
+                    if let Some(digit) = key.to_digit() {
+                        // [count]
+                        self.push_count_digit(digit);
+                        if show_keys {
+                            self.render_keys_buffer(context);
+                        }
+                    } else if let Some(handler) = &mode.default_handler {
+                        // use the default mapping, if any
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: self,

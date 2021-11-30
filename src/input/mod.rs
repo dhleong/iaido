@@ -25,9 +25,18 @@ pub struct Key {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
 }
+
 impl Key {
     pub fn new(code: KeyCode, modifiers: KeyModifiers) -> Self {
         Self { code, modifiers }
+    }
+
+    pub fn to_digit(&self) -> Option<u32> {
+        if let KeyCode::Char(ch) = self.code {
+            ch.to_digit(10)
+        } else {
+            None
+        }
     }
 
     pub fn write_str(&self, dest: &mut String) {

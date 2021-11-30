@@ -233,16 +233,16 @@ impl Keymap for VimKeymap {
                 if let Some(next) = current.children.get(&key) {
                     // TODO timeouts with nested handlers
                     if let Some(handler) = next.get_handler() {
-                        if show_keys {
-                            self.keys_buffer.clear();
-                            self.render_keys_buffer(context);
-                        }
-
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
                             keymap: self,
                             key,
                         });
+
+                        if show_keys && self.operator_fn.is_none() {
+                            self.keys_buffer.clear();
+                            self.render_keys_buffer(context);
+                        }
                         break;
                     } else {
                         // deeper into the tree

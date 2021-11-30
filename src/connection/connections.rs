@@ -10,13 +10,13 @@ use crate::{
     editing::{ids::Ids, text::TextLines, Id},
 };
 
-use super::{Connection, ConnectionFactories};
+use super::{game::GameConnection, Connection, ConnectionFactories};
 
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
 
 pub struct Connections {
     ids: Ids,
-    all: Vec<Box<dyn Connection>>,
+    all: Vec<GameConnection>,
     connection_to_buffer: HashMap<Id, Id>,
 
     // NOTE: More than one Buffer may be associated with a Connection
@@ -40,7 +40,7 @@ impl Default for Connections {
 }
 
 impl Connections {
-    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Connection>> {
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut GameConnection> {
         self.all.iter_mut().find(|conn| conn.id() == id)
     }
 
@@ -48,7 +48,7 @@ impl Connections {
         self.buffer_to_connection.get(&buffer_id).cloned()
     }
 
-    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut Box<dyn Connection>> {
+    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut GameConnection> {
         if let Some(conn_id) = self.buffer_to_id(buffer_id) {
             self.by_id_mut(conn_id)
         } else {
@@ -143,7 +143,7 @@ impl Connections {
     fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
         self.connection_to_buffer.insert(connection.id(), buffer_id);
         self.buffer_to_connection.insert(buffer_id, connection.id());
-        self.all.push(connection);
+        self.all.push(connection.into());
     }
 
     #[cfg(test)]

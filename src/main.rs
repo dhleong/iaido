@@ -3,6 +3,7 @@ mod cli;
 mod connection;
 mod demo;
 mod editing;
+mod game;
 mod input;
 mod script;
 mod tui;

@@ -122,7 +122,7 @@ pub struct VimKeymap {
     buffer_maps: HashMap<Id, HashMap<RemapMode, KeyTreeNode>>,
     pub histories: StringHistories,
     pub search: VimSearchState,
-    pub count: u32,
+    count: u32,
 }
 
 impl VimKeymap {
@@ -143,6 +143,15 @@ impl VimKeymap {
         self.selected_register = None;
         self.keys_buffer.clear();
         self.count = 0;
+    }
+
+    pub fn take_count(&mut self) -> u32 {
+        let count = self.count;
+        self.count = 0;
+        match count {
+            0 => 1,
+            _ => count,
+        }
     }
 
     fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {

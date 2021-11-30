@@ -553,5 +553,15 @@ mod tests {
                 Take my |land
             "});
         }
+
+        #[test]
+        fn delete_with_count() {
+            let ctx = window(indoc! {"
+                |Take my land
+            "});
+            ctx.feed_vim("d4l").assert_visual_match(indoc! {"
+                | my land
+            "});
+        }
     }
 }

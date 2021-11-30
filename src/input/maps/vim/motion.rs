@@ -1,3 +1,4 @@
+use crate::editing::motion::repeated::RepeatedMotion;
 use crate::editing::motion::Motion;
 use crate::input::maps::KeyHandlerContext;
 use crate::input::maps::KeyResult;
@@ -14,6 +15,8 @@ pub fn apply_motion_returning<T: Motion>(
     motion: T,
 ) -> (KeyHandlerContext<VimKeymap>, KeyResult) {
     let operator_fn = ctx.keymap.operator_fn.take();
+    let count = ctx.keymap.take_count();
+    let motion = RepeatedMotion::with_count(motion, count);
 
     let result = if let Some(op) = operator_fn {
         // execute pending operator fn

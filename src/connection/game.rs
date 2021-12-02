@@ -11,6 +11,12 @@ pub struct GameConnection {
     pub game: GameEngine,
 }
 
+impl GameConnection {
+    pub fn with_engine(conn: Box<dyn Connection>, game: GameEngine) -> Self {
+        Self { conn, game }
+    }
+}
+
 impl From<Box<dyn Connection>> for GameConnection {
     fn from(conn: Box<dyn Connection>) -> Self {
         Self {

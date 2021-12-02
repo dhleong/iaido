@@ -8,12 +8,14 @@ use crate::{
         jobs::{JobRecord, Jobs},
     },
     editing::{ids::Ids, text::TextLines, Id},
+    game::engine::GameEngine,
 };
 
 use super::{game::GameConnection, Connection, ConnectionFactories};
 
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
 
+#[derive(Default)]
 pub struct Connections {
     ids: Ids,
     all: Vec<GameConnection>,
@@ -25,21 +27,15 @@ pub struct Connections {
     // writes to)
     buffer_to_connection: HashMap<Id, Id>,
     factories: ConnectionFactories,
-}
 
-impl Default for Connections {
-    fn default() -> Self {
-        Self {
-            ids: Ids::new(),
-            all: Vec::new(),
-            connection_to_buffer: HashMap::default(),
-            buffer_to_connection: HashMap::default(),
-            factories: ConnectionFactories::default(),
-        }
-    }
+    buffer_engines: HashMap<Id, GameEngine>,
 }
 
 impl Connections {
+    pub fn by_id(&self, id: Id) -> Option<&GameConnection> {
+        self.all.iter().find(|conn| conn.id() == id)
+    }
+
     pub fn by_id_mut(&mut self, id: Id) -> Option<&mut GameConnection> {
         self.all.iter_mut().find(|conn| conn.id() == id)
     }
@@ -53,6 +49,19 @@ impl Connections {
             self.by_id_mut(conn_id)
         } else {
             None
+        }
+    }
+
+    pub fn with_buffer_engine<R>(
+        &mut self,
+        buffer_id: Id,
+        callback: impl FnOnce(&mut GameEngine) -> R,
+    ) -> R {
+        if let Some(conn) = self.by_buffer_id(buffer_id) {
+            callback(&mut conn.game)
+        } else {
+            let game = self.buffer_engines.entry(buffer_id).or_default();
+            callback(game)
         }
     }
 
@@ -143,7 +152,13 @@ impl Connections {
     fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
         self.connection_to_buffer.insert(connection.id(), buffer_id);
         self.buffer_to_connection.insert(buffer_id, connection.id());
-        self.all.push(connection.into());
+
+        let with_game = if let Some(engine) = self.buffer_engines.remove(&buffer_id) {
+            GameConnection::with_engine(connection, engine)
+        } else {
+            connection.into()
+        };
+        self.all.push(with_game);
     }
 
     #[cfg(test)]

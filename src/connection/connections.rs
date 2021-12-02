@@ -132,7 +132,10 @@ impl Connections {
                     Ok(None) => break, // nop
                     Ok(Some(value)) => {
                         any_updated = true;
-                        winsbuf.append_value(value);
+
+                        if let Some(processed) = conn.game.process_received(value) {
+                            winsbuf.append_value(processed);
+                        }
                     }
                     Err(e) => {
                         any_updated = true;

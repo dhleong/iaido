@@ -65,20 +65,26 @@ impl Connections {
         }
     }
 
-    /// Asynchronously create a new connection attached to the given
-    /// buffer_id. Returns a JobRecord for joining on the request
-    pub fn create_async(&mut self, jobs: &mut Jobs, buffer_id: Id, uri: Url) -> JobRecord {
+    /// Asynchronously create a new connection attached to the given buffer_id (and
+    /// input_buffer_id). Returns a JobRecord for joining on the request
+    pub fn create_async(
+        &mut self,
+        jobs: &mut Jobs,
+        buffer_id: Id,
+        input_buffer_id: Id,
+        uri: Url,
+    ) -> JobRecord {
         let id = self.ids.next();
         let factory = self.factories.clone();
         jobs.start(move |ctx| async move {
             let connection = Mutex::new(factory.create(id, uri)?);
 
             ctx.run(move |state| {
-                state
-                    .connections
-                    .as_mut()
-                    .unwrap()
-                    .add(buffer_id, connection.into_inner().unwrap());
+                state.connections.as_mut().unwrap().add(
+                    buffer_id,
+                    input_buffer_id,
+                    connection.into_inner().unwrap(),
+                );
                 Ok(())
             })
         })
@@ -152,9 +158,11 @@ impl Connections {
         any_updated
     }
 
-    fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
+    fn add(&mut self, buffer_id: Id, input_buffer_id: Id, connection: Box<dyn Connection>) {
         self.connection_to_buffer.insert(connection.id(), buffer_id);
         self.buffer_to_connection.insert(buffer_id, connection.id());
+        self.buffer_to_connection
+            .insert(input_buffer_id, connection.id());
 
         let with_game = if let Some(engine) = self.buffer_engines.remove(&buffer_id) {
             GameConnection::with_engine(connection, engine)
@@ -166,7 +174,7 @@ impl Connections {
 
     #[cfg(test)]
     pub fn add_for_test(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
-        self.add(buffer_id, connection);
+        self.add(buffer_id, buffer_id, connection);
     }
 }
 

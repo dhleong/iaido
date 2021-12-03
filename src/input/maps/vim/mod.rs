@@ -195,17 +195,13 @@ fn pick_completer<K: KeymapContext>(mode: &VimMode, context: &mut K) -> Option<R
     let buf_id = context.state().current_buffer().id();
     if let Some(completer) = mode.completer.clone() {
         Some(completer)
-    } else if let Some(conn) = context
+    } else if let Some(completer) = context
         .state_mut()
         .connections
         .as_mut()
-        .and_then(|conns| conns.by_buffer_id(buf_id))
+        .and_then(|conns| conns.with_buffer_engine(buf_id, |eng| eng.completer.clone()))
     {
-        if let Some(completer) = conn.game.completer.clone() {
-            Some(Rc::new(completer))
-        } else {
-            None
-        }
+        Some(Rc::new(completer))
     } else {
         None
     }

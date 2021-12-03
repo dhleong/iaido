@@ -191,6 +191,26 @@ impl VimKeymap {
     }
 }
 
+fn pick_completer<K: KeymapContext>(mode: &VimMode, context: &mut K) -> Option<Rc<dyn Completer>> {
+    let buf_id = context.state().current_buffer().id();
+    if let Some(completer) = mode.completer.clone() {
+        Some(completer)
+    } else if let Some(conn) = context
+        .state_mut()
+        .connections
+        .as_mut()
+        .and_then(|conns| conns.by_buffer_id(buf_id))
+    {
+        if let Some(completer) = conn.game.completer.clone() {
+            Some(Rc::new(completer))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buf_id = context.state().current_buffer().id();
@@ -223,7 +243,7 @@ impl Keymap for VimKeymap {
         let mut current = &mode.mappings;
         let mut at_root = true;
         let mut result = Ok(());
-        self.active_completer = mode.completer.clone();
+        self.active_completer = pick_completer(&mode, context);
 
         loop {
             if let Some(key) = context.next_key_with_map(Some(Box::new(self)))? {

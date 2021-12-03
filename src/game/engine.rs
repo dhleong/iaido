@@ -3,11 +3,25 @@ use std::sync::Mutex;
 
 use crate::connection::ReadValue;
 use crate::editing::text::EditableLine;
+use crate::input::completion::{
+    BoxedSuggestions, CompletableContext, Completer, CompletionContext,
+};
 
 use super::completion::CompletionSource;
 
 pub struct GameEngine {
     pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
+}
+
+impl Completer for Rc<Mutex<dyn CompletionSource>> {
+    fn suggest(
+        &self,
+        app: Box<&dyn CompletableContext>,
+        context: CompletionContext,
+    ) -> BoxedSuggestions {
+        let completer = self.lock().unwrap();
+        completer.suggest(app, context)
+    }
 }
 
 impl Default for GameEngine {

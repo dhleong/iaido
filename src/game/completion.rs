@@ -9,3 +9,9 @@ pub trait CompletionSource: Completer {
     /// the connection, for processing to power suggestions
     fn process(&mut self, text: String);
 }
+
+impl<T: CompletionSource + ?Sized> CompletionSource for Box<T> {
+    fn process(&mut self, text: String) {
+        (**self).process(text)
+    }
+}

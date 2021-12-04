@@ -20,8 +20,8 @@ pub trait MultiplexSelectorFactory {
     fn create(&self, context: CompletionContext) -> Box<dyn MultiplexSelector>;
 }
 
-pub struct MultiplexCompletionSource {
-    pub sources: Vec<Box<dyn CompletionSource>>,
+pub struct MultiplexCompletionSource<T: Completer> {
+    pub sources: Vec<T>,
     pub selector_factory: Box<dyn MultiplexSelectorFactory>,
 }
 
@@ -44,7 +44,7 @@ fn produce_next(
     );
 }
 
-impl Completer for MultiplexCompletionSource {
+impl<T: Completer> Completer for MultiplexCompletionSource<T> {
     fn suggest(
         &self,
         app: Box<&dyn CompletableContext>,
@@ -77,10 +77,55 @@ impl Completer for MultiplexCompletionSource {
     }
 }
 
-impl CompletionSource for MultiplexCompletionSource {
+impl<T: CompletionSource> CompletionSource for MultiplexCompletionSource<T> {
     fn process(&mut self, text: String) {
         for source in &mut self.sources {
             source.process(text.to_string());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Clone)]
+    pub struct TestMultiplexSelector {
+        indices: Vec<usize>,
+    }
+
+    impl TestMultiplexSelector {
+        pub fn new(indices: Vec<usize>) -> Self {
+            Self { indices }
+        }
+    }
+
+    impl MultiplexSelectorFactory for TestMultiplexSelector {
+        fn create(
+            &self,
+            _: crate::input::completion::CompletionContext,
+        ) -> Box<(dyn MultiplexSelector + 'static)> {
+            Box::new(self.clone())
+        }
+    }
+
+    impl MultiplexSelector for TestMultiplexSelector {
+        fn select(&mut self, _: Vec<Option<&Completion>>) -> usize {
+            if self.indices.is_empty() {
+                0
+            } else {
+                self.indices.swap_remove(0)
+            }
+        }
+    }
+
+    #[test]
+    fn multiplex_navigation() {
+        let sources: Vec<Box<dyn Completer>> = vec![];
+        let selector_factory = TestMultiplexSelector::new(vec![0, 1, 1, 0]);
+        let multiplex = MultiplexCompletionSource {
+            sources,
+            selector_factory: Box::new(selector_factory),
+        };
     }
 }

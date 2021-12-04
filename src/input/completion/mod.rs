@@ -144,6 +144,16 @@ pub trait Completer {
     ) -> BoxedSuggestions;
 }
 
+impl<T: Completer + ?Sized> Completer for Box<T> {
+    fn suggest(
+        &self,
+        app: Box<&dyn crate::input::completion::CompletableContext>,
+        context: crate::input::completion::CompletionContext,
+    ) -> crate::input::completion::BoxedSuggestions {
+        (**self).suggest(app, context)
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::editing::motion::tests::{window, TestWindow};

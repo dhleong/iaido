@@ -88,6 +88,8 @@ impl<T: CompletionSource> CompletionSource for MultiplexCompletionSource<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::editing::motion::tests::window;
+    use crate::input::completion::tests::StaticCompleter;
 
     #[derive(Clone)]
     pub struct TestMultiplexSelector {
@@ -114,18 +116,34 @@ mod tests {
             if self.indices.is_empty() {
                 0
             } else {
-                self.indices.swap_remove(0)
+                self.indices.remove(0)
             }
         }
     }
 
     #[test]
     fn multiplex_navigation() {
-        let sources: Vec<Box<dyn Completer>> = vec![];
+        let sources: Vec<Box<dyn Completer>> = vec![
+            Box::new(StaticCompleter::new(vec![
+                "alpastor".to_string(),
+                "chorizo".to_string(),
+            ])),
+            Box::new(StaticCompleter::new(vec![
+                "burrito".to_string(),
+                "taco".to_string(),
+            ])),
+        ];
         let selector_factory = TestMultiplexSelector::new(vec![0, 1, 1, 0]);
         let multiplex = MultiplexCompletionSource {
             sources,
             selector_factory: Box::new(selector_factory),
         };
+        let mut app = window("");
+        let context = CompletionContext::from(&mut app);
+        let completions: Vec<String> = multiplex
+            .suggest(Box::new(&app), context)
+            .map(|c| c.replacement)
+            .collect();
+        assert_eq!(completions, vec!["alpastor", "burrito", "taco", "chorizo"]);
     }
 }

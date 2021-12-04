@@ -1,4 +1,8 @@
+mod factory;
+mod multiplex;
+
 use crate::input::completion::Completer;
+pub use factory::GameCompletionsFactory;
 
 pub trait CompletionSource: Completer {
     /// Feed the CompletionSource a line of text, typically received from

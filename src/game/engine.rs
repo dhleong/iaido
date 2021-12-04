@@ -7,7 +7,7 @@ use crate::input::completion::{
     BoxedSuggestions, CompletableContext, Completer, CompletionContext,
 };
 
-use super::completion::CompletionSource;
+use super::completion::{CompletionSource, GameCompletionsFactory};
 
 pub struct GameEngine {
     pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
@@ -26,8 +26,9 @@ impl Completer for Rc<Mutex<dyn CompletionSource>> {
 
 impl Default for GameEngine {
     fn default() -> Self {
-        // TODO Create a completer
-        Self { completer: None }
+        Self {
+            completer: Some(Rc::new(Mutex::new(GameCompletionsFactory::create()))),
+        }
     }
 }
 

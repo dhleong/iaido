@@ -1,6 +1,7 @@
 use genawaiter::{sync::gen, yield_};
 
 pub mod weighted;
+pub mod word_index;
 
 use crate::game::completion::CompletionSource;
 use crate::input::completion::empty::EmptyCompleter;

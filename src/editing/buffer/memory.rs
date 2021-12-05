@@ -139,6 +139,8 @@ impl Buffer for MemoryBuffer {
         if cursor == (0, 0).into() && self.content.lines.is_empty() {
             self.content.lines.push(text);
             return;
+        } else if self.content.lines.is_empty() {
+            panic!("insert at {:?} but empty", cursor);
         }
 
         let original = &self.content.lines[cursor.line];

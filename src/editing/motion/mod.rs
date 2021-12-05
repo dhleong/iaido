@@ -368,6 +368,7 @@ pub mod tests {
         /// be created if the given string were passed to [`window`].
         pub fn assert_visual_match(&mut self, s: &'static str) {
             let mut expected_context = window(s);
+            expected_context.set_inserting(self.window.inserting);
             let expected = expected_context.render_at_own_size();
             let actual = self.render_at_own_size();
             assert_eq!(
@@ -457,13 +458,23 @@ pub mod tests {
     ///       not considered part of the backing buffer. This is based on
     ///       how Vim renders extra space in a window when the end of the
     ///       buffer is reached.
+    ///
+    /// In addition:
+    /// `--INSERT--` - Can be the last line in the string to indicate the
+    /// window should be "inserting"
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
         let mut buffer = Box::new(MemoryBuffer::new(FIRST_USER_BUFFER_ID));
         let mut non_buffer_lines = 0;
+        let mut inserting = false;
 
         for (index, line) in s.lines().enumerate() {
+            if line == "--INSERT--" {
+                inserting = true;
+                continue;
+            }
+
             if let Some(col) = line.find("|") {
                 cursor.line = index - non_buffer_lines;
                 cursor.col = col;
@@ -481,6 +492,7 @@ pub mod tests {
 
         let mut window = Window::new(0, buffer.id());
         window.cursor = cursor;
+        window.inserting = inserting;
 
         let height = max(1, s.chars().filter(|ch| *ch == '\n').count());
         window.resize(Size {

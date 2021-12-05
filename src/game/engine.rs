@@ -42,6 +42,16 @@ impl GameEngine {
             }
         }
 
-        return Some(value);
+        Some(value)
+    }
+
+    pub fn process_to_send(&mut self, value: String) -> Option<String> {
+        if let Some(completions) = self.completer.as_mut() {
+            let text = value.to_string();
+            let mut guard = completions.lock().unwrap();
+            guard.process(text, ProcessFlags::SENT);
+        }
+
+        Some(value)
     }
 }

@@ -4,6 +4,7 @@ mod factory;
 mod flagged;
 mod multiplex;
 mod recency;
+mod tokens;
 
 use crate::input::completion::Completer;
 pub use factory::GameCompletionsFactory;

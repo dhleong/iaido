@@ -2,6 +2,8 @@ use ritelinked::LinkedHashSet;
 
 use crate::game::completion::flagged::SimpleCompletionSource;
 
+use super::tokens::CompletionTokenizable;
+
 const DEFAULT_MAX_ENTRIES: usize = 5000;
 
 pub struct RecencyCompletionSource {
@@ -41,7 +43,7 @@ crate::impl_simple_completer!(
 
 impl SimpleCompletionSource for RecencyCompletionSource {
     fn process(&mut self, text: String) {
-        for word in text.split_whitespace() {
+        for word in text.to_completion_tokens() {
             self.entries.insert(word.to_string());
         }
         while self.entries.len() > self.max_entries {

@@ -1,6 +1,6 @@
 use ritelinked::LinkedHashSet;
 
-use crate::game::completion::CompletionSource;
+use crate::game::completion::flagged::SimpleCompletionSource;
 
 const DEFAULT_MAX_ENTRIES: usize = 5000;
 
@@ -39,7 +39,7 @@ crate::impl_simple_completer!(
     }
 );
 
-impl CompletionSource for RecencyCompletionSource {
+impl SimpleCompletionSource for RecencyCompletionSource {
     fn process(&mut self, text: String) {
         for word in text.split_whitespace() {
             self.entries.insert(word.to_string());

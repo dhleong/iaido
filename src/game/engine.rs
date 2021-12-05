@@ -7,7 +7,7 @@ use crate::input::completion::{
     BoxedSuggestions, CompletableContext, Completer, CompletionContext,
 };
 
-use super::completion::{CompletionSource, GameCompletionsFactory};
+use super::completion::{CompletionSource, GameCompletionsFactory, ProcessFlags};
 
 pub struct GameEngine {
     pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
@@ -38,7 +38,7 @@ impl GameEngine {
             if let Some(completions) = self.completer.as_mut() {
                 let text = text.to_string();
                 let mut guard = completions.lock().unwrap();
-                guard.process(text);
+                guard.process(text, ProcessFlags::RECEIVED);
             }
         }
 

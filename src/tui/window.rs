@@ -161,6 +161,9 @@ impl Renderable for Window {
         self.scroll_offset = renderable.scroll_offset;
         self.scrolled_lines = renderable.scrolled_lines as u32;
 
+        // Sanity check: always clamp cursor
+        self.cursor = self.clamp_cursor(buf, self.cursor);
+
         let cursor_line = match buf.checked_get(self.cursor.line) {
             Some(line) => line,
             None => return, // nothing we can do
@@ -574,6 +577,7 @@ mod tests {
         #[test]
         fn cursor_after_whitespace() {
             let mut ctx = window(":|");
+            ctx.window.inserting = true;
             ctx.window.resize(Size { w: 12, h: 1 });
             let before = ctx.render_at_own_size();
             assert_eq!(before.cursor_coords(), Some((1, 0)));
@@ -705,6 +709,22 @@ mod tests {
 
                 |Take my love
                 Take my land
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod cursor_clamping {
+        use super::*;
+
+        #[test]
+        fn clamp_empty_window() {
+            let mut ctx = window("Take my love|");
+            ctx.buffer.clear();
+            ctx.render_at_own_size();
+            assert_eq!(ctx.window.cursor, (0, 0).into());
+            ctx.assert_visual_match(indoc! {"
+                |
             "});
         }
     }

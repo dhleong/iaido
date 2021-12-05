@@ -90,7 +90,7 @@ pub mod tests {
 
     pub trait TestableDisplay {
         fn of_string(s: &'static str) -> Display;
-        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str) -> Display;
+        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str, inserting: bool) -> Display;
         fn cursor_coords(&self) -> Option<(u16, u16)>;
         fn to_visual_string(&self) -> String;
         fn assert_visual_match(&self, s: &'static str);
@@ -112,12 +112,16 @@ pub mod tests {
                     h: height as u16,
                 },
                 s,
+                false,
             );
         }
 
-        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str) -> Display {
+        fn of_sized_string<S: Into<Size>>(size: S, s: &'static str, inserting: bool) -> Display {
             let mut display = Display::new(size.into());
             let mut win = window(s);
+            if inserting {
+                win.set_inserting(true);
+            }
             win.render(&mut display);
 
             display
@@ -157,7 +161,14 @@ pub mod tests {
         }
 
         fn assert_visual_match(&self, s: &'static str) {
-            let expected_display = Display::of_sized_string(self.size, s);
+            let expected_display = Display::of_sized_string(
+                self.size,
+                s,
+                match self.cursor {
+                    editing::Cursor::Line(_, _) => true,
+                    _ => false,
+                },
+            );
             assert_eq!(self.size, expected_display.size);
             assert_eq!(self.to_visual_string(), expected_display.to_visual_string());
         }

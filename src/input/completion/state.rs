@@ -140,6 +140,7 @@ mod tests {
     #[test]
     fn apply_next() {
         let mut win = window("take my |");
+        win.set_inserting(true);
         win.assert_visual_match("take my |");
 
         let mut state = completion_state(&mut win);
@@ -160,6 +161,7 @@ mod tests {
     #[test]
     fn apply_prev_and_next() {
         let mut win = window("take my |");
+        win.set_inserting(true);
         let mut state = completion_state(&mut win);
         state.apply_next(&mut win);
         state.apply_next(&mut win);

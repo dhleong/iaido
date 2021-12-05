@@ -6,6 +6,7 @@ use crate::{
 };
 
 const MIN_OUTPUT_HEIGHT: u16 = 3;
+const MIN_INPUT_HEIGHT: u16 = 1; // input height should be *at least* 1
 const MAX_INPUT_HEIGHT: u16 = 5;
 
 impl Renderable for ConnLayout {
@@ -19,9 +20,12 @@ impl Renderable for ConnLayout {
             available_height.checked_sub(MIN_OUTPUT_HEIGHT).unwrap_or(1),
             1,
         );
-        let input_height = min(
-            preferred_height,
-            min(available_input_height, MAX_INPUT_HEIGHT),
+        let input_height = max(
+            min(
+                preferred_height,
+                min(available_input_height, MAX_INPUT_HEIGHT),
+            ),
+            MIN_INPUT_HEIGHT,
         );
 
         if self.input.size.h != input_height {

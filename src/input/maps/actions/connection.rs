@@ -4,7 +4,10 @@ use crate::input::{
     maps::{KeyHandlerContext, KeyResult},
     BoxableKeymap, KeyError, KeymapContext,
 };
-use crate::{connection::ReadValue, editing::source::BufferSource};
+use crate::{
+    connection::{Connection, ReadValue},
+    editing::source::BufferSource,
+};
 
 /// Send the contents of the current Connection input buffer to
 /// its associated connection (if any)

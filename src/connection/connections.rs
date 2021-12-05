@@ -8,15 +8,17 @@ use crate::{
         jobs::{JobRecord, Jobs},
     },
     editing::{ids::Ids, text::TextLines, Id},
+    game::engine::GameEngine,
 };
 
-use super::{Connection, ConnectionFactories};
+use super::{game::GameConnection, Connection, ConnectionFactories};
 
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
 
+#[derive(Default)]
 pub struct Connections {
     ids: Ids,
-    all: Vec<Box<dyn Connection>>,
+    all: Vec<GameConnection>,
     connection_to_buffer: HashMap<Id, Id>,
 
     // NOTE: More than one Buffer may be associated with a Connection
@@ -25,22 +27,16 @@ pub struct Connections {
     // writes to)
     buffer_to_connection: HashMap<Id, Id>,
     factories: ConnectionFactories,
-}
 
-impl Default for Connections {
-    fn default() -> Self {
-        Self {
-            ids: Ids::new(),
-            all: Vec::new(),
-            connection_to_buffer: HashMap::default(),
-            buffer_to_connection: HashMap::default(),
-            factories: ConnectionFactories::default(),
-        }
-    }
+    buffer_engines: HashMap<Id, GameEngine>,
 }
 
 impl Connections {
-    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut Box<dyn Connection>> {
+    pub fn by_id(&self, id: Id) -> Option<&GameConnection> {
+        self.all.iter().find(|conn| conn.id() == id)
+    }
+
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut GameConnection> {
         self.all.iter_mut().find(|conn| conn.id() == id)
     }
 
@@ -48,7 +44,7 @@ impl Connections {
         self.buffer_to_connection.get(&buffer_id).cloned()
     }
 
-    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut Box<dyn Connection>> {
+    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut GameConnection> {
         if let Some(conn_id) = self.buffer_to_id(buffer_id) {
             self.by_id_mut(conn_id)
         } else {
@@ -56,20 +52,39 @@ impl Connections {
         }
     }
 
-    /// Asynchronously create a new connection attached to the given
-    /// buffer_id. Returns a JobRecord for joining on the request
-    pub fn create_async(&mut self, jobs: &mut Jobs, buffer_id: Id, uri: Url) -> JobRecord {
+    pub fn with_buffer_engine<R>(
+        &mut self,
+        buffer_id: Id,
+        callback: impl FnOnce(&mut GameEngine) -> R,
+    ) -> R {
+        if let Some(conn) = self.by_buffer_id(buffer_id) {
+            callback(&mut conn.game)
+        } else {
+            let game = self.buffer_engines.entry(buffer_id).or_default();
+            callback(game)
+        }
+    }
+
+    /// Asynchronously create a new connection attached to the given buffer_id (and
+    /// input_buffer_id). Returns a JobRecord for joining on the request
+    pub fn create_async(
+        &mut self,
+        jobs: &mut Jobs,
+        buffer_id: Id,
+        input_buffer_id: Id,
+        uri: Url,
+    ) -> JobRecord {
         let id = self.ids.next();
         let factory = self.factories.clone();
         jobs.start(move |ctx| async move {
             let connection = Mutex::new(factory.create(id, uri)?);
 
             ctx.run(move |state| {
-                state
-                    .connections
-                    .as_mut()
-                    .unwrap()
-                    .add(buffer_id, connection.into_inner().unwrap());
+                state.connections.as_mut().unwrap().add(
+                    buffer_id,
+                    input_buffer_id,
+                    connection.into_inner().unwrap(),
+                );
                 Ok(())
             })
         })
@@ -123,7 +138,10 @@ impl Connections {
                     Ok(None) => break, // nop
                     Ok(Some(value)) => {
                         any_updated = true;
-                        winsbuf.append_value(value);
+
+                        if let Some(processed) = conn.game.process_received(value) {
+                            winsbuf.append_value(processed);
+                        }
                     }
                     Err(e) => {
                         any_updated = true;
@@ -140,15 +158,23 @@ impl Connections {
         any_updated
     }
 
-    fn add(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
+    fn add(&mut self, buffer_id: Id, input_buffer_id: Id, connection: Box<dyn Connection>) {
         self.connection_to_buffer.insert(connection.id(), buffer_id);
         self.buffer_to_connection.insert(buffer_id, connection.id());
-        self.all.push(connection);
+        self.buffer_to_connection
+            .insert(input_buffer_id, connection.id());
+
+        let with_game = if let Some(engine) = self.buffer_engines.remove(&buffer_id) {
+            GameConnection::with_engine(connection, engine)
+        } else {
+            connection.into()
+        };
+        self.all.push(with_game);
     }
 
     #[cfg(test)]
     pub fn add_for_test(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
-        self.add(buffer_id, connection);
+        self.add(buffer_id, buffer_id, connection);
     }
 }
 

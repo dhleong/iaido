@@ -8,6 +8,12 @@ pub struct Ids {
     initial: usize,
 }
 
+impl Default for Ids {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ids {
     pub fn new() -> Self {
         Self::with_first(0)

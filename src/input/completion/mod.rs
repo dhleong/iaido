@@ -92,7 +92,11 @@ impl<'a, T: CompletableContext> From<&'a mut T> for CompletionContext {
     fn from(context: &'a mut T) -> Self {
         let bufwin = context.bufwin();
         let line = bufwin.window.cursor.line;
-        let text = bufwin.buffer.get(line).to_string();
+        let text = if bufwin.buffer.is_empty() {
+            "".to_string()
+        } else {
+            bufwin.buffer.get(line).to_string()
+        };
         let cursor = bufwin.window.cursor.col;
         Self {
             line_index: line,
@@ -138,6 +142,16 @@ pub trait Completer {
         app: Box<&dyn CompletableContext>,
         context: CompletionContext,
     ) -> BoxedSuggestions;
+}
+
+impl<T: Completer + ?Sized> Completer for Box<T> {
+    fn suggest(
+        &self,
+        app: Box<&dyn crate::input::completion::CompletableContext>,
+        context: crate::input::completion::CompletionContext,
+    ) -> crate::input::completion::BoxedSuggestions {
+        (**self).suggest(app, context)
+    }
 }
 
 #[cfg(test)]

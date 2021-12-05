@@ -8,6 +8,7 @@ use self::telnet::TelnetConnectionFactory;
 
 mod ansi;
 pub mod connections;
+pub mod game;
 mod telnet;
 mod tls;
 
@@ -17,7 +18,7 @@ pub enum ReadValue {
     Text(TextLine),
 }
 
-pub trait Connection: Send {
+pub trait Connection {
     fn id(&self) -> Id;
     fn read(&mut self) -> io::Result<Option<ReadValue>>;
     fn write(&mut self, bytes: &[u8]) -> io::Result<()>;
@@ -29,7 +30,7 @@ pub trait Connection: Send {
 
 pub trait ConnectionFactory: Send + Sync {
     fn clone_boxed(&self) -> Box<dyn ConnectionFactory>;
-    fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Connection>>>;
+    fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Connection + Send>>>;
 }
 
 pub struct ConnectionFactories {
@@ -51,7 +52,7 @@ impl ConnectionFactories {
         }
     }
 
-    pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Connection>> {
+    pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Connection + Send>> {
         for f in &self.factories {
             match f.create(id, &uri) {
                 None => {} // unsupported

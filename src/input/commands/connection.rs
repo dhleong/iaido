@@ -55,6 +55,7 @@ pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     let state = context.state_mut();
     let tab = state.tabpages.current_tab_mut();
     let new_window = tab.new_connection(&mut state.buffers, buffer_id);
+    let input_buffer_id = new_window.input.buffer;
 
     tab.replace_window(tab.current_window().id, Box::new(new_window));
     context
@@ -64,7 +65,12 @@ pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .append_line(format!("Connecting to {}...", uri));
 
     let mut connections = context.state_mut().connections.take().unwrap();
-    let job = connections.create_async(&mut context.state_mut().jobs, buffer_id, uri);
+    let job = connections.create_async(
+        &mut context.state_mut().jobs,
+        buffer_id,
+        input_buffer_id,
+        uri,
+    );
     context.state_mut().connections = Some(connections);
 
     match job.join_interruptably(context) {

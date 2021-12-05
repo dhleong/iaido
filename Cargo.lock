@@ -41,6 +41,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
+dependencies = [
+ "getrandom 0.2.2",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -792,6 +803,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6503fe142514ca4799d4c26297c4248239fe8838d827db6bd6065c6ed29a6ce"
 
 [[package]]
+name = "griddle"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bb81d22191b89b117cd12d6549544bfcba0da741efdcec7c7d2fd06a0f56363"
+dependencies = [
+ "ahash 0.7.4",
+ "hashbrown 0.11.2",
+]
+
+[[package]]
 name = "half"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -802,6 +823,15 @@ name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
+
+[[package]]
+name = "hashbrown"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash 0.7.4",
+]
 
 [[package]]
 name = "hermit-abi"
@@ -844,6 +874,7 @@ dependencies = [
  "native-tls",
  "pulldown-cmark",
  "rand 0.8.4",
+ "ritelinked",
  "rustpython-common",
  "rustpython-vm",
  "telnet",
@@ -887,7 +918,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.9.1",
 ]
 
 [[package]]
@@ -1807,6 +1838,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ritelinked"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98f2771d255fd99f0294f13249fecd0cae6e074f86b4197ec1f1689d537b44d3"
+dependencies = [
+ "ahash 0.7.4",
+ "griddle",
+ "hashbrown 0.11.2",
+]
+
+[[package]]
 name = "rust-argon2"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1902,7 +1944,7 @@ name = "rustpython-compiler-core"
 version = "0.1.2"
 source = "git+https://github.com/RustPython/RustPython.git?rev=3ce476c13d4daa3366e012a96a5e52e271ed2b29#3ce476c13d4daa3366e012a96a5e52e271ed2b29"
 dependencies = [
- "ahash",
+ "ahash 0.6.3",
  "indexmap",
  "itertools 0.9.0",
  "log",
@@ -1934,7 +1976,7 @@ name = "rustpython-parser"
 version = "0.1.2"
 source = "git+https://github.com/RustPython/RustPython.git?rev=3ce476c13d4daa3366e012a96a5e52e271ed2b29#3ce476c13d4daa3366e012a96a5e52e271ed2b29"
 dependencies = [
- "ahash",
+ "ahash 0.6.3",
  "lalrpop",
  "lalrpop-util",
  "log",
@@ -1962,7 +2004,7 @@ version = "0.1.2"
 source = "git+https://github.com/RustPython/RustPython.git?rev=3ce476c13d4daa3366e012a96a5e52e271ed2b29#3ce476c13d4daa3366e012a96a5e52e271ed2b29"
 dependencies = [
  "adler32",
- "ahash",
+ "ahash 0.6.3",
  "atty",
  "base64",
  "bitflags",

@@ -1,5 +1,6 @@
 mod factory;
 mod multiplex;
+mod recency;
 
 use crate::input::completion::Completer;
 pub use factory::GameCompletionsFactory;

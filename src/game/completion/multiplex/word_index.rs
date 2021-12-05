@@ -6,6 +6,12 @@ pub struct WordIndexWeightedRandomSelector {
     weights_by_index: Vec<Vec<u8>>,
 }
 
+impl WordIndexWeightedRandomSelector {
+    pub fn with_weights_by_index(weights_by_index: Vec<Vec<u8>>) -> Self {
+        Self { weights_by_index }
+    }
+}
+
 impl MultiplexSelectorFactory for WordIndexWeightedRandomSelector {
     fn create(&self, context: CompletionContext) -> Box<dyn super::MultiplexSelector> {
         let index = context.word_index().max(self.weights_by_index.len() - 1);

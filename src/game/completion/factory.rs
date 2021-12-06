@@ -15,13 +15,13 @@ fn create_sent_source() -> MultiplexCompletionSource<Box<dyn SimpleCompletionSou
         ],
         selector_factory: Box::new(WordIndexWeightedRandomSelector::with_weights_by_index(
             vec![
-                // the markov trie has a max depth of 5; at that point, we start to suspect
+                // The markov trie has a max depth of 5; at that point, we start to suspect
                 // that it's not a structured command, so we let recency have more weight
                 vec![100, 0],
                 vec![100, 0],
                 vec![100, 0],
                 vec![100, 0],
-                // after the first few words, still prefer markov, but
+                // After the first few words, still prefer markov, but
                 // give recent words a bit of a chance, too
                 vec![50, 50],
             ],

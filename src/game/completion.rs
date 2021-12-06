@@ -2,6 +2,7 @@ use bitflags::bitflags;
 
 mod factory;
 mod flagged;
+mod markov;
 mod multiplex;
 mod recency;
 mod tokens;

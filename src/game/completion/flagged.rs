@@ -5,6 +5,12 @@ pub trait SimpleCompletionSource: Completer {
     fn process(&mut self, text: String);
 }
 
+impl<T: SimpleCompletionSource + ?Sized> SimpleCompletionSource for Box<T> {
+    fn process(&mut self, text: String) {
+        (**self).process(text)
+    }
+}
+
 pub struct FlaggedCompletionSource<T: SimpleCompletionSource> {
     accepted_flags: ProcessFlags,
     delegate: T,

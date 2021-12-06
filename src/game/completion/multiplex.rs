@@ -3,6 +3,7 @@ use genawaiter::{sync::gen, yield_};
 pub mod weighted;
 pub mod word_index;
 
+use crate::game::completion::flagged::SimpleCompletionSource;
 use crate::game::completion::{CompletionSource, ProcessFlags};
 use crate::input::completion::empty::EmptyCompleter;
 use crate::input::completion::{
@@ -82,6 +83,14 @@ impl<T: CompletionSource> CompletionSource for MultiplexCompletionSource<T> {
     fn process(&mut self, text: String, flags: ProcessFlags) {
         for source in &mut self.sources {
             source.process(text.to_string(), flags);
+        }
+    }
+}
+
+impl<T: SimpleCompletionSource> SimpleCompletionSource for MultiplexCompletionSource<T> {
+    fn process(&mut self, text: String) {
+        for source in &mut self.sources {
+            source.process(text.to_string());
         }
     }
 }

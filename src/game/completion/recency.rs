@@ -53,15 +53,22 @@ impl SimpleCompletionSource for RecencyCompletionSource {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::editing::motion::tests::window;
     use crate::input::completion::{BoxedSuggestions, Completer, CompletionContext};
 
-    pub fn suggest<T: Completer>(source: &mut T) -> BoxedSuggestions {
-        let mut app = window("");
+    pub fn suggest_in_window<T: Completer>(
+        source: &mut T,
+        window_content: &'static str,
+    ) -> BoxedSuggestions {
+        let mut app = window(window_content);
         let context = CompletionContext::from(&mut app);
         return source.suggest(Box::new(&app), context);
+    }
+
+    pub fn suggest<T: Completer>(source: &mut T) -> BoxedSuggestions {
+        suggest_in_window(source, "")
     }
 
     #[test]

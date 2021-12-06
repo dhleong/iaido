@@ -27,6 +27,10 @@ pub struct CompletionContext {
 }
 
 impl CompletionContext {
+    pub fn line_before_cursor(&self) -> &str {
+        &self.text[0..self.cursor]
+    }
+
     pub fn word_range_where(&self, is_word: impl Fn(char) -> bool) -> (usize, usize) {
         for i in (0..self.cursor).rev() {
             let is_end_of_word = self.text[i..i + 1].find(|c| !is_word(c));

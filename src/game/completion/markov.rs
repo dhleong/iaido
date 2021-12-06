@@ -8,9 +8,20 @@ use crate::input::completion::{
 use super::flagged::SimpleCompletionSource;
 use super::tokens::CompletionTokenizable;
 
+const DEFAULT_MAX_DEPTH: usize = 5;
+
 #[derive(Default)]
 pub struct MarkovCompletionSource {
     trie: MarkovTrie<String>,
+}
+
+impl MarkovCompletionSource {
+    #[allow(dead_code)]
+    pub fn with_stop_words(words: HashSet<String>) -> Self {
+        Self {
+            trie: MarkovTrie::with_stop_words(words),
+        }
+    }
 }
 
 fn tokens(text: &str) -> Vec<String> {
@@ -29,7 +40,10 @@ impl Completer for MarkovCompletionSource {
         let partial = context.word().to_lowercase();
         let tokens_before = tokens(context.line_before_cursor());
 
-        let nodes = self.trie.root.query(&tokens_before[..]);
+        let nodes = self
+            .trie
+            .root
+            .query(&tokens_before[..tokens_before.len().checked_sub(1).unwrap_or(0)]);
         let mut sorted: Vec<&&MarkovNode<String>> = nodes
             .iter()
             .filter(|node| node.value.starts_with(&partial))
@@ -52,11 +66,26 @@ impl SimpleCompletionSource for MarkovCompletionSource {
     }
 }
 
-#[derive(Default)]
 struct MarkovTrie<T> {
     root: MarkovTransitions<T>,
     max_depth: usize,
     stop_words: HashSet<T>,
+}
+
+impl<T: Default> MarkovTrie<T> {
+    fn with_stop_words(stop_words: HashSet<T>) -> Self {
+        Self {
+            root: Default::default(),
+            max_depth: DEFAULT_MAX_DEPTH,
+            stop_words,
+        }
+    }
+}
+
+impl<T: Default> Default for MarkovTrie<T> {
+    fn default() -> Self {
+        MarkovTrie::with_stop_words(Default::default())
+    }
 }
 
 impl<T: Default + Hash + Eq + Clone> MarkovTrie<T> {
@@ -123,5 +152,63 @@ impl<T: Default> From<T> for MarkovNode<T> {
             incoming_count: 0,
             transitions: MarkovTransitions::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::completion::recency::tests::{suggest, suggest_in_window};
+
+    fn source() -> MarkovCompletionSource {
+        let mut source = MarkovCompletionSource::default();
+
+        // Process in weird order to demonstrate it's frequency based,
+        // not insert-order or alpha or anything
+        source.process("Take my love".to_string());
+        source.process("I'm still free".to_string());
+        source.process("Take me where I cannot stand".to_string());
+        source.process("I don't care".to_string());
+        source.process("Take my land".to_string());
+
+        return source;
+    }
+
+    #[ignore]
+    #[test]
+    pub fn empty_completions() {
+        let mut source = source();
+        let suggestions: Vec<String> = suggest(&mut source).map(|v| v.replacement).collect();
+        assert_eq!(suggestions, vec!["take", "i'm", "i"]);
+    }
+
+    #[test]
+    pub fn filtered_first_completions() {
+        let mut source = source();
+        let suggestions: Vec<String> = suggest_in_window(&mut source, "t|")
+            .map(|v| v.replacement)
+            .collect();
+        assert_eq!(suggestions, vec!["take"]);
+    }
+
+    #[test]
+    pub fn sequence_completion() {
+        let mut source = source();
+        let suggestions: Vec<String> = suggest_in_window(&mut source, "take m|")
+            .map(|v| v.replacement)
+            .collect();
+        assert_eq!(suggestions, vec!["my", "me"]);
+    }
+
+    #[test]
+    pub fn ignore_stop_words() {
+        let mut stop_words: HashSet<String> = HashSet::default();
+        stop_words.insert("say".into());
+
+        let mut source = MarkovCompletionSource::with_stop_words(stop_words);
+        source.process("say Hello".to_string());
+
+        let suggestions: Vec<Completion> = suggest(&mut source).collect();
+        assert!(suggestions.is_empty());
     }
 }

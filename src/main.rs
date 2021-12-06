@@ -11,6 +11,7 @@ mod ui;
 
 pub mod log;
 
+use crate::ui::backtrace::PanicData;
 use app::looper::app_loop;
 use backtrace::Backtrace;
 use input::maps::vim::VimKeymap;
@@ -41,11 +42,6 @@ fn main_loop() -> io::Result<()> {
     Ok(())
 }
 
-struct PanicData {
-    info: String,
-    trace: Backtrace,
-}
-
 fn main() -> io::Result<()> {
     // Prepare to capture any panics
     let panic_data = prepare_panic_capture();
@@ -74,7 +70,7 @@ fn main() -> io::Result<()> {
             let lock = panic_data.lock().unwrap();
             if let Some(ref data) = *lock {
                 println!("PANIC! {:?}", data.info);
-                println!("Backtrace:\n {:?}", data.trace);
+                println!("Backtrace:\n {}", data);
             } else {
                 println!("PANIC! {:?}", panic);
                 println!("(backtrace unavailable)");

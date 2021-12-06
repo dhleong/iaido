@@ -54,7 +54,7 @@ lazy_static = "1.4.0"
 bounded-vec-deque = "0.1.1"
 dirs = "4.0.0"
 clap = "2.33.3"
-arboard = "1.2.1"
+arboard = { version = "2.0.1", default-features = false, features = [] }
 native-tls = "0.2.8"
 rand = "0.8.4"
 ritelinked = "0.3.2"

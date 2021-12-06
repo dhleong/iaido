@@ -1,3 +1,5 @@
+pub mod backtrace;
+
 use std::{io, time::Duration};
 
 use crate::{editing::text::TextLine, input::Key};

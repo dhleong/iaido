@@ -189,6 +189,10 @@ impl VimKeymap {
     fn push_count_digit(&mut self, digit: u32) {
         self.count = self.count * 10 + digit;
     }
+
+    fn has_pending_state(&self) -> bool {
+        self.operator_fn.is_some() || self.selected_register.is_some()
+    }
 }
 
 fn pick_completer<K: KeymapContext>(mode: &VimMode, context: &mut K) -> Option<Rc<dyn Completer>> {
@@ -270,7 +274,7 @@ impl Keymap for VimKeymap {
                             key,
                         });
 
-                        if show_keys && self.operator_fn.is_none() {
+                        if show_keys && !self.has_pending_state() {
                             self.keys_buffer.clear();
                             self.render_keys_buffer(context);
                         }

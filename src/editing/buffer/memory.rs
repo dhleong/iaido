@@ -136,23 +136,27 @@ impl Buffer for MemoryBuffer {
     }
 
     fn insert(&mut self, cursor: CursorPosition, mut text: TextLine) {
-        if cursor == (0, 0).into() && self.content.lines.is_empty() {
+        if cursor.line < self.content.lines.len() {
+            let original = &self.content.lines[cursor.line];
+            let mut before = original.subs(0, cursor.col);
+            let mut after = original.subs(cursor.col, original.width());
+
+            let mut new = TextLine::default();
+            new.append(&mut before);
+            new.append(&mut text);
+            new.append(&mut after);
+            self.content.lines[cursor.line] = new;
+        } else if cursor.line == self.content.lines.len() && cursor.col == 0 {
             self.content.lines.push(text);
-            return;
         } else if self.content.lines.is_empty() {
             panic!("insert at {:?} but empty", cursor);
+        } else {
+            panic!(
+                "unexpected insert at {:?}; lines_count={}",
+                cursor,
+                self.content.lines.len()
+            );
         }
-
-        let original = &self.content.lines[cursor.line];
-        let mut before = original.subs(0, cursor.col);
-        let mut after = original.subs(cursor.col, original.width());
-
-        let mut new = TextLine::default();
-        new.append(&mut before);
-        new.append(&mut text);
-        new.append(&mut after);
-
-        self.content.lines[cursor.line] = new;
     }
 
     fn insert_lines(&mut self, line_index: usize, text: TextLines) {
@@ -180,7 +184,7 @@ impl Buffer for MemoryBuffer {
             return;
         }
 
-        if !copied.trailing_newline {
+        if !copied.trailing_newline && copied.text.lines.len() > 0 {
             // We have to de-splice this line
             let end_of_line = self.get_line_width(cursor.line).unwrap_or(cursor.col);
             let range: MotionRange = (cursor, cursor.with_col(end_of_line)).into();
@@ -190,7 +194,6 @@ impl Buffer for MemoryBuffer {
                 (cursor.line + 1, 0).into(),
                 copied.text.lines.remove(end - 1).into(),
             );
-
             end -= 1;
         }
 
@@ -487,6 +490,29 @@ pub mod tests {
                     text: TextLines::raw("Take my land"),
                     leading_newline: true,
                     trailing_newline: true,
+                },
+            );
+
+            assert_visual_match(
+                &buf,
+                indoc! {"
+                    Take my love
+                    Take my land
+                "},
+            );
+        }
+
+        #[test]
+        fn append_line() {
+            let mut buf = MemoryBuffer::new(0);
+            buf.append("Take my love".into());
+
+            buf.insert_range(
+                (1, 0).into(),
+                CopiedRange {
+                    text: TextLines::raw("Take my land"),
+                    leading_newline: false,
+                    trailing_newline: false,
                 },
             );
 

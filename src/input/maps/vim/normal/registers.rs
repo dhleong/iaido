@@ -74,11 +74,12 @@ fn yank(ctx: &mut KeyHandlerContext<VimKeymap>, range: MotionRange) -> KeyResult
     Ok(())
 }
 
-fn paste_before_cursor(state: &mut app::State, text: CopiedRange) {
+fn paste_before_cursor(state: &mut app::State, mut text: CopiedRange) {
     let single_line_width = single_line_width(&text);
 
     if single_line_width == 0 {
         state.current_window_mut().cursor.col = 0;
+        text.leading_newline = true;
     }
 
     state.insert_range_at_cursor(text);
@@ -88,7 +89,7 @@ fn paste_before_cursor(state: &mut app::State, text: CopiedRange) {
     }
 }
 
-fn paste_after_cursor(state: &mut app::State, text: CopiedRange) {
+fn paste_after_cursor(state: &mut app::State, mut text: CopiedRange) {
     let single_line_width = single_line_width(&text);
 
     if single_line_width > 0 {
@@ -99,6 +100,7 @@ fn paste_after_cursor(state: &mut app::State, text: CopiedRange) {
             line: cursor.line + 1,
             col: 0,
         };
+        text.leading_newline = true;
     }
     paste_before_cursor(state, text);
 }
@@ -207,6 +209,26 @@ mod tests {
                 |Take my love
             "});
         }
+
+        #[test]
+        fn paste_line_from_clipboard_after_cursor() {
+            let ctx = window(indoc! {"
+                ~
+                Take my |love
+            "});
+
+            let mut state = crate::app::State::default();
+            state
+                .registers
+                .by_name('a')
+                .write("Take my land\n".to_string());
+
+            let (mut ctx, _) = ctx.feed_vim_with_state(state, "\"ap");
+            ctx.assert_visual_match(indoc! {"
+                Take my love
+                |Take my land
+            "});
+        }
     }
 
     #[cfg(test)]
@@ -227,6 +249,26 @@ mod tests {
             "});
             ctx.feed_vim("YP").assert_visual_match(indoc! {"
                 |Take my love
+                Take my love
+            "});
+        }
+
+        #[test]
+        fn paste_line_from_clipboard_before_cursor() {
+            let ctx = window(indoc! {"
+                ~
+                Take my |love
+            "});
+
+            let mut state = crate::app::State::default();
+            state
+                .registers
+                .by_name('a')
+                .write("Take my land\n".to_string());
+
+            let (mut ctx, _) = ctx.feed_vim_with_state(state, "\"aP");
+            ctx.assert_visual_match(indoc! {"
+                |Take my land
                 Take my love
             "});
         }

@@ -316,13 +316,13 @@ pub mod tests {
             self.commands.insert(command_name.to_string(), spec);
         }
 
-        pub fn feed_keys_for_state<K: Keymap>(
+        pub fn feed_keys_with_state<K: Keymap>(
             mut self,
             mut keymap: K,
+            mut state: app::State,
             keys: &str,
         ) -> (Self, app::State) {
             let key_source = MemoryKeySource::from_keys(keys);
-            let mut state = app::State::default();
 
             self.buffer = state.buffers.replace(self.buffer);
 
@@ -351,6 +351,10 @@ pub mod tests {
             (self, context.state)
         }
 
+        pub fn feed_keys_for_state<K: Keymap>(self, keymap: K, keys: &str) -> (Self, app::State) {
+            self.feed_keys_with_state(keymap, app::State::default(), keys)
+        }
+
         pub fn feed_keys<K: Keymap>(self, keymap: K, keys: &str) -> Self {
             let (result, _) = self.feed_keys_for_state(keymap, keys);
             result
@@ -358,6 +362,10 @@ pub mod tests {
 
         pub fn feed_vim(self, keys: &str) -> Self {
             self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
+        }
+
+        pub fn feed_vim_with_state(self, state: app::State, keys: &str) -> (Self, app::State) {
+            self.feed_keys_with_state(crate::input::maps::vim::VimKeymap::default(), state, keys)
         }
 
         pub fn feed_vim_for_state(self, keys: &str) -> (Self, app::State) {

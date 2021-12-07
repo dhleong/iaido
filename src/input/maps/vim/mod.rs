@@ -154,6 +154,10 @@ impl VimKeymap {
         }
     }
 
+    pub fn cancel_change(&mut self) {
+        self.operator_fn = None;
+    }
+
     fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
         context.state_mut().keymap_widget = Some(Widget::Spread(vec![
             Widget::Space,
@@ -243,6 +247,7 @@ impl Keymap for VimKeymap {
         let mut current = &mode.mappings;
         let mut at_root = true;
         let mut result = Ok(());
+        let mut key_unhandled = false;
         self.active_completer = pick_completer(&mode, context);
 
         loop {
@@ -303,15 +308,26 @@ impl Keymap for VimKeymap {
                             key,
                         });
                         break;
+                    } else {
+                        key_unhandled = true;
+                        break;
                     }
                 } else {
                     // no possible mapping; stop
-                    self.keys_buffer.clear();
+                    key_unhandled = true;
                     break;
                 }
             } else {
                 // no key read:
                 break;
+            }
+        }
+
+        if key_unhandled {
+            self.keys_buffer.clear();
+            self.cancel_change();
+            if context.state().current_buffer().can_handle_change() {
+                context.state_mut().current_buffer_mut().changes().cancel();
             }
         }
 
@@ -333,6 +349,15 @@ impl Keymap for VimKeymap {
         }
 
         result
+    }
+}
+
+impl<'a> KeyHandlerContext<'a, VimKeymap> {
+    pub fn cancel_change(&mut self) {
+        self.keymap.cancel_change();
+        if self.state().current_buffer().can_handle_change() {
+            self.state_mut().current_buffer_mut().changes().cancel();
+        }
     }
 }
 
@@ -443,10 +468,24 @@ macro_rules! vim_branches {
     (
         $root:ident ->
         $keys:literal =>
-            |$ctx_name:ident| $body:expr,
+            |?cancel $ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| $body));
+        crate::vim_branches! { $root -> $($tail)* }
+    };
+
+    // normal keymap:
+    (
+        $root:ident ->
+        $keys:literal =>
+            |$ctx_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
+            $ctx_name.cancel_change();
+            $body
+        }));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -461,6 +500,7 @@ macro_rules! vim_branches {
             if $ctx_name.state().current_buffer().is_read_only() {
                 return Err(KeyError::ReadOnlyBuffer);
             }
+            $ctx_name.cancel_change();
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
             $body
@@ -475,7 +515,10 @@ macro_rules! vim_branches {
             move |$ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |$ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |$ctx_name| {
+            $ctx_name.cancel_change();
+            $body
+        }));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -486,7 +529,10 @@ macro_rules! vim_branches {
             move |?mut $ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |?mut $ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap move |?mut $ctx_name| {
+            $ctx_name.cancel_change();
+            $body
+        }));
         crate::vim_branches! { $root -> $($tail)* }
     };
 
@@ -497,7 +543,10 @@ macro_rules! vim_branches {
             |?mut $ctx_name:ident| $body:expr,
         $($tail:tt)*
     ) => {
-        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |?mut $ctx_name| $body));
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
+            $ctx_name.cancel_change();
+            $body
+        }));
         crate::vim_branches! { $root -> $($tail)* }
     };
 

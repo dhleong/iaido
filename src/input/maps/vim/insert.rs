@@ -58,7 +58,7 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
 
 fn common_insert_mode(extra_mappings: Option<KeyTreeNode>) -> VimMode {
     let mut mappings = vim_tree! {
-        "<esc>" => |ctx| {
+        "<esc>" => |?cancel ctx| {
             ctx.state_mut().clear_echo();
             ctx.state_mut().current_window_mut().set_inserting(false);
             ctx.state_mut().current_buffer_mut().end_change();

@@ -167,4 +167,27 @@ mod tests {
             "});
         }
     }
+
+    #[test]
+    fn changes_should_clear_on_invalid_map() {
+        // cI should never do anything by default, since c would
+        // go into operator pending and I does nothing there
+        let (mut ctx, keymap, _) = window(indoc! {"
+            Take my |love
+        "})
+        .feed_vim_for_keymap("cI<esc>"); // TODO with op pending mode, <esc> should be unneeded
+        assert!(keymap.operator_fn.is_none());
+        assert!(!ctx.buffer.changes().is_in_change());
+    }
+
+    #[test]
+    fn changes_should_clear_on_unmapped() {
+        // c<c-q> should never do anything since <c-q> is unbound
+        let (mut ctx, keymap, _) = window(indoc! {"
+            Take my |love
+        "})
+        .feed_vim_for_keymap("c<c-q>");
+        assert!(keymap.operator_fn.is_none());
+        assert!(!ctx.buffer.changes().is_in_change());
+    }
 }

@@ -276,8 +276,9 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_linewise_motions();
 
     VimMode::new("n", mappings).on_default(key_handler!(
-        VimKeymap | ?mut ctx | {
+        VimKeymap | ctx | {
             ctx.keymap.reset();
+            ctx.cancel_change();
             Ok(())
         }
     ))

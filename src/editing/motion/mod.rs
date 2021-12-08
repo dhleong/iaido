@@ -466,10 +466,13 @@ pub mod tests {
     ///       not considered part of the backing buffer. This is based on
     ///       how Vim renders extra space in a window when the end of the
     ///       buffer is reached.
+    /// `_` - If a line consists only of a single underscore, that line is
+    ///       treated as an entirely blank line. This lets us avoid relying
+    ///       on hard-to-see trailing whitespace to indicate this state.
     ///
     /// In addition:
-    /// `--INSERT--` - Can be the last line in the string to indicate the
-    /// window should be "inserting"
+    /// `--INSERT--` - Can be the last line in the string to explicitly indicate
+    /// that the window should be "inserting"
     pub fn window(s: &'static str) -> TestWindow {
         let s: String = s.into();
         let mut cursor = CursorPosition::default();
@@ -490,6 +493,8 @@ pub mod tests {
 
             if line == "~" {
                 non_buffer_lines += 1;
+            } else if line == "_" {
+                buffer.append(TextLine::from("").into());
             } else {
                 // NOTE: we we just use TextLines::from, that will
                 // convert an empty line into an empty TextLines vec,

@@ -247,6 +247,9 @@ impl AppState {
     pub fn insert_range_at_cursor(&mut self, text: CopiedRange) {
         let cursor = self.current_window().cursor;
         let buffer = self.current_buffer_mut();
+        if cursor.col == 0 && cursor.line == buffer.lines_count() + 1 {
+            buffer.insert_lines(buffer.lines_count(), "\n".into());
+        }
         buffer.insert_range(cursor, text);
     }
 

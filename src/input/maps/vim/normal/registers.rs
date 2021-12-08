@@ -229,6 +229,26 @@ mod tests {
                 |Take my land
             "});
         }
+
+        #[test]
+        fn paste_line_from_clipboard_after_cursor_when_empty() {
+            let ctx = window(indoc! {"
+                ~
+                ~
+            "});
+
+            let mut state = crate::app::State::default();
+            state
+                .registers
+                .by_name('a')
+                .write("Take my love\n".to_string());
+
+            let (mut ctx, _) = ctx.feed_vim_with_state(state, "\"ap");
+            ctx.assert_visual_match(indoc! {"
+                _
+                |Take my love
+            "});
+        }
     }
 
     #[cfg(test)]

@@ -7,9 +7,18 @@ use crate::{
 use crossterm::terminal;
 use editing::window::Window;
 use std::{cmp::min, io};
-pub use tui::text;
-use tui::{backend::Backend, Terminal};
+use tui::{
+    backend::Backend,
+    style::{Color, Style},
+    text::Span,
+    widgets::Block,
+    Frame, Terminal,
+};
 use tui::{backend::CrosstermBackend, layout::Rect};
+pub use tui::{
+    text,
+    widgets::{List, ListItem},
+};
 
 pub mod cursor;
 pub mod events;
@@ -188,14 +197,51 @@ impl Tui {
                 editing::Cursor::None => { /* nop */ }
                 editing::Cursor::Block(x, y) => {
                     f.set_cursor(x, y);
+                    Tui::render_pum(f, x, y);
                 }
                 editing::Cursor::Line(x, y) => {
                     f.set_cursor(x, y);
+                    Tui::render_pum(f, x, y);
                 }
             }
         })?;
 
         self.cursor.render(cursor)
+    }
+
+    fn render_pum(f: &mut Frame<CrosstermBackend<io::Stdout>>, x: u16, y: u16) {
+        let list = List::new(vec![
+            ListItem::new(Span::raw("Al pastor")),
+            ListItem::new(Span::raw("Chorizo")),
+            ListItem::new(Span::raw("Queso")),
+        ])
+        .block(Block::default().style(Style::default().bg(Color::Blue)));
+
+        // TODO compute/provide these dimensions:
+        let height = 3;
+        let width = 10;
+
+        let x = if x + width > f.size().width {
+            f.size().width - width
+        } else {
+            x
+        };
+
+        let y = if y + 1 + height > f.size().height {
+            y.checked_sub(height).unwrap_or(1u16)
+        } else {
+            y + 1
+        };
+
+        f.render_widget(
+            list,
+            Rect {
+                x,
+                y,
+                width,
+                height,
+            },
+        );
     }
 }
 

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{editing::motion::MotionContext, input::KeymapContext};
+use crate::{app::popup::PopupMenu, editing::motion::MotionContext, input::KeymapContext};
 
 use super::{CompletableContext, Completer, Completion, CompletionContext};
 
@@ -57,6 +57,30 @@ impl CompletionState {
             history: vec![original],
             index: 1,
         }
+    }
+
+    pub fn to_pum(&self) -> Option<PopupMenu> {
+        if self.completions.is_none() && self.history.is_empty() {
+            return None;
+        }
+
+        let contents: Vec<String> = self
+            .history
+            .iter()
+            .map(|completion| completion.replacement.to_string())
+            .collect();
+
+        let mut horizontal_offset = 0usize;
+
+        if let Some(item) = self.history.get(0) {
+            horizontal_offset = item.end - item.start;
+        }
+
+        Some(PopupMenu {
+            contents,
+            cursor: Some(self.index),
+            horizontal_offset,
+        })
     }
 
     pub fn apply_next<C: MotionContext>(&mut self, ctx: &mut C) {

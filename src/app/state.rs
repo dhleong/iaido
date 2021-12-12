@@ -291,15 +291,7 @@ impl Default for AppState {
             tabpages,
             registers: RegisterManager::new(),
             echo_buffer: Box::new(MemoryBuffer::new(0)),
-            pum: Some(PopupMenu {
-                contents: vec![
-                    "Al pastor".to_string(),
-                    "Chorizo".to_string(),
-                    "Queso".to_string(),
-                ],
-                cursor: Some(2),
-                horizontal_offset: 0,
-            }),
+            pum: None,
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
             keymap_widget: None,

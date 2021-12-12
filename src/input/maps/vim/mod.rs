@@ -238,6 +238,9 @@ impl Keymap for VimKeymap {
 
         if !show_keys && !self.keys_buffer.is_empty() {
             self.keys_buffer.clear();
+        } else if show_keys {
+            // Clear the popup menu, if any
+            context.state_mut().pum = None;
         }
 
         let mut current = &mode.mappings;

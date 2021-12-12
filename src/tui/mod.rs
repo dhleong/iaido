@@ -240,7 +240,7 @@ impl Tui {
             requested_x
         };
 
-        let y = if y + 1 + h > display.size.h {
+        let y = if y + 1 + h > display.size.h / 2 {
             y.checked_sub(h).unwrap_or(1u16)
         } else {
             y + 1

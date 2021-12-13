@@ -1,4 +1,4 @@
-use tui::layout::Rect;
+use tui::{buffer::Cell, layout::Rect};
 
 use crate::editing::{self, Size};
 
@@ -14,6 +14,16 @@ impl Display {
             size,
             buffer: tui::buffer::Buffer::empty(size.into()),
             cursor: editing::Cursor::None,
+        }
+    }
+
+    pub fn clear(&mut self, area: Rect) {
+        let width: usize = area.width.into();
+        for y in area.y..area.y + area.height {
+            let start = self.buffer.index_of(area.x, y);
+            for x in start..start + width {
+                self.buffer.content[x] = Cell::default();
+            }
         }
     }
 

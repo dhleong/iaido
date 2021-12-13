@@ -246,12 +246,10 @@ impl Tui {
             y + 1
         };
 
-        tui::widgets::StatefulWidget::render(
-            list,
-            Rect::new(x, y, w, h),
-            &mut display.buffer,
-            &mut list_state,
-        );
+        let area = Rect::new(x, y, w, h);
+        display.clear(area);
+
+        tui::widgets::StatefulWidget::render(list, area, &mut display.buffer, &mut list_state);
     }
 }
 

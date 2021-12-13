@@ -75,8 +75,8 @@ impl CompletionState {
 
         let mut horizontal_offset = 0usize;
 
-        if let Some(item) = self.history.get(1) {
-            horizontal_offset = item.end - item.start;
+        if let Some(item) = self.history.get(self.index.checked_sub(1).unwrap_or(0)) {
+            horizontal_offset = item.replacement_end().col - item.start;
         }
 
         Some(PopupMenu {

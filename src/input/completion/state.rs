@@ -60,8 +60,9 @@ impl CompletionState {
     }
 
     pub fn to_pum(&self) -> Option<PopupMenu> {
+        // NOTE: The first "history" item is the raw input; that's the source
+        // of the extra 1 everywhere in here:
         if self.completions.is_none() && self.history.len() < 2 {
-            // NOTE: The first "history" item is the raw input
             return None;
         }
 
@@ -80,7 +81,7 @@ impl CompletionState {
 
         Some(PopupMenu {
             contents,
-            cursor: self.index.checked_sub(1),
+            cursor: self.index.checked_sub(2),
             horizontal_offset,
         })
     }

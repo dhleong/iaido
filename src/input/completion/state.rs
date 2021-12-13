@@ -60,25 +60,27 @@ impl CompletionState {
     }
 
     pub fn to_pum(&self) -> Option<PopupMenu> {
-        if self.completions.is_none() && self.history.is_empty() {
+        if self.completions.is_none() && self.history.len() < 2 {
+            // NOTE: The first "history" item is the raw input
             return None;
         }
 
         let contents: Vec<String> = self
             .history
             .iter()
+            .skip(1)
             .map(|completion| completion.replacement.to_string())
             .collect();
 
         let mut horizontal_offset = 0usize;
 
-        if let Some(item) = self.history.get(0) {
+        if let Some(item) = self.history.get(1) {
             horizontal_offset = item.end - item.start;
         }
 
         Some(PopupMenu {
             contents,
-            cursor: Some(self.index),
+            cursor: self.index.checked_sub(1),
             horizontal_offset,
         })
     }

@@ -4,6 +4,8 @@ use crate::{app::popup::PopupMenu, editing::motion::MotionContext, input::Keymap
 
 use super::{CompletableContext, Completer, Completion, CompletionContext};
 
+const COMPLETIONS_PRELOAD_COUNT: usize = 10;
+
 pub struct BoxedCompleter {
     delegate: Rc<dyn Completer>,
 }
@@ -59,7 +61,9 @@ impl CompletionState {
         }
     }
 
-    pub fn to_pum(&self) -> Option<PopupMenu> {
+    pub fn to_pum(&mut self) -> Option<PopupMenu> {
+        self.preload(COMPLETIONS_PRELOAD_COUNT);
+
         // NOTE: The first "history" item is the raw input; that's the source
         // of the extra 1 everywhere in here:
         if self.completions.is_none() && self.history.len() < 2 {
@@ -110,6 +114,19 @@ impl CompletionState {
             ctx.window_mut().apply_completion(&prev);
         }
         self.history.insert(current_index, current);
+    }
+
+    fn preload(&mut self, count: usize) {
+        let index = self.index;
+        self.index = self.history.len() + 1;
+        for _ in self.history.len()..count {
+            if let Some(next) = self.advance() {
+                self.history.push(next);
+            } else {
+                break;
+            }
+        }
+        self.index = index;
     }
 
     fn take_current(&mut self) -> Completion {

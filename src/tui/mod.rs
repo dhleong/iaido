@@ -1,15 +1,24 @@
 use crate::{
-    app::widgets::Widget,
+    app::{popup::PopupMenu, widgets::Widget},
     editing::{self, Resizable, Size},
     ui::UI,
 };
 
 use crossterm::terminal;
 use editing::window::Window;
-use std::{cmp::min, io};
-pub use tui::text;
-use tui::{backend::Backend, Terminal};
+use std::{cmp::min, convert::TryInto, io};
+use tui::{
+    backend::Backend,
+    style::{Color, Style},
+    text::Span,
+    widgets::{Block, ListState},
+    Terminal,
+};
 use tui::{backend::CrosstermBackend, layout::Rect};
+pub use tui::{
+    text,
+    widgets::{List, ListItem},
+};
 
 pub mod cursor;
 pub mod events;
@@ -75,6 +84,15 @@ impl Tui {
 
         // prompt
         self.render_prompt(app, &mut display);
+
+        // popup menu
+        if let Some(pum) = app.pum.as_ref() {
+            match display.cursor.clone() {
+                editing::Cursor::Line(x, y) => Tui::render_pum(pum, x, y, &mut display),
+                editing::Cursor::Block(x, y) => Tui::render_pum(pum, x, y, &mut display),
+                _ => {} // nop
+            }
+        }
 
         // render any active keymap widget
         if let Some(w) = &app.keymap_widget {
@@ -196,6 +214,42 @@ impl Tui {
         })?;
 
         self.cursor.render(cursor)
+    }
+
+    fn render_pum(pum: &PopupMenu, x: u16, y: u16, display: &mut Display) {
+        let list = List::new(
+            pum.contents
+                .iter()
+                .map(|item| ListItem::new(Span::raw(item)))
+                .collect::<Vec<ListItem>>(),
+        )
+        .highlight_style(Style::default().bg(Color::LightBlue))
+        .block(Block::default().style(Style::default().bg(Color::Blue)));
+
+        let mut list_state = ListState::default();
+        list_state.select(pum.cursor);
+
+        let Size { w, h } = pum.measure(display.size);
+
+        let requested_x = x
+            .checked_sub(pum.horizontal_offset.try_into().unwrap_or(0))
+            .unwrap_or(0);
+        let x = if requested_x + w > display.size.w {
+            display.size.w - w
+        } else {
+            requested_x
+        };
+
+        let y = if y + 1 + h > display.size.h / 2 {
+            y.checked_sub(h).unwrap_or(1u16)
+        } else {
+            y + 1
+        };
+
+        let area = Rect::new(x, y, w, h);
+        display.clear(area);
+
+        tui::widgets::StatefulWidget::render(list, area, &mut display.buffer, &mut list_state);
     }
 }
 

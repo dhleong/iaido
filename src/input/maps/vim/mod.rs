@@ -251,6 +251,9 @@ impl Keymap for VimKeymap {
                     self.keys_buffer.push(key.clone());
                 }
 
+                // Clear the popup menu, if any
+                context.state_mut().pum = None;
+
                 // if there's a change in progress, add the key to it
                 if !context.state().current_buffer().is_read_only() {
                     context

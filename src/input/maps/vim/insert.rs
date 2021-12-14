@@ -39,7 +39,7 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             };
 
             state.apply_next(ctx.state_mut());
-
+            ctx.state_mut().pum = state.to_pum();
             ctx.state_mut().current_window_mut().completion_state = Some(state);
 
             Ok(())
@@ -48,6 +48,7 @@ pub fn vim_insert_mappings() -> KeyTreeNode {
             if let Some(mut state) = ctx.state_mut().current_window_mut().completion_state.take() {
                 state.apply_prev(ctx.state_mut());
 
+                ctx.state_mut().pum = state.to_pum();
                 ctx.state_mut().current_window_mut().completion_state = Some(state);
             }
 

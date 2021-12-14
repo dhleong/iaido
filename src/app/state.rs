@@ -25,6 +25,7 @@ use crate::{
 use super::{
     bufwin::BufWin,
     jobs::{JobError, Jobs},
+    popup::PopupMenu,
     prompt::Prompt,
     registers::RegisterManager,
     widgets::Widget,
@@ -39,6 +40,7 @@ pub struct AppState {
     pub buffers: Buffers,
     pub tabpages: Tabpages,
     pub echo_buffer: Box<dyn Buffer>,
+    pub pum: Option<PopupMenu>,
     pub prompt: Prompt,
     pub builtin_commands: CommandRegistry,
     pub registers: RegisterManager,
@@ -289,6 +291,7 @@ impl Default for AppState {
             tabpages,
             registers: RegisterManager::new(),
             echo_buffer: Box::new(MemoryBuffer::new(0)),
+            pum: None,
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
             keymap_widget: None,

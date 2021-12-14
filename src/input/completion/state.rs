@@ -1,8 +1,10 @@
 use std::rc::Rc;
 
-use crate::{editing::motion::MotionContext, input::KeymapContext};
+use crate::{app::popup::PopupMenu, editing::motion::MotionContext, input::KeymapContext};
 
 use super::{CompletableContext, Completer, Completion, CompletionContext};
+
+const COMPLETIONS_PRELOAD_COUNT: usize = 10;
 
 pub struct BoxedCompleter {
     delegate: Rc<dyn Completer>,
@@ -59,6 +61,36 @@ impl CompletionState {
         }
     }
 
+    pub fn to_pum(&mut self) -> Option<PopupMenu> {
+        self.preload(COMPLETIONS_PRELOAD_COUNT);
+
+        // NOTE: The first "history" item is the raw input; that's the source
+        // of the extra 1 everywhere in here:
+        if self.completions.is_none() && self.history.len() < 2 {
+            return None;
+        }
+
+        let contents: Vec<String> = self
+            .history
+            .iter()
+            .skip(1)
+            .map(|completion| completion.replacement.to_string())
+            .collect();
+
+        let horizontal_offset =
+            if let Some(item) = self.history.get(self.index.checked_sub(1).unwrap_or(0)) {
+                item.replacement_end().col - item.start
+            } else {
+                0usize
+            };
+
+        Some(PopupMenu {
+            contents,
+            cursor: self.index.checked_sub(2),
+            horizontal_offset,
+        })
+    }
+
     pub fn apply_next<C: MotionContext>(&mut self, ctx: &mut C) {
         // bit of a dance: we actually take ownership temporarily
         // and return it after
@@ -82,6 +114,19 @@ impl CompletionState {
             ctx.window_mut().apply_completion(&prev);
         }
         self.history.insert(current_index, current);
+    }
+
+    fn preload(&mut self, count: usize) {
+        let index = self.index;
+        self.index = self.history.len() + 1;
+        for _ in self.history.len()..count {
+            if let Some(next) = self.advance() {
+                self.history.push(next);
+            } else {
+                break;
+            }
+        }
+        self.index = index;
     }
 
     fn take_current(&mut self) -> Completion {

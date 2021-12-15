@@ -147,6 +147,10 @@ impl VimKeymap {
         self.mode_stack.push(mode);
     }
 
+    pub fn pop_mode(&mut self, mode_id: &str) {
+        self.mode_stack.pop_if(mode_id);
+    }
+
     pub fn reset(&mut self) {
         self.pending_linewise_operator_key = None;
         self.operator_fn = None;
@@ -565,6 +569,9 @@ macro_rules! vim_branches {
 
                 operator_fn_result
             }));
+
+            // TODO: linewise vs non-linewise?
+            $ctx_name.keymap.push_mode(crate::input::maps::vim::op::vim_operator_pending_mode(true));
             Ok(())
         }));
         crate::vim_branches! { $root -> $($tail)* }

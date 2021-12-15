@@ -3,6 +3,7 @@ mod mode_stack;
 mod motion;
 mod motions;
 mod normal;
+mod op;
 mod prompt;
 mod tree;
 
@@ -38,8 +39,10 @@ type OperatorFn = dyn Fn(&mut KeyHandlerContext<'_, VimKeymap>, MotionRange) -> 
 pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
+    pub shows_keys: bool,
     pub default_handler: Option<Box<KeyHandler>>,
     pub after_handler: Option<Box<KeyHandler>>,
+    pub exit_handler: Option<Box<KeyHandler>>,
     pub completer: Option<Rc<dyn Completer>>,
 }
 
@@ -48,8 +51,10 @@ impl VimMode {
         Self {
             id: id.into(),
             mappings,
+            shows_keys: false,
             default_handler: None,
             after_handler: None,
+            exit_handler: None,
             completer: None,
         }
     }
@@ -61,6 +66,11 @@ impl VimMode {
 
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
         self.after_handler = Some(handler);
+        self
+    }
+
+    pub fn on_exit(mut self, handler: Box<KeyHandler>) -> Self {
+        self.exit_handler = Some(handler);
         self
     }
 
@@ -217,7 +227,7 @@ impl Keymap for VimKeymap {
         let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
             context.state_mut().keymap_widget = None;
-            (mode, true, false)
+            (mode, true, mode.shows_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
@@ -331,8 +341,17 @@ impl Keymap for VimKeymap {
         self.active_completer = None;
 
         if mode_from_stack {
-            // return the moved mode value back to the stack...
-            self.mode_stack.return_top(mode);
+            // Return the moved mode value back to the stack...
+            if let Some(mode) = self.mode_stack.return_top(mode) {
+                // Or call its "Exit" handler if the stack rejected it
+                if let Some(on_exit) = mode.exit_handler {
+                    on_exit(KeyHandlerContext {
+                        context: Box::new(context),
+                        keymap: self,
+                        key: '\0'.into(),
+                    })?;
+                }
+            }
         }
 
         result

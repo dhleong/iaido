@@ -227,7 +227,8 @@ impl Keymap for VimKeymap {
         let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
             context.state_mut().keymap_widget = None;
-            (mode, true, mode.shows_keys)
+            let show_keys = mode.shows_keys;
+            (mode, true, show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (

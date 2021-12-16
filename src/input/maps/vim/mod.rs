@@ -598,7 +598,11 @@ macro_rules! vim_branches {
             }));
 
             let allows_linewise = $ctx_name.keymap.allows_linewise();
-            $ctx_name.keymap.push_mode(crate::input::maps::vim::op::vim_operator_pending_mode(allows_linewise));
+            let op_mode = crate::input::maps::vim::op::vim_operator_pending_mode(
+                allows_linewise,
+                $keys.into(),
+            );
+            $ctx_name.keymap.push_mode(op_mode);
             Ok(())
         }));
         crate::vim_branches! { $root -> $($tail)* }

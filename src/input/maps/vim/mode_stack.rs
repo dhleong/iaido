@@ -40,6 +40,14 @@ impl VimModeStack {
         }
     }
 
+    pub fn peek(&self) -> Option<&VimMode> {
+        if let Some(id) = self.stack.last() {
+            self.modes.get(id)
+        } else {
+            None
+        }
+    }
+
     /// Returns the Mode if it should no longer be on the stack,
     /// else None if it was accepted
     pub fn return_top(&mut self, mode: VimMode) -> Option<VimMode> {

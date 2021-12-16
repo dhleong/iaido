@@ -40,6 +40,7 @@ pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
     pub shows_keys: bool,
+    pub allows_linewise: bool,
     pub default_handler: Option<Box<KeyHandler>>,
     pub after_handler: Option<Box<KeyHandler>>,
     pub exit_handler: Option<Box<KeyHandler>>,
@@ -51,6 +52,7 @@ impl VimMode {
         Self {
             id: id.into(),
             mappings,
+            allows_linewise: true,
             shows_keys: false,
             default_handler: None,
             after_handler: None,
@@ -64,6 +66,10 @@ impl VimMode {
         self
     }
 
+    pub fn with_allows_linewise(mut self, allows_linewise: bool) -> Self {
+        self.allows_linewise = allows_linewise;
+        self
+    }
 
     pub fn with_shows_keys(mut self, shows_keys: bool) -> Self {
         self.shows_keys = shows_keys;
@@ -142,6 +148,15 @@ pub struct VimKeymap {
 }
 
 impl VimKeymap {
+    pub fn allows_linewise(&self) -> bool {
+        if let Some(top) = self.mode_stack.peek() {
+            top.allows_linewise
+        } else {
+            // Assume true, I guess?
+            true
+        }
+    }
+
     pub fn completer(&self) -> Option<BoxedCompleter> {
         if let Some(completer) = self.active_completer.clone() {
             return Some(BoxedCompleter::from(completer));
@@ -582,8 +597,8 @@ macro_rules! vim_branches {
                 operator_fn_result
             }));
 
-            // TODO: linewise vs non-linewise?
-            $ctx_name.keymap.push_mode(crate::input::maps::vim::op::vim_operator_pending_mode(true));
+            let allows_linewise = $ctx_name.keymap.allows_linewise();
+            $ctx_name.keymap.push_mode(crate::input::maps::vim::op::vim_operator_pending_mode(allows_linewise));
             Ok(())
         }));
         crate::vim_branches! { $root -> $($tail)* }

@@ -134,7 +134,6 @@ impl std::fmt::Debug for VimMode {
 
 #[derive(Default)]
 pub struct VimKeymap {
-    pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
@@ -173,7 +172,6 @@ impl VimKeymap {
     }
 
     pub fn reset(&mut self) {
-        self.pending_linewise_operator_key = None;
         self.operator_fn = None;
         self.selected_register = None;
         self.keys_buffer.clear();
@@ -563,32 +561,15 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {{
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            use crate::editing::motion::Motion;
-
             if $ctx_name.state().current_buffer().is_read_only() {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
-            // operators always start a change
+            // Operators always start a change
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
-            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
-                let operator_result = if pending_key == $keys.into() {
-                    // execute linewise action directly:
-                    let motion_impl = crate::editing::motion::linewise::FullLineMotion;
-                    let $motion_name = motion_impl.range($ctx_name.state());
-                    $body
-                } else {
-                    // different pending operator key; abort
-                    Ok(())
-                };
-                $ctx_name.state_mut().current_buffer_mut().end_change();
-                return operator_result;
-            }
-
-            // no pending linewise op; save a closure for motion use:
-            $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
+            // Save a closure for motion use
             $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
                 let operator_fn_result = $body;
 
@@ -597,6 +578,7 @@ macro_rules! vim_branches {
                 operator_fn_result
             }));
 
+            // Enter Operator-Pending mode
             let allows_linewise = $ctx_name.keymap.allows_linewise();
             let op_mode = crate::input::maps::vim::op::vim_operator_pending_mode(
                 allows_linewise,

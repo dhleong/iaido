@@ -12,6 +12,7 @@ pub fn vim_operator_pending_mode(linewise: bool) -> VimMode {
     }
 
     VimMode::new("o", mappings)
+        .with_shows_keys(true)
         .on_default(key_handler!(
             VimKeymap | ?mut ctx | {
                 // If a key is unhandled, leave operator-pending mode

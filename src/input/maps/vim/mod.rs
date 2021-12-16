@@ -64,6 +64,12 @@ impl VimMode {
         self
     }
 
+
+    pub fn with_shows_keys(mut self, shows_keys: bool) -> Self {
+        self.shows_keys = shows_keys;
+        self
+    }
+
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
         self.after_handler = Some(handler);
         self
@@ -230,8 +236,10 @@ impl Keymap for VimKeymap {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
-            context.state_mut().keymap_widget = None;
             let show_keys = mode.shows_keys;
+            if !show_keys {
+                context.state_mut().keymap_widget = None;
+            }
             (mode, true, show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
@@ -357,6 +365,10 @@ impl Keymap for VimKeymap {
                     })?;
                 }
             }
+        }
+
+        if show_keys {
+            self.render_keys_buffer(context);
         }
 
         result

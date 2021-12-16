@@ -38,6 +38,13 @@ pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode 
                 Ok(())
             }
         ))
+        .on_after(key_handler!(
+            VimKeymap | ?mut ctx | {
+                // Also ensure we leave op mode after executing
+                ctx.keymap.pop_mode("o");
+                Ok(())
+            }
+        ))
         .on_exit(key_handler!(
             VimKeymap | ctx | {
                 // Always ensure operator_fn is cleared

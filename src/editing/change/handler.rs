@@ -17,7 +17,9 @@ impl<'a> ChangeHandler<'a> {
 
     delegate! {
         to self.changes {
+            pub fn cancel(&mut self);
             pub fn clear(&mut self);
+            pub fn is_in_change(&self) -> bool;
             pub fn push(&mut self, change: Change);
             pub fn take_last(&mut self) -> Option<Change>;
         }

@@ -28,6 +28,11 @@ impl ChangeManager {
         }
     }
 
+    /// Returns true *if* we're in the middle of a pending change
+    pub fn is_in_change(&self) -> bool {
+        self.change_depth > 0
+    }
+
     pub fn push_change_key(&mut self, key: Key) {
         if let Some(change) = self.current_change.as_mut() {
             change.keys.push(key);
@@ -58,12 +63,17 @@ impl ChangeManager {
             .push(action);
     }
 
+    pub fn cancel(&mut self) {
+        self.current_change = None;
+        self.change_depth = 0;
+    }
+
     /// After reading in a file, for example, we should not have
     /// any undo history
     pub fn clear(&mut self) {
         self.undo_stack.clear();
         self.redo_stack.clear();
-        self.current_change = None;
+        self.cancel();
     }
 
     pub fn push(&mut self, change: Change) {

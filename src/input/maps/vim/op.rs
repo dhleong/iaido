@@ -32,9 +32,13 @@ pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode 
     VimMode::new("o", mappings)
         .with_shows_keys(true)
         .on_default(key_handler!(
-            VimKeymap | ?mut ctx | {
-                // If a key is unhandled, leave operator-pending mode
+            VimKeymap | ctx | {
+                // If a key is unhandled, leave operator-pending mode and cancel
+                // any pending change
                 ctx.keymap.pop_mode("o");
+                if ctx.state().current_buffer().can_handle_change() {
+                    ctx.state_mut().current_buffer_mut().changes().cancel();
+                }
                 Ok(())
             }
         ))

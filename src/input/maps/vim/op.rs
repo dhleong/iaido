@@ -36,6 +36,7 @@ pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode 
                 // If a key is unhandled, leave operator-pending mode and cancel
                 // any pending change
                 ctx.keymap.pop_mode("o");
+                ctx.keymap.keys_buffer.clear();
                 if ctx.state().current_buffer().can_handle_change() {
                     ctx.state_mut().current_buffer_mut().changes().cancel();
                 }

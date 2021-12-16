@@ -275,12 +275,14 @@ pub fn vim_normal_mode() -> VimMode {
         + vim_standard_motions()
         + vim_linewise_motions();
 
-    VimMode::new("n", mappings).on_default(key_handler!(
-        VimKeymap | ?mut ctx | {
-            ctx.keymap.reset();
-            Ok(())
-        }
-    ))
+    VimMode::new("n", mappings)
+        .with_shows_keys(true)
+        .on_default(key_handler!(
+            VimKeymap | ?mut ctx | {
+                ctx.keymap.reset();
+                Ok(())
+            }
+        ))
 }
 
 fn delete_with_motion<M: Motion>(mut ctx: KeyHandlerContext<VimKeymap>, motion: M) -> KeyResult {

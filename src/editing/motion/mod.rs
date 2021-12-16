@@ -321,7 +321,7 @@ pub mod tests {
             mut keymap: K,
             mut state: app::State,
             keys: &str,
-        ) -> (Self, app::State) {
+        ) -> (Self, K, app::State) {
             let key_source = MemoryKeySource::from_keys(keys);
 
             self.buffer = state.buffers.replace(self.buffer);
@@ -348,11 +348,12 @@ pub mod tests {
             self.buffer = context.state.buffers.replace(self.buffer);
             self.window.cursor = context.state.current_window_mut().cursor;
 
-            (self, context.state)
+            (self, keymap, context.state)
         }
 
         pub fn feed_keys_for_state<K: Keymap>(self, keymap: K, keys: &str) -> (Self, app::State) {
-            self.feed_keys_with_state(keymap, app::State::default(), keys)
+            let (ctx, _, state) = self.feed_keys_with_state(keymap, app::State::default(), keys);
+            (ctx, state)
         }
 
         pub fn feed_keys<K: Keymap>(self, keymap: K, keys: &str) -> Self {
@@ -364,8 +365,25 @@ pub mod tests {
             self.feed_keys(crate::input::maps::vim::VimKeymap::default(), keys)
         }
 
+        pub fn feed_vim_for_keymap(
+            self,
+            keys: &str,
+        ) -> (Self, crate::input::maps::vim::VimKeymap, app::State) {
+            let (ctx, keymap, state) = self.feed_keys_with_state(
+                crate::input::maps::vim::VimKeymap::default(),
+                app::State::default(),
+                keys,
+            );
+            (ctx, keymap, state)
+        }
+
         pub fn feed_vim_with_state(self, state: app::State, keys: &str) -> (Self, app::State) {
-            self.feed_keys_with_state(crate::input::maps::vim::VimKeymap::default(), state, keys)
+            let (ctx, _, state) = self.feed_keys_with_state(
+                crate::input::maps::vim::VimKeymap::default(),
+                state,
+                keys,
+            );
+            (ctx, state)
         }
 
         pub fn feed_vim_for_state(self, keys: &str) -> (Self, app::State) {

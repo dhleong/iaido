@@ -3,6 +3,7 @@ mod mode_stack;
 mod motion;
 mod motions;
 mod normal;
+mod op;
 mod prompt;
 mod tree;
 
@@ -38,8 +39,11 @@ type OperatorFn = dyn Fn(&mut KeyHandlerContext<'_, VimKeymap>, MotionRange) -> 
 pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
+    pub shows_keys: bool,
+    pub allows_linewise: bool,
     pub default_handler: Option<Box<KeyHandler>>,
     pub after_handler: Option<Box<KeyHandler>>,
+    pub exit_handler: Option<Box<KeyHandler>>,
     pub completer: Option<Rc<dyn Completer>>,
 }
 
@@ -48,8 +52,11 @@ impl VimMode {
         Self {
             id: id.into(),
             mappings,
+            allows_linewise: true,
+            shows_keys: false,
             default_handler: None,
             after_handler: None,
+            exit_handler: None,
             completer: None,
         }
     }
@@ -59,8 +66,23 @@ impl VimMode {
         self
     }
 
+    pub fn with_allows_linewise(mut self, allows_linewise: bool) -> Self {
+        self.allows_linewise = allows_linewise;
+        self
+    }
+
+    pub fn with_shows_keys(mut self, shows_keys: bool) -> Self {
+        self.shows_keys = shows_keys;
+        self
+    }
+
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
         self.after_handler = Some(handler);
+        self
+    }
+
+    pub fn on_exit(mut self, handler: Box<KeyHandler>) -> Self {
+        self.exit_handler = Some(handler);
         self
     }
 
@@ -112,7 +134,6 @@ impl std::fmt::Debug for VimMode {
 
 #[derive(Default)]
 pub struct VimKeymap {
-    pub pending_linewise_operator_key: Option<Key>,
     pub operator_fn: Option<Box<OperatorFn>>,
     mode_stack: VimModeStack,
     keys_buffer: Vec<Key>,
@@ -126,6 +147,15 @@ pub struct VimKeymap {
 }
 
 impl VimKeymap {
+    pub fn allows_linewise(&self) -> bool {
+        if let Some(top) = self.mode_stack.peek() {
+            top.allows_linewise
+        } else {
+            // Assume true, I guess?
+            true
+        }
+    }
+
     pub fn completer(&self) -> Option<BoxedCompleter> {
         if let Some(completer) = self.active_completer.clone() {
             return Some(BoxedCompleter::from(completer));
@@ -137,8 +167,11 @@ impl VimKeymap {
         self.mode_stack.push(mode);
     }
 
+    pub fn pop_mode(&mut self, mode_id: &str) {
+        self.mode_stack.pop_if(mode_id);
+    }
+
     pub fn reset(&mut self) {
-        self.pending_linewise_operator_key = None;
         self.operator_fn = None;
         self.selected_register = None;
         self.keys_buffer.clear();
@@ -216,8 +249,11 @@ impl Keymap for VimKeymap {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
         let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
-            context.state_mut().keymap_widget = None;
-            (mode, true, false)
+            let show_keys = mode.shows_keys;
+            if !show_keys {
+                context.state_mut().keymap_widget = None;
+            }
+            (mode, true, show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
@@ -331,8 +367,21 @@ impl Keymap for VimKeymap {
         self.active_completer = None;
 
         if mode_from_stack {
-            // return the moved mode value back to the stack...
-            self.mode_stack.return_top(mode);
+            // Return the moved mode value back to the stack...
+            if let Some(mode) = self.mode_stack.return_top(mode) {
+                // Or call its "Exit" handler if the stack rejected it
+                if let Some(on_exit) = mode.exit_handler {
+                    on_exit(KeyHandlerContext {
+                        context: Box::new(context),
+                        keymap: self,
+                        key: '\0'.into(),
+                    })?;
+                }
+            }
+        }
+
+        if show_keys {
+            self.render_keys_buffer(context);
         }
 
         result
@@ -512,32 +561,15 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {{
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            use crate::editing::motion::Motion;
-
             if $ctx_name.state().current_buffer().is_read_only() {
                 return Err(KeyError::ReadOnlyBuffer);
             }
 
-            // operators always start a change
+            // Operators always start a change
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
-            if let Some(pending_key) = $ctx_name.keymap.pending_linewise_operator_key.take() {
-                let operator_result = if pending_key == $keys.into() {
-                    // execute linewise action directly:
-                    let motion_impl = crate::editing::motion::linewise::FullLineMotion;
-                    let $motion_name = motion_impl.range($ctx_name.state());
-                    $body
-                } else {
-                    // different pending operator key; abort
-                    Ok(())
-                };
-                $ctx_name.state_mut().current_buffer_mut().end_change();
-                return operator_result;
-            }
-
-            // no pending linewise op; save a closure for motion use:
-            $ctx_name.keymap.pending_linewise_operator_key = Some($keys.into());
+            // Save a closure for motion use
             $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
                 let operator_fn_result = $body;
 
@@ -545,6 +577,14 @@ macro_rules! vim_branches {
 
                 operator_fn_result
             }));
+
+            // Enter Operator-Pending mode
+            let allows_linewise = $ctx_name.keymap.allows_linewise();
+            let op_mode = crate::input::maps::vim::op::vim_operator_pending_mode(
+                allows_linewise,
+                $keys.into(),
+            );
+            $ctx_name.keymap.push_mode(op_mode);
             Ok(())
         }));
         crate::vim_branches! { $root -> $($tail)* }

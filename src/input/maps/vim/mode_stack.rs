@@ -32,9 +32,30 @@ impl VimModeStack {
         self.stack.pop();
     }
 
-    pub fn return_top(&mut self, mode: VimMode) {
+    pub fn pop_if(&mut self, mode_id: &str) {
+        if let Some(last) = self.stack.last() {
+            if last == mode_id {
+                self.pop();
+            }
+        }
+    }
+
+    pub fn peek(&self) -> Option<&VimMode> {
+        if let Some(id) = self.stack.last() {
+            self.modes.get(id)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the Mode if it should no longer be on the stack,
+    /// else None if it was accepted
+    pub fn return_top(&mut self, mode: VimMode) -> Option<VimMode> {
         if self.stack.contains(&mode.id) {
             self.modes.insert(mode.id.clone(), mode);
+            None
+        } else {
+            Some(mode)
         }
     }
 

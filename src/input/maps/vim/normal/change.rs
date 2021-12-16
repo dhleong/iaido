@@ -175,7 +175,7 @@ mod tests {
         let (mut ctx, keymap, _) = window(indoc! {"
              Take my |love
          "})
-        .feed_vim_for_keymap("cI<esc>"); // TODO with op pending mode, <esc> should be unneeded
+        .feed_vim_for_keymap("cI");
         assert!(keymap.operator_fn.is_none());
         assert!(!ctx.buffer.changes().is_in_change());
     }

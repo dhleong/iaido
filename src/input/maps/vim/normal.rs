@@ -1,4 +1,5 @@
 mod change;
+mod count;
 mod registers;
 mod scroll;
 pub mod search;
@@ -272,6 +273,7 @@ pub fn vim_normal_mode() -> VimMode {
         + scroll::mappings()
         + search::mappings()
         + window::mappings()
+        + count::mappings()
         + vim_standard_motions()
         + vim_linewise_motions();
 

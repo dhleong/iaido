@@ -224,7 +224,7 @@ impl VimKeymap {
     }
 
     fn has_pending_state(&self) -> bool {
-        self.operator_fn.is_some() || self.selected_register.is_some()
+        self.operator_fn.is_some() || self.selected_register.is_some() || self.count > 0
     }
 }
 
@@ -328,13 +328,7 @@ impl Keymap for VimKeymap {
                         }
                     }
                 } else if at_root {
-                    if let Some(digit) = key.to_digit() {
-                        // [count]
-                        self.push_count_digit(digit);
-                        if show_keys {
-                            self.render_keys_buffer(context);
-                        }
-                    } else if let Some(handler) = &mode.default_handler {
+                    if let Some(handler) = &mode.default_handler {
                         // use the default mapping, if any
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
@@ -352,6 +346,10 @@ impl Keymap for VimKeymap {
                 // no key read:
                 break;
             }
+        }
+
+        if self.has_pending_state() && show_keys {
+            self.render_keys_buffer(context);
         }
 
         if let Some(handler) = &mode.after_handler {

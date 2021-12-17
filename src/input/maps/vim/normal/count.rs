@@ -19,5 +19,17 @@ pub fn mappings() -> KeyTreeNode {
         "7" => |?mut ctx| push(ctx, 7),
         "8" => |?mut ctx| push(ctx, 8),
         "9" => |?mut ctx| push(ctx, 9),
+
+        // NOTE: We may never need this mapping, since the 0 motion
+        // should usually override it... but it's not a terrible idea
+        // to have as a backup
+        "0" => |?mut ctx| {
+            if ctx.keymap.count > 0 {
+                push(ctx, 0)?;
+            } else {
+                ctx.keymap.reset();
+            }
+            Ok(())
+        },
     }
 }

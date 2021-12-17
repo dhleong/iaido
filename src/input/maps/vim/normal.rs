@@ -580,4 +580,29 @@ mod tests {
             "});
         }
     }
+
+    #[cfg(test)]
+    mod motions {
+        use super::*;
+
+        #[test]
+        fn zero_to_line_start() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("0").assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn count_with_zero() {
+            let ctx = window(indoc! {"
+                Take my love, Take my |land
+            "});
+            ctx.feed_vim("10h").assert_visual_match(indoc! {"
+                Take my love|, Take my land
+            "});
+        }
+    }
 }

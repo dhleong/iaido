@@ -1,5 +1,5 @@
 mod change;
-mod count;
+pub mod count;
 mod registers;
 mod scroll;
 pub mod search;
@@ -568,8 +568,6 @@ mod tests {
             "});
         }
 
-        // TODO: Support counts on motions in op mode
-        #[ignore]
         #[test]
         fn delete_with_motion_count() {
             let ctx = window(indoc! {"
@@ -577,6 +575,16 @@ mod tests {
             "});
             ctx.feed_vim("d4l").assert_visual_match(indoc! {"
                 | my land
+            "});
+        }
+
+        #[test]
+        fn delete_with_both_count_types() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("2d2h").assert_visual_match(indoc! {"
+                Take|land
             "});
         }
     }

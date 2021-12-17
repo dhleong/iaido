@@ -162,6 +162,11 @@ pub trait Buffer: HasId + Send + Sync {
     fn begin_change(&mut self, _cursor: CursorPosition) {}
     fn push_change_key(&mut self, _key: Key) {}
     fn end_change(&mut self) {}
+    fn cancel_change(&mut self) {
+        if self.can_handle_change() {
+            self.changes().cancel();
+        }
+    }
 
     fn is_modified(&self) -> bool {
         // TODO

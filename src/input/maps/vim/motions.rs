@@ -30,8 +30,15 @@ pub fn vim_standard_motions() -> KeyTreeNode {
         "h" => motion { CharMotion::Backward(1) },
         "l" => motion { CharMotion::Forward(1) },
 
-        "0" => motion { ToLineStartMotion },
         "$" => motion { ToLineEndMotion },
+        "0" => |?mut ctx| {
+            if ctx.keymap.count > 0 {
+                ctx.keymap.push_count_digit(0);
+                Ok(())
+            } else {
+                crate::input::maps::vim::motion::apply_motion(ctx, ToLineStartMotion)
+            }
+        },
 
         "f" => motion |ctx| {
             match ctx.next_key()? {

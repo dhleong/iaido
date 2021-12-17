@@ -1,4 +1,5 @@
 mod change;
+pub mod count;
 mod registers;
 mod scroll;
 pub mod search;
@@ -272,6 +273,7 @@ pub fn vim_normal_mode() -> VimMode {
         + scroll::mappings()
         + search::mappings()
         + window::mappings()
+        + count::mappings()
         + vim_standard_motions()
         + vim_linewise_motions();
 
@@ -561,8 +563,53 @@ mod tests {
             let ctx = window(indoc! {"
                 |Take my land
             "});
+            ctx.feed_vim("4dl").assert_visual_match(indoc! {"
+                | my land
+            "});
+        }
+
+        #[test]
+        fn delete_with_motion_count() {
+            let ctx = window(indoc! {"
+                |Take my land
+            "});
             ctx.feed_vim("d4l").assert_visual_match(indoc! {"
                 | my land
+            "});
+        }
+
+        #[test]
+        fn delete_with_both_count_types() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("2d2h").assert_visual_match(indoc! {"
+                Take|land
+            "});
+        }
+    }
+
+    #[cfg(test)]
+    mod motions {
+        use super::*;
+
+        #[test]
+        fn zero_to_line_start() {
+            let ctx = window(indoc! {"
+                Take my |land
+            "});
+            ctx.feed_vim("0").assert_visual_match(indoc! {"
+                |Take my land
+            "});
+        }
+
+        #[test]
+        fn count_with_zero() {
+            let ctx = window(indoc! {"
+                Take my love, Take my |land
+            "});
+            ctx.feed_vim("10h").assert_visual_match(indoc! {"
+                Take my love|, Take my land
             "});
         }
     }

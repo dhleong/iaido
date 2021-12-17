@@ -144,6 +144,7 @@ pub struct VimKeymap {
     pub histories: StringHistories,
     pub search: VimSearchState,
     count: u32,
+    count_multiplier: Option<u32>,
 }
 
 impl VimKeymap {
@@ -176,14 +177,23 @@ impl VimKeymap {
         self.selected_register = None;
         self.keys_buffer.clear();
         self.count = 0;
+        self.count_multiplier = None;
     }
 
     pub fn take_count(&mut self) -> u32 {
         let count = self.count;
         self.count = 0;
-        match count {
+        let given_count = match count {
             0 => 1,
             _ => count,
+        };
+
+        // NOTE: Per `:help motion`, if a count is given on both the operator and the motion, they
+        // are multiplied together
+        if let Some(multiplier) = self.count_multiplier.take() {
+            multiplier * given_count
+        } else {
+            given_count
         }
     }
 
@@ -224,7 +234,7 @@ impl VimKeymap {
     }
 
     fn has_pending_state(&self) -> bool {
-        self.operator_fn.is_some() || self.selected_register.is_some()
+        self.operator_fn.is_some() || self.selected_register.is_some() || self.count > 0
     }
 }
 
@@ -279,6 +289,7 @@ impl Keymap for VimKeymap {
         let mut current = &mode.mappings;
         let mut at_root = true;
         let mut result = Ok(());
+        let mut last_key: Key = '\0'.into();
         self.active_completer = pick_completer(&mode, context);
 
         loop {
@@ -286,6 +297,8 @@ impl Keymap for VimKeymap {
                 if show_keys {
                     self.keys_buffer.push(key.clone());
                 }
+
+                last_key = key;
 
                 // Clear the popup menu, if any
                 context.state_mut().pum = None;
@@ -328,13 +341,7 @@ impl Keymap for VimKeymap {
                         }
                     }
                 } else if at_root {
-                    if let Some(digit) = key.to_digit() {
-                        // [count]
-                        self.push_count_digit(digit);
-                        if show_keys {
-                            self.render_keys_buffer(context);
-                        }
-                    } else if let Some(handler) = &mode.default_handler {
+                    if let Some(handler) = &mode.default_handler {
                         // use the default mapping, if any
                         result = handler(KeyHandlerContext {
                             context: Box::new(context),
@@ -354,12 +361,16 @@ impl Keymap for VimKeymap {
             }
         }
 
+        if self.has_pending_state() && show_keys {
+            self.render_keys_buffer(context);
+        }
+
         if let Some(handler) = &mode.after_handler {
             if self.mode_stack.contains(&mode.id) {
                 handler(KeyHandlerContext {
                     context: Box::new(context),
                     keymap: self,
-                    key: '\0'.into(),
+                    key: last_key,
                 })?;
             }
         }
@@ -374,7 +385,7 @@ impl Keymap for VimKeymap {
                     on_exit(KeyHandlerContext {
                         context: Box::new(context),
                         keymap: self,
-                        key: '\0'.into(),
+                        key: last_key,
                     })?;
                 }
             }
@@ -570,6 +581,8 @@ macro_rules! vim_branches {
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
             // Save a closure for motion use
+            let count = $ctx_name.keymap.take_count();
+            $ctx_name.keymap.count_multiplier = Some(count);
             $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
                 let operator_fn_result = $body;
 

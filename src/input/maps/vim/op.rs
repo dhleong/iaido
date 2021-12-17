@@ -1,5 +1,6 @@
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
+    normal::count,
     VimKeymap, VimMode,
 };
 
@@ -10,7 +11,7 @@ use crate::{
 };
 
 pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode {
-    let mut mappings = vim_standard_motions();
+    let mut mappings = count::mappings() + vim_standard_motions();
     if linewise {
         mappings = mappings + vim_linewise_motions();
     }
@@ -46,6 +47,13 @@ pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode 
         .on_after(key_handler!(
             VimKeymap | ?mut ctx | {
                 // Also ensure we leave op mode after executing
+                if ctx.key.to_digit().is_some() {
+                    // ... but let counts accumulate
+                    if ctx.keymap.count > 0 {
+                        return Ok(());
+                    }
+                }
+
                 ctx.keymap.pop_mode("o");
                 Ok(())
             }

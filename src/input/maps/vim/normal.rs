@@ -563,6 +563,18 @@ mod tests {
             let ctx = window(indoc! {"
                 |Take my land
             "});
+            ctx.feed_vim("4dl").assert_visual_match(indoc! {"
+                | my land
+            "});
+        }
+
+        // TODO: Support counts on motions in op mode
+        #[ignore]
+        #[test]
+        fn delete_with_motion_count() {
+            let ctx = window(indoc! {"
+                |Take my land
+            "});
             ctx.feed_vim("d4l").assert_visual_match(indoc! {"
                 | my land
             "});

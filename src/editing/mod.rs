@@ -5,6 +5,7 @@ pub mod gutter;
 pub mod ids;
 pub mod layout;
 pub mod motion;
+pub mod object;
 pub mod source;
 pub mod tabpage;
 pub mod tabpages;

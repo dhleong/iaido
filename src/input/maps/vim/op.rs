@@ -1,6 +1,7 @@
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
     normal::count,
+    object::vim_standard_objects,
     VimKeymap, VimMode,
 };
 
@@ -11,7 +12,7 @@ use crate::{
 };
 
 pub fn vim_operator_pending_mode(linewise: bool, op_repeat_key: Key) -> VimMode {
-    let mut mappings = count::mappings() + vim_standard_motions();
+    let mut mappings = count::mappings() + vim_standard_motions() + vim_standard_objects();
     if linewise {
         mappings = mappings + vim_linewise_motions();
     }

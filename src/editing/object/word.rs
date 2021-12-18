@@ -81,5 +81,43 @@ mod tests {
                 "queso"
             );
         }
+
+        #[test]
+        fn outer() {
+            let ctx = window(indoc! {"
+                Al pastor qu|eso burrito
+            "});
+            assert_eq!(
+                ctx.select(WordObject::outer(is_small_word_boundary)),
+                " queso"
+            );
+        }
+    }
+
+    mod big_word {
+        use super::*;
+        use crate::editing::motion::word::is_big_word_boundary;
+
+        #[test]
+        fn inner() {
+            let ctx = window(indoc! {"
+                Al pastor qu|e'so burrito
+            "});
+            assert_eq!(
+                ctx.select(WordObject::inner(is_big_word_boundary)),
+                "que'so"
+            );
+        }
+
+        #[test]
+        fn outer() {
+            let ctx = window(indoc! {"
+                Al pastor qu|e'so burrito
+            "});
+            assert_eq!(
+                ctx.select(WordObject::outer(is_big_word_boundary)),
+                " que'so"
+            );
+        }
     }
 }

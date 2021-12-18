@@ -301,6 +301,11 @@ pub mod tests {
             motion.apply_cursor(self);
         }
 
+        pub fn select<T: Motion>(&self, motion: T) -> String {
+            let range = motion.range(self);
+            self.buffer().get_range(range).get_contents()
+        }
+
         pub fn set_inserting(&mut self, inserting: bool) {
             self.window.set_inserting(inserting);
         }

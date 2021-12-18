@@ -1,0 +1,138 @@
+use crate::editing::{
+    motion::{
+        char::CharMotion, linewise::LineCrossing, Motion, MotionContext, MotionFlags, MotionRange,
+    },
+    CursorPosition,
+};
+
+use super::TextObject;
+
+pub struct InnerPairObject {
+    start: char,
+    end: char,
+    line_crossing: bool,
+}
+
+impl InnerPairObject {
+    pub fn new(start: char, end: char) -> Self {
+        Self {
+            start,
+            end,
+            line_crossing: true,
+        }
+    }
+
+    pub fn within_line(start: char, end: char) -> Self {
+        Self {
+            start,
+            end,
+            line_crossing: false,
+        }
+    }
+
+    fn step<C: MotionContext>(
+        &self,
+        context: &C,
+        cursor: CursorPosition,
+        motion: CharMotion,
+    ) -> CursorPosition {
+        let ctx = context.with_cursor(cursor);
+        if self.line_crossing {
+            LineCrossing::new(motion).destination(&ctx)
+        } else {
+            motion.destination(&ctx)
+        }
+    }
+}
+
+fn char_at<C: MotionContext>(context: &C, cursor: CursorPosition) -> char {
+    if let Some(s) = context.buffer().get_char(cursor) {
+        if let Some(ch) = s.chars().next() {
+            ch
+        } else {
+            '\0'
+        }
+    } else {
+        '\0'
+    }
+}
+
+impl TextObject for InnerPairObject {
+    fn object_range<C: MotionContext>(&self, context: &C) -> MotionRange {
+        let mut start = context.cursor();
+        let mut end = context.cursor();
+        let mut found_start = false;
+        let mut found_end = false;
+
+        while char_at(context, start) != self.start {
+            let new_start = self.step(context, start, CharMotion::Backward(1));
+            if new_start == start {
+                break;
+            }
+            start = new_start;
+        }
+
+        if char_at(context, start) != self.start {
+            start = context.cursor();
+        } else {
+            found_start = true;
+            start.col += 1;
+        }
+
+        while char_at(context, end) != self.end {
+            let new_end = self.step(context, end, CharMotion::Forward(1));
+            if new_end == end {
+                break;
+            }
+            end = new_end;
+        }
+
+        if char_at(context, end) != self.end {
+            end = context.cursor();
+        } else {
+            found_end = true;
+            end.col -= 1;
+        }
+
+        MotionRange(
+            start,
+            end,
+            if found_start && found_end {
+                MotionFlags::NONE
+            } else {
+                MotionFlags::EXCLUSIVE
+            },
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editing::motion::tests::window;
+    use indoc::indoc;
+
+    #[cfg(test)]
+    mod quoted_string {
+        use super::*;
+
+        #[test]
+        fn non_existent() {
+            let ctx = window(indoc! {"
+                Al pastor qu|eso burrito
+            "});
+            assert_eq!(ctx.select(InnerPairObject::within_line('\'', '\'')), "");
+        }
+
+        #[test]
+        fn inner() {
+            let ctx = window(indoc! {"
+                Al pastor 'qu|eso' burrito
+            "});
+            assert_eq!(
+                ctx.select(InnerPairObject::within_line('\'', '\'')),
+                "queso"
+            );
+        }
+    }
+}

@@ -1,5 +1,6 @@
 use super::motion::{Motion, MotionContext, MotionFlags, MotionRange};
 
+pub mod pair;
 pub mod word;
 
 pub trait TextObject {
@@ -12,8 +13,8 @@ impl<T: TextObject> Motion for T {
     }
 
     fn range<C: MotionContext>(&self, context: &C) -> MotionRange {
-        let inclusive = !self.flags().contains(MotionFlags::EXCLUSIVE);
         let MotionRange(start, mut end, flags) = self.object_range(context);
+        let inclusive = !flags.contains(MotionFlags::EXCLUSIVE);
 
         if inclusive {
             end.col += 1;

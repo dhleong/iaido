@@ -3,6 +3,7 @@ mod mode_stack;
 mod motion;
 mod motions;
 mod normal;
+mod object;
 mod op;
 mod prompt;
 mod tree;

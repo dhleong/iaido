@@ -1,7 +1,7 @@
 use backtrace::{Backtrace, BacktraceFmt, BacktraceFrame, PrintFmt};
 use std::fmt::{self, Formatter};
 
-const ABBRIATABLE_FRAME_PREFIXES: &[&'static str] = &[
+const ABBREVIATABLE_FRAME_PREFIXES: &[&'static str] = &[
     "backtrace::",
     "std::sys_common::backtrace::",
     "iaido::prepare_panic_capture",
@@ -27,7 +27,7 @@ impl std::fmt::Display for PanicData {
                 let should_ignore = symbols.iter().any(|s| {
                     if let Some(name) = s.name() {
                         let name_str = name.to_string();
-                        ABBRIATABLE_FRAME_PREFIXES
+                        ABBREVIATABLE_FRAME_PREFIXES
                             .iter()
                             .any(|prefix| name_str.starts_with(prefix))
                     } else {

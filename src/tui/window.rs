@@ -620,6 +620,27 @@ mod tests {
         }
 
         #[test]
+        fn move_cursor_past_end_of_wrapped_document() {
+            let mut ctx = window(indoc! {"
+                Take my land Take me where
+                I cannot |stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+
+            // Should be no change:
+            ctx.feed_vim("j")
+                .render_at_own_size()
+                .assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+        }
+
+        #[test]
         fn move_cursor_upward_with_scroll_offsets() {
             let mut ctx = window(indoc! {"
                 Take my land Take me where I cannot |stand

@@ -181,12 +181,16 @@ impl Renderable for Window {
                 .checked_sub((self.cursor.line - renderable.end.line) as u32)
                 .unwrap_or(0);
         } else {
-            if cursor_y_offset < renderable.start.visual_offset {
+            if self.cursor.line == renderable.start.line
+                && cursor_y_offset < renderable.start.visual_offset
+            {
                 self.scroll_lines(
                     buf,
                     (renderable.start.visual_offset - cursor_y_offset) as i32,
                 );
-            } else if cursor_y_offset > renderable.end.visual_offset {
+            } else if self.cursor.line == renderable.end.line
+                && cursor_y_offset > renderable.end.visual_offset
+            {
                 self.scroll_lines(
                     buf,
                     (renderable.end.visual_offset as i32) - cursor_y_offset as i32,

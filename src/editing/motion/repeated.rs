@@ -1,4 +1,6 @@
-use super::{DirectionalMotion, Motion, MotionFlags};
+use std::cmp::{max, min};
+
+use super::{DirectionalMotion, Motion, MotionContext, MotionFlags, MotionRange};
 use crate::editing::CursorPosition;
 
 pub struct RepeatedMotion<T: Motion> {
@@ -23,13 +25,30 @@ impl<T: Motion> Motion for RepeatedMotion<T> {
         self.motion.flags()
     }
 
-    fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
+    fn destination<C: MotionContext>(&self, context: &C) -> CursorPosition {
         let mut cursor = context.cursor();
         for _ in 0..self.count {
             let with_cursor = context.with_cursor(cursor);
             cursor = self.motion.destination(&with_cursor);
         }
         return cursor;
+    }
+
+    fn range<C: MotionContext>(&self, context: &C) -> MotionRange {
+        let mut start = context.cursor();
+        let mut end = context.cursor();
+        let mut flags: MotionFlags = MotionFlags::NONE;
+        let destination = self.destination(context);
+        let forward = destination >= end;
+
+        for _ in 0..self.count {
+            let with_cursor = context.with_cursor(if forward { end } else { start });
+            let MotionRange(new_start, new_end, new_flags) = self.motion.range(&with_cursor);
+            start = min(start, new_start);
+            end = max(end, new_end);
+            flags = new_flags;
+        }
+        MotionRange(start, end, flags)
     }
 }
 

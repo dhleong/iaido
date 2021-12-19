@@ -343,6 +343,20 @@ mod tests {
         }
 
         #[test]
+        fn text_object() {
+            let ctx = window(indoc! {"
+                Take my love
+                Take m|y land
+                Take me where
+            "});
+            ctx.feed_vim("caw").assert_visual_match(indoc! {"
+                Take my love
+                Take |land
+                Take me where
+            "});
+        }
+
+        #[test]
         fn with_motion_adds_keys_to_change() {
             let mut ctx = window(indoc! {"
                 Take my love

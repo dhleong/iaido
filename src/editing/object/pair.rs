@@ -5,7 +5,7 @@ use crate::editing::{
     CursorPosition,
 };
 
-use super::TextObject;
+use super::{util::follow_whitespace, TextObject};
 
 pub struct InnerPairObject {
     start: char,
@@ -28,6 +28,10 @@ impl InnerPairObject {
             end,
             line_crossing: false,
         }
+    }
+
+    pub fn into_outer(self) -> OuterPairObject {
+        OuterPairObject { inner: self }
     }
 
     fn step<C: MotionContext>(
@@ -106,6 +110,34 @@ impl TextObject for InnerPairObject {
     }
 }
 
+pub struct OuterPairObject {
+    inner: InnerPairObject,
+}
+
+impl TextObject for OuterPairObject {
+    fn object_range<C: MotionContext>(&self, context: &C) -> MotionRange {
+        let mut range = self.inner.object_range(context);
+        if range.is_empty() {
+            return range;
+        }
+
+        // expand to include start/end
+        range.0.col -= 1;
+        range.1.col += 1;
+
+        // Include trailing whitespace if it exists...
+        let original_end = range.1;
+        range.1 = follow_whitespace(context, range.1, CharMotion::Forward(1));
+
+        // ... else leading
+        if range.1 == original_end {
+            range.0 = follow_whitespace(context, range.0, CharMotion::Backward(1));
+        }
+
+        range
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,6 +164,28 @@ mod tests {
             assert_eq!(
                 ctx.select(InnerPairObject::within_line('\'', '\'')),
                 "queso"
+            );
+        }
+
+        #[test]
+        fn outer() {
+            let ctx = window(indoc! {"
+                Al pastor 'qu|eso' burrito
+            "});
+            assert_eq!(
+                ctx.select(InnerPairObject::within_line('\'', '\'').into_outer()),
+                "'queso' "
+            );
+        }
+
+        #[test]
+        fn outer_with_leading_whitespace() {
+            let ctx = window(indoc! {"
+                Al pastor queso 'burr|ito'
+            "});
+            assert_eq!(
+                ctx.select(InnerPairObject::within_line('\'', '\'').into_outer()),
+                " 'burrito'"
             );
         }
     }

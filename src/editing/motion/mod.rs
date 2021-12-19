@@ -24,6 +24,10 @@ bitflags! {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MotionRange(pub CursorPosition, pub CursorPosition, pub MotionFlags);
 impl MotionRange {
+    pub fn is_empty(&self) -> bool {
+        self.0 == self.1
+    }
+
     pub fn lines(&self) -> (usize, usize) {
         let &MotionRange(
             CursorPosition {

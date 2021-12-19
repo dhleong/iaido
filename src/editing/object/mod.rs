@@ -1,6 +1,7 @@
 use super::motion::{Motion, MotionContext, MotionFlags, MotionRange};
 
 pub mod pair;
+mod util;
 pub mod word;
 
 pub trait TextObject {

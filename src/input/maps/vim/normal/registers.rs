@@ -7,7 +7,7 @@ use crate::{
     },
     input::{
         maps::{
-            vim::{tree::KeyTreeNode, VimKeymap},
+            vim::{tree::KeyTreeNode, util::verify_can_edit, VimKeymap},
             KeyHandlerContext, KeyResult,
         },
         Key, KeyCode, KeySource, KeymapContext,
@@ -30,6 +30,7 @@ pub fn mappings() -> KeyTreeNode {
          },
 
         "p" => |ctx| {
+            verify_can_edit(&ctx)?;
             if let Some(to_paste) = read_register(&mut ctx) {
                 paste_after_cursor(ctx.state_mut(), to_paste.into());
             }
@@ -37,6 +38,7 @@ pub fn mappings() -> KeyTreeNode {
             Ok(())
         },
         "P" => |ctx| {
+            verify_can_edit(&ctx)?;
             if let Some(to_paste) = read_register(&mut ctx) {
                 paste_before_cursor(ctx.state_mut(), to_paste.into());
             }

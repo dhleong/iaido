@@ -7,6 +7,7 @@ mod object;
 mod op;
 mod prompt;
 mod tree;
+mod util;
 
 use std::any::Any;
 use std::{collections::HashMap, ops, rc::Rc};
@@ -548,9 +549,7 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            if $ctx_name.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            crate::input::maps::vim::util::verify_can_edit(&$ctx_name)?;
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
             $body
@@ -599,9 +598,7 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {{
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            if $ctx_name.state().current_buffer().is_read_only() {
-                return Err(crate::input::KeyError::ReadOnlyBuffer);
-            }
+            crate::input::maps::vim::util::verify_can_edit(&$ctx_name)?;
 
             // Operators always start a change
             $ctx_name.state_mut().request_redraw();

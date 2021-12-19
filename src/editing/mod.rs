@@ -22,7 +22,7 @@ pub struct Size {
     pub h: u16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct CursorPosition {
     /// Line index within a buffer
     pub line: usize,

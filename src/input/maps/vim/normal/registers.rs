@@ -7,10 +7,10 @@ use crate::{
     },
     input::{
         maps::{
-            vim::{tree::KeyTreeNode, VimKeymap},
+            vim::{tree::KeyTreeNode, util::verify_can_edit, VimKeymap},
             KeyHandlerContext, KeyResult,
         },
-        Key, KeyCode, KeyError, KeySource, KeymapContext,
+        Key, KeyCode, KeySource, KeymapContext,
     },
     vim_tree,
 };
@@ -30,6 +30,7 @@ pub fn mappings() -> KeyTreeNode {
          },
 
         "p" => |ctx| {
+            verify_can_edit(&ctx)?;
             if let Some(to_paste) = read_register(&mut ctx) {
                 paste_after_cursor(ctx.state_mut(), to_paste.into());
             }
@@ -37,6 +38,7 @@ pub fn mappings() -> KeyTreeNode {
             Ok(())
         },
         "P" => |ctx| {
+            verify_can_edit(&ctx)?;
             if let Some(to_paste) = read_register(&mut ctx) {
                 paste_before_cursor(ctx.state_mut(), to_paste.into());
             }
@@ -44,7 +46,7 @@ pub fn mappings() -> KeyTreeNode {
             Ok(())
         },
 
-        "y" => operator |ctx, motion| {
+        "y" => operator ?change |ctx, motion| {
             let result = yank(&mut ctx, motion);
             ctx.state_mut().current_window_mut().cursor =
                 ctx.state().current_window().clamp_cursor(ctx.state().current_buffer(), motion.0);
@@ -128,6 +130,20 @@ mod tests {
             // Sanity check:
             let ctx = window("");
             ctx.feed_vim("yw").assert_visual_match("");
+        }
+
+        #[test]
+        fn yank_in_read_only() {
+            let mut ctx = window("Take my |love");
+            ctx.buffer
+                .set_source(crate::editing::source::BufferSource::Log);
+            let (_, mut state) = ctx.feed_vim_for_state("\"ayw");
+            let contents = state
+                .registers
+                .by_name('a')
+                .read()
+                .expect("Register should have contents set");
+            assert_eq!(contents, "love");
         }
 
         #[test]

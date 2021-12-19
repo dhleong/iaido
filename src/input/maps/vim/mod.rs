@@ -7,6 +7,7 @@ mod object;
 mod op;
 mod prompt;
 mod tree;
+mod util;
 
 use std::any::Any;
 use std::{collections::HashMap, ops, rc::Rc};
@@ -494,6 +495,32 @@ fn render_keys_buffer(keys: &Vec<Key>) -> String {
 // ======= Tree-building macros ===========================
 
 #[macro_export]
+macro_rules! operator_handler {
+    (
+        $keys:literal => $ctx_name:ident, $motion_name:ident, $body:expr,
+        $after_body:expr
+    ) => {{
+        // Save a closure for motion use
+        let count = $ctx_name.keymap.take_count();
+        $ctx_name.keymap.count_multiplier = Some(count);
+        $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
+            let operator_fn_result = $body;
+
+            $after_body
+
+            operator_fn_result
+        }));
+
+        // Enter Operator-Pending mode
+        let allows_linewise = $ctx_name.keymap.allows_linewise();
+        let op_mode =
+            crate::input::maps::vim::op::vim_operator_pending_mode(allows_linewise, $keys.into());
+        $ctx_name.keymap.push_mode(op_mode);
+        Ok(())
+    }};
+}
+
+#[macro_export]
 macro_rules! vim_branches {
     // base case:
     ($root:ident ->) => {
@@ -522,9 +549,7 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            if $ctx_name.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            crate::input::maps::vim::util::verify_can_edit(&$ctx_name)?;
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
             $body
@@ -573,33 +598,27 @@ macro_rules! vim_branches {
         $($tail:tt)*
     ) => {{
         $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
-            if $ctx_name.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            crate::input::maps::vim::util::verify_can_edit(&$ctx_name)?;
 
             // Operators always start a change
             $ctx_name.state_mut().request_redraw();
             $ctx_name.state_mut().current_bufwin().begin_keys_change($keys);
 
-            // Save a closure for motion use
-            let count = $ctx_name.keymap.take_count();
-            $ctx_name.keymap.count_multiplier = Some(count);
-            $ctx_name.keymap.operator_fn = Some(Box::new(|mut $ctx_name, $motion_name| {
-                let operator_fn_result = $body;
-
+            crate::operator_handler!($keys => $ctx_name, $motion_name, $body, {
                 $ctx_name.state_mut().current_buffer_mut().end_change();
+            })
+        }));
+        crate::vim_branches! { $root -> $($tail)* }
+    }};
 
-                operator_fn_result
-            }));
-
-            // Enter Operator-Pending mode
-            let allows_linewise = $ctx_name.keymap.allows_linewise();
-            let op_mode = crate::input::maps::vim::op::vim_operator_pending_mode(
-                allows_linewise,
-                $keys.into(),
-            );
-            $ctx_name.keymap.push_mode(op_mode);
-            Ok(())
+    (
+        $root:ident ->
+        $keys:literal =>
+            operator ?change |$ctx_name:ident, $motion_name:ident| $body:expr,
+        $($tail:tt)*
+    ) => {{
+        $root.insert(&$keys.into_keys(), crate::key_handler!(VimKeymap |$ctx_name| {
+            crate::operator_handler!($keys => $ctx_name, $motion_name, $body, {})
         }));
         crate::vim_branches! { $root -> $($tail)* }
     }};

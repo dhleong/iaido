@@ -1,15 +1,13 @@
 use crate::input::maps::vim::tree::KeyTreeNode;
+use crate::input::maps::vim::util::verify_can_edit;
 use crate::input::maps::vim::VimKeymap;
-use crate::input::maps::KeyError;
 use crate::input::KeymapContext;
 use crate::vim_tree;
 
 pub fn mappings() -> KeyTreeNode {
     vim_tree! {
         "u" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            verify_can_edit(&ctx)?;
 
             ctx.state_mut().request_redraw();
             if ctx.state_mut().current_bufwin().undo() {
@@ -21,9 +19,7 @@ pub fn mappings() -> KeyTreeNode {
             Ok(())
         },
         "<ctrl-r>" => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            verify_can_edit(&ctx)?;
 
             ctx.state_mut().request_redraw();
             if ctx.state_mut().current_bufwin().redo() {
@@ -36,9 +32,7 @@ pub fn mappings() -> KeyTreeNode {
         },
 
         "." => |ctx| {
-            if ctx.state().current_buffer().is_read_only() {
-                return Err(KeyError::ReadOnlyBuffer);
-            }
+            verify_can_edit(&ctx)?;
 
             ctx.state_mut().request_redraw();
             if let Some(last) = ctx.state_mut().current_buffer_mut().changes().take_last() {

@@ -181,12 +181,16 @@ impl Renderable for Window {
                 .checked_sub((self.cursor.line - renderable.end.line) as u32)
                 .unwrap_or(0);
         } else {
-            if cursor_y_offset < renderable.start.visual_offset {
+            if self.cursor.line == renderable.start.line
+                && cursor_y_offset < renderable.start.visual_offset
+            {
                 self.scroll_lines(
                     buf,
                     (renderable.start.visual_offset - cursor_y_offset) as i32,
                 );
-            } else if cursor_y_offset > renderable.end.visual_offset {
+            } else if self.cursor.line == renderable.end.line
+                && cursor_y_offset > renderable.end.visual_offset
+            {
                 self.scroll_lines(
                     buf,
                     (renderable.end.visual_offset as i32) - cursor_y_offset as i32,
@@ -616,6 +620,27 @@ mod tests {
             ctx.render_at_own_size().assert_visual_match(indoc! {"
                 Take my love
                 |Take my land
+            "});
+        }
+
+        #[test]
+        fn move_cursor_past_end_of_wrapped_document() {
+            let mut ctx = window(indoc! {"
+                Take my land Take me where
+                I cannot |stand
+            "});
+            ctx.window.resize(Size { w: 13, h: 2 });
+            ctx.render_at_own_size().assert_visual_match(indoc! {"
+                I cannot
+                |stand
+            "});
+
+            // Should be no change:
+            ctx.feed_vim("j")
+                .render_at_own_size()
+                .assert_visual_match(indoc! {"
+                I cannot
+                |stand
             "});
         }
 

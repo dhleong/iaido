@@ -50,6 +50,10 @@ impl InnerPairObject {
 }
 
 fn char_at<C: MotionContext>(context: &C, cursor: CursorPosition) -> char {
+    if context.buffer().is_empty() {
+        return '\0';
+    }
+
     if let Some(s) = context.buffer().get_char(cursor) {
         if let Some(ch) = s.chars().next() {
             ch
@@ -117,7 +121,7 @@ pub struct OuterPairObject {
 impl TextObject for OuterPairObject {
     fn object_range<C: MotionContext>(&self, context: &C) -> MotionRange {
         let mut range = self.inner.object_range(context);
-        if range.is_empty() {
+        if range.is_empty() || range.0.col == 0 {
             return range;
         }
 
@@ -175,6 +179,15 @@ mod tests {
             assert_eq!(
                 ctx.select(InnerPairObject::within_line('\'', '\'').into_outer()),
                 "'queso' "
+            );
+        }
+
+        #[test]
+        fn outer_from_empty() {
+            let ctx = window("");
+            assert_eq!(
+                ctx.select(InnerPairObject::within_line('\'', '\'').into_outer()),
+                ""
             );
         }
 

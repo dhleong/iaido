@@ -369,7 +369,7 @@ mod tests {
                 ReadValue::Newline,
                 ReadValue::Text("my".into()),
                 ReadValue::Newline,
-                ReadValue::Text("love".into()),
+                ReadValue::Text("lve".into()),
             ]
         );
     }

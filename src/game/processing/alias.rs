@@ -54,12 +54,9 @@ impl TextProcessor for Alias {
                     let result = match (self.processor)(found.clone()) {
                         None => None,
                         Some(mut output) => {
-                            let mut before = found.input.subs(0, found.start);
-                            let mut after = found.input.subs(found.end, found.input.width());
-                            let mut with_replacement = TextLine::default();
-                            with_replacement.append(&mut before);
-                            with_replacement.append(&mut output);
-                            with_replacement.append(&mut after);
+                            let with_replacement = found
+                                .input
+                                .replacing_range(found.start..found.end, &mut output);
 
                             Some(TextInput::Line(with_replacement))
                         }

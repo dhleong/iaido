@@ -40,11 +40,11 @@ impl TextProcessor for Alias {
         &self.matcher.description
     }
 
-    fn process(&mut self, input: TextInput) -> KeyResult<Option<ProcessedText>> {
+    fn process(&mut self, input: TextInput) -> KeyResult<ProcessedText> {
         match input {
-            TextInput::Newline => Ok(Some(ProcessedText(Some(input), ProcessedTextFlags::NONE))),
+            TextInput::Newline => Ok(ProcessedText::Unprocessed(input)),
             TextInput::Line(input_text) => {
-                if let Some(found) = self.matcher.find(input_text) {
+                if let Some(found) = self.matcher.find(input_text.clone()) {
                     let flags = if self.one_shot {
                         ProcessedTextFlags::DESTROYED
                     } else {
@@ -52,19 +52,19 @@ impl TextProcessor for Alias {
                     };
 
                     let result = match (self.processor)(found.clone()) {
-                        None => None,
+                        None => ProcessedText::Removed(flags),
                         Some(mut output) => {
                             let with_replacement = found
                                 .input
                                 .replacing_range(found.start..found.end, &mut output);
 
-                            Some(TextInput::Line(with_replacement))
+                            ProcessedText::Processed(TextInput::Line(with_replacement), flags)
                         }
                     };
 
-                    Ok(Some(ProcessedText(result, flags)))
+                    Ok(result)
                 } else {
-                    Ok(None)
+                    Ok(ProcessedText::Unprocessed(TextInput::Line(input_text)))
                 }
             }
         }
@@ -100,15 +100,13 @@ mod tests {
         mut processor: T,
         input: &'static str,
     ) -> (String, ProcessedTextFlags) {
-        let ProcessedText(output, flags) = processor
+        match processor
             .process(TextInput::Line(input.into()))
             .expect("Should process without error")
-            .expect("Should have handled the input");
-        let text = match output.expect("Should have output") {
-            TextInput::Line(text) => text.to_string(),
-            _ => panic!("Unexpected output value"),
-        };
-        (text, flags)
+        {
+            ProcessedText::Processed(TextInput::Line(output), flags) => (output.to_string(), flags),
+            unexpected => panic!("Expected Processed result; got {:?}", unexpected),
+        }
     }
 
     #[cfg(test)]

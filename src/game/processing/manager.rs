@@ -22,7 +22,7 @@ impl<T: TextProcessor> TextProcessorManager<T> {
         self.processors.insert(description, processor)
     }
 
-    fn process_once(&mut self, input: TextInput) -> KeyResult<Option<ProcessedText>> {
+    fn process_once(&mut self, input: TextInput) -> KeyResult<ProcessedText> {
         let mut to_process = Some(input);
         let mut any_processed = false;
         let mut to_remove = vec![];
@@ -34,16 +34,16 @@ impl<T: TextProcessor> TextProcessorManager<T> {
                 break;
             };
 
-            let (processed, flags) = match processor.process(to_consume.clone())? {
-                None => {
-                    to_process = Some(to_consume);
+            let (processed, flags) = match processor.process(to_consume)? {
+                ProcessedText::Unprocessed(unprocessed) => {
+                    to_process = Some(unprocessed);
                     (false, ProcessedTextFlags::NONE)
                 }
-                Some(ProcessedText(Some(output), flags)) => {
+                ProcessedText::Processed(output, flags) => {
                     to_process = Some(output);
                     (true, flags)
                 }
-                Some(ProcessedText(None, flags)) => (true, flags),
+                ProcessedText::Removed(flags) => (true, flags),
             };
 
             any_processed |= processed;
@@ -58,9 +58,12 @@ impl<T: TextProcessor> TextProcessorManager<T> {
         }
 
         if !any_processed {
-            Ok(None)
+            Ok(ProcessedText::Unprocessed(to_process.take().unwrap()))
         } else {
-            Ok(Some(ProcessedText(to_process, ProcessedTextFlags::NONE)))
+            Ok(ProcessedText::Processed(
+                to_process.take().unwrap(),
+                ProcessedTextFlags::NONE,
+            ))
         }
     }
 }
@@ -70,28 +73,27 @@ impl<T: TextProcessor> TextProcessor for TextProcessorManager<T> {
         "Manager"
     }
 
-    fn process(&mut self, input: TextInput) -> KeyResult<Option<ProcessedText>> {
+    fn process(&mut self, input: TextInput) -> KeyResult<ProcessedText> {
         // NOTE: Some Matchers may not match until a *subsequent* matcher processes the input, so
         // we continue processing in a loop until everybody is done with the processed output
         let mut to_process = input;
         let mut any_processed = false;
 
         for _ in 0..MAX_ITERATIONS {
-            let result = self.process_once(to_process.clone())?;
-            match result {
-                None => {
+            match self.process_once(to_process)? {
+                ProcessedText::Unprocessed(unprocessed) => {
                     return Ok(if any_processed {
-                        Some(ProcessedText(Some(to_process), ProcessedTextFlags::NONE))
+                        ProcessedText::Processed(unprocessed, ProcessedTextFlags::NONE)
                     } else {
-                        None
+                        ProcessedText::Unprocessed(unprocessed)
                     })
                 }
-                Some(ProcessedText(None, flags)) => {
+                ProcessedText::Removed(flags) => {
                     // Some processor wants to remove the line;
                     // shortcut here to do so
-                    return Ok(Some(ProcessedText(None, flags)));
+                    return Ok(ProcessedText::Removed(flags));
                 }
-                Some(ProcessedText(Some(output), _)) => {
+                ProcessedText::Processed(output, _) => {
                     any_processed = true;
                     to_process = output;
                 }

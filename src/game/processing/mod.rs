@@ -22,10 +22,15 @@ bitflags! {
     }
 }
 
-/// If the TextInput is None, the text should be removed
-pub struct ProcessedText(Option<TextInput>, ProcessedTextFlags);
+/// If the input was not processed, it is returned via Unprocessed
+#[derive(Clone, Debug)]
+pub enum ProcessedText {
+    Unprocessed(TextInput),
+    Processed(TextInput, ProcessedTextFlags),
+    Removed(ProcessedTextFlags),
+}
 
 pub trait TextProcessor {
     fn describe(&self) -> &str;
-    fn process(&mut self, input: TextInput) -> KeyResult<Option<ProcessedText>>;
+    fn process(&mut self, input: TextInput) -> KeyResult<ProcessedText>;
 }

@@ -45,7 +45,7 @@ impl Matcher {
 
     pub fn find(&self, input: TextLine) -> Option<Match> {
         if let Some(captures) = self.regex.captures(&input.to_string()) {
-            let mut result = Match::empty();
+            let mut groups = HashMap::default();
             for group in self.groups() {
                 let captured = if let Some(i) = group.index {
                     captures.get(i)
@@ -60,10 +60,10 @@ impl Matcher {
 
                 if let Some(value) = captured {
                     let text = input.subs(value.start(), value.end());
-                    result.groups.insert(group.name, text);
+                    groups.insert(group.name, text);
                 }
             }
-            return Some(result);
+            return Some(Match { groups });
         }
         None
     }
@@ -140,15 +140,28 @@ pub struct Match {
 }
 
 impl Match {
-    fn empty() -> Self {
-        Self {
-            groups: Default::default(),
-        }
-    }
-
     #[allow(dead_code)] // TODO Remove this when we can...
     pub fn group(&self, name: &str) -> Option<&TextLine> {
         self.groups.get(name)
+    }
+
+    pub fn expand(&self, replacement: &str) -> String {
+        let mut result = replacement.to_string();
+        for (group, value) in self.groups.iter() {
+            let value_str = value.to_string();
+            Match::replace_group(&mut result, format!("${}", group), &value_str)
+        }
+        result
+    }
+
+    fn replace_group(dest: &mut String, target: String, value: &str) {
+        loop {
+            if let Some(index) = dest.find(&target) {
+                dest.replace_range(index..index + target.len(), value);
+            } else {
+                break;
+            }
+        }
     }
 }
 

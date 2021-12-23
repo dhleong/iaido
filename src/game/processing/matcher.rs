@@ -69,8 +69,9 @@ fn simple_matcher_to_pattern(input: &str) -> String {
     let mut last_end = if starts_at_beginning { 1 } else { 0 };
 
     if starts_at_beginning {
-        // NOTE: We do this here to avoid the ^ getting escaped below
         p.push('^');
+    } else {
+        p.push_str(r"\b")
     }
 
     for m in VAR_REGEX.find_iter(&input) {
@@ -88,6 +89,8 @@ fn simple_matcher_to_pattern(input: &str) -> String {
         p.push_str(&input[var_name_range]);
         p.push_str(">[^ ]+)");
     }
+
+    p.push_str(r"(?:\b|\s|$)");
 
     p
 }
@@ -147,7 +150,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    mod tests {
+    mod simple {
         use super::*;
 
         #[test]

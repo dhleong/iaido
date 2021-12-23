@@ -63,7 +63,19 @@ impl Matcher {
                     groups.insert(group.name, text);
                 }
             }
-            return Some(Match { groups });
+
+            let (start, end) = if let Some(m) = captures.get(0) {
+                (m.start(), m.end())
+            } else {
+                (0, input.width())
+            };
+
+            return Some(Match {
+                input,
+                groups,
+                start,
+                end,
+            });
         }
         None
     }
@@ -135,7 +147,11 @@ fn simple_matcher_to_pattern(input: &str) -> String {
     p
 }
 
+#[derive(Clone, Debug)]
 pub struct Match {
+    pub input: TextLine,
+    pub start: usize,
+    pub end: usize,
     groups: HashMap<String, TextLine>,
 }
 

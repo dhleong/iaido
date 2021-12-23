@@ -1,11 +1,12 @@
 use bitflags::bitflags;
 
 mod alias;
+pub mod manager;
 mod matcher;
 
 use crate::{editing::text::TextLine, input::maps::KeyResult};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TextInput {
     Newline,
     Line(TextLine),
@@ -26,5 +27,5 @@ pub struct ProcessedText(Option<TextInput>, ProcessedTextFlags);
 
 pub trait TextProcessor {
     fn describe(&self) -> &str;
-    fn process(&self, input: TextInput) -> KeyResult<Option<ProcessedText>>;
+    fn process(&mut self, input: TextInput) -> KeyResult<Option<ProcessedText>>;
 }

@@ -42,7 +42,7 @@ impl Matcher {
         CaptureGroups(self.regex.capture_names().enumerate())
     }
 
-    pub fn find(&self, input: TextLine) -> Option<Match> {
+    pub fn find(&self, input: &TextLine) -> Option<Match> {
         if let Some(captures) = self.regex.captures(&input.to_string()) {
             let mut groups = HashMap::default();
             for group in self.groups() {
@@ -69,12 +69,7 @@ impl Matcher {
                 (0, input.width())
             };
 
-            return Some(Match {
-                input,
-                groups,
-                start,
-                end,
-            });
+            return Some(Match { groups, start, end });
         }
         None
     }
@@ -148,7 +143,6 @@ fn simple_matcher_to_pattern(input: &str) -> String {
 
 #[derive(Clone, Debug)]
 pub struct Match {
-    pub input: TextLine,
     pub start: usize,
     pub end: usize,
     groups: HashMap<String, TextLine>,
@@ -201,18 +195,16 @@ mod tests {
         #[test]
         fn simple() {
             let matcher = re_compile(r"/^saute (\w+)/");
-            let m = matcher
-                .find("saute peppers".into())
-                .expect("Failed to match");
+            let input = "saute peppers".into();
+            let m = matcher.find(&input).expect("Failed to match");
             assert_eq!(group(m, "1"), "peppers");
         }
 
         #[test]
         fn simple_named() {
             let matcher = re_compile(r"/^saute (?P<food>\w+)/");
-            let m = matcher
-                .find("saute peppers".into())
-                .expect("Failed to match");
+            let input = "saute peppers".into();
+            let m = matcher.find(&input).expect("Failed to match");
             assert_eq!(m.group("food").unwrap().to_string(), "peppers");
         }
     }
@@ -224,18 +216,16 @@ mod tests {
         #[test]
         fn indexed() {
             let matcher = re_compile(r"^saute $0");
-            let m = matcher
-                .find("saute peppers".into())
-                .expect("Failed to match");
+            let input = "saute peppers".into();
+            let m = matcher.find(&input).expect("Failed to match");
             assert_eq!(group(m, "0"), "peppers");
         }
 
         #[test]
         fn named() {
             let matcher = re_compile(r"^saute ${food}");
-            let m = matcher
-                .find("saute peppers".into())
-                .expect("Failed to match");
+            let input = "saute peppers".into();
+            let m = matcher.find(&input).expect("Failed to match");
             assert_eq!(group(m, "food"), "peppers");
         }
     }

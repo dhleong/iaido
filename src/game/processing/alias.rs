@@ -44,19 +44,18 @@ impl TextProcessor for Alias {
         match input {
             TextInput::Newline => Ok(ProcessedText::Unprocessed(input)),
             TextInput::Line(input_text) => {
-                if let Some(found) = self.matcher.find(input_text.clone()) {
+                if let Some(found) = self.matcher.find(&input_text) {
                     let flags = if self.one_shot {
                         ProcessedTextFlags::DESTROYED
                     } else {
                         ProcessedTextFlags::NONE
                     };
 
-                    let result = match (self.processor)(found.clone()) {
+                    let range = found.start..found.end;
+                    let result = match (self.processor)(found) {
                         None => ProcessedText::Removed(flags),
                         Some(mut output) => {
-                            let with_replacement = found
-                                .input
-                                .replacing_range(found.start..found.end, &mut output);
+                            let with_replacement = input_text.replacing_range(range, &mut output);
 
                             ProcessedText::Processed(TextInput::Line(with_replacement), flags)
                         }

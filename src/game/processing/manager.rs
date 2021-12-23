@@ -11,7 +11,6 @@ pub struct TextProcessorManager<T: TextProcessor> {
 }
 
 impl<T: TextProcessor> TextProcessorManager<T> {
-    #[allow(dead_code)] // TODO remove when able
     pub fn new() -> Self {
         Self {
             processors: Default::default(),

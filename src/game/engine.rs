@@ -8,8 +8,12 @@ use crate::input::completion::{
 };
 
 use super::completion::{CompletionSource, GameCompletionsFactory, ProcessFlags};
+use super::processing::alias::Alias;
+use super::processing::manager::TextProcessorManager;
+use super::processing::{ProcessedText, TextInput, TextProcessor};
 
 pub struct GameEngine {
+    pub aliases: TextProcessorManager<Alias>,
     pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
 }
 
@@ -27,6 +31,7 @@ impl Completer for Rc<Mutex<dyn CompletionSource>> {
 impl Default for GameEngine {
     fn default() -> Self {
         Self {
+            aliases: TextProcessorManager::new(),
             completer: Some(Rc::new(Mutex::new(GameCompletionsFactory::create()))),
         }
     }
@@ -52,6 +57,20 @@ impl GameEngine {
             guard.process(text, ProcessFlags::SENT);
         }
 
-        Some(value)
+        match self.aliases.process(TextInput::Line(value.into())) {
+            Ok(ProcessedText::Removed(_)) => None,
+            Ok(ProcessedText::Processed(TextInput::Line(processed), _)) => {
+                Some(processed.to_string())
+            }
+            Ok(ProcessedText::Unprocessed(TextInput::Line(unprocessed))) => {
+                Some(unprocessed.to_string())
+            }
+            Err(e) => {
+                // TODO Probably, refactor to return this error
+                crate::log_error!("Error processing aliases: {:?}", e);
+                None
+            }
+            unhandled => panic!("Unexpected result from alias processing: {:?}", unhandled),
+        }
     }
 }

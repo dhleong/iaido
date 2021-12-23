@@ -53,3 +53,10 @@ macro_rules! info {
         crate::log!(crate::log::LogLevel::Info, $($arg)*);
     }}
 }
+
+#[macro_export]
+macro_rules! log_error {
+    ($($arg:tt)*) => {{
+        crate::log!(crate::log::LogLevel::Error, $($arg)*);
+    }}
+}

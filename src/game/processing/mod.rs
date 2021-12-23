@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-mod alias;
+pub mod alias;
 pub mod manager;
 mod matcher;
 

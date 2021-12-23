@@ -81,7 +81,6 @@ impl SubstitutionProcessor {
 }
 
 impl TextProcessorManager<Alias> {
-    #[allow(dead_code)] // TODO remove when able
     pub fn insert_text(&mut self, pattern: String, replacement: String) -> KeyResult {
         let alias = Alias::compile_text(pattern.to_string(), replacement)?;
         self.insert(pattern, alias);

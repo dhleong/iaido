@@ -8,6 +8,9 @@ use crate::{
     input::{maps::KeyResult, KeyError},
 };
 
+/// A Matcher represents a compiled "match" pattern that can be used to power the various
+/// text-processing utilities we might provide. Given a [TextLine], the Matcher can return
+/// a [Match] if the pattern was found, from which the extracted groups may be pulled.
 pub struct Matcher {
     pub description: String,
     regex: Regex,
@@ -35,26 +38,63 @@ impl Matcher {
         }
     }
 
+    /// Returns an iterator of all the capture groups declared in this Matcher
+    pub fn groups(&self) -> CaptureGroups {
+        CaptureGroups(self.regex.capture_names().enumerate())
+    }
+
     pub fn find(&self, input: TextLine) -> Option<Match> {
         if let Some(captures) = self.regex.captures(&input.to_string()) {
             let mut result = Match::empty();
-            for (i, name) in self.regex.capture_names().enumerate() {
-                let (key, captured) = if let Some(name) = name {
-                    let clean_name = name.trim_start_matches("_VAR_");
-                    (clean_name.to_string(), captures.name(name))
+            for group in self.groups() {
+                let captured = if let Some(i) = group.index {
+                    captures.get(i)
+                } else if let Some(name) = group.group_name {
+                    captures.name(name)
                 } else {
-                    (i.to_string(), captures.get(i))
+                    panic!(
+                        "Invalid capture group {} has neither name nor index",
+                        group.name
+                    );
                 };
 
                 if let Some(value) = captured {
                     let text = input.subs(value.start(), value.end());
-                    result.groups.insert(key, text);
+                    result.groups.insert(group.name, text);
                 }
             }
             return Some(result);
         }
         None
     }
+}
+
+pub struct CaptureGroups<'r>(std::iter::Enumerate<regex::CaptureNames<'r>>);
+
+impl<'r> Iterator for CaptureGroups<'r> {
+    type Item = CaptureGroup<'r>;
+
+    fn next(&mut self) -> Option<CaptureGroup<'r>> {
+        match self.0.next() {
+            Some((_, Some(name))) => Some(CaptureGroup {
+                name: name.trim_start_matches("_VAR_").to_string(),
+                group_name: Some(name),
+                index: None,
+            }),
+            Some((index, None)) => Some(CaptureGroup {
+                name: index.to_string(),
+                group_name: None,
+                index: Some(index),
+            }),
+            _ => None,
+        }
+    }
+}
+
+pub struct CaptureGroup<'r> {
+    pub name: String,
+    group_name: Option<&'r str>,
+    index: Option<usize>,
 }
 
 /// Given a string representing a simple input spec (that is, $1/$2 and ${name}-style variable

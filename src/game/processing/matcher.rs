@@ -17,7 +17,6 @@ pub struct Matcher {
 }
 
 impl Matcher {
-    #[allow(dead_code)] // TODO Remove this when we can...
     pub fn compile(input: String) -> KeyResult<Matcher> {
         if input.starts_with("/") && input.ends_with("/") {
             let pattern = input.trim_matches('/');

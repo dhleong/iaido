@@ -20,7 +20,6 @@ pub struct Alias {
 }
 
 impl Alias {
-    #[allow(dead_code)] // TODO remove when able
     pub fn compile_text(input: String, replacement: String) -> KeyResult<Alias> {
         Ok(Alias {
             matcher: Matcher::compile(input)?,
@@ -52,11 +51,9 @@ impl TextProcessor for Alias {
                         ProcessedTextFlags::NONE
                     };
 
-                    println!("Found match... {:?}", found);
                     let result = match (self.processor)(found.clone()) {
                         None => None,
                         Some(mut output) => {
-                            println!("OUTPUT={:?}", output);
                             let mut before = found.input.subs(0, found.start);
                             let mut after = found.input.subs(found.end, found.input.width());
                             let mut with_replacement = TextLine::default();
@@ -64,7 +61,6 @@ impl TextProcessor for Alias {
                             with_replacement.append(&mut output);
                             with_replacement.append(&mut after);
 
-                            println!("with_replacement={:?}", with_replacement);
                             Some(TextInput::Line(with_replacement))
                         }
                     };

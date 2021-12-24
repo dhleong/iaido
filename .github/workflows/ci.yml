@@ -26,7 +26,7 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('rust-toolchain.toml') }}
 
     - name: Build
-      run: cargo test --all-features --verbose --no-run
+      run: cargo +stable test --all-features --verbose --no-run
 
     - name: Run Tests
-      run: cargo test --all-features
+      run: cargo +stable test --all-features

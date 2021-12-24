@@ -6,6 +6,7 @@ use crate::editing::text::EditableLine;
 use crate::input::completion::{
     BoxedSuggestions, CompletableContext, Completer, CompletionContext,
 };
+use crate::input::maps::KeyResult;
 
 use super::completion::{CompletionSource, GameCompletionsFactory, ProcessFlags};
 use super::processing::alias::Alias;
@@ -50,7 +51,7 @@ impl GameEngine {
         Some(value)
     }
 
-    pub fn process_to_send(&mut self, value: String) -> Option<String> {
+    pub fn process_to_send(&mut self, value: String) -> KeyResult<Option<String>> {
         if let Some(completions) = self.completer.as_mut() {
             let text = value.to_string();
             let mut guard = completions.lock().unwrap();
@@ -58,19 +59,15 @@ impl GameEngine {
         }
 
         match self.aliases.process(TextInput::Line(value.into())) {
-            Ok(ProcessedText::Removed(_)) => None,
+            Ok(ProcessedText::Removed(_)) => Ok(None),
             Ok(ProcessedText::Processed(TextInput::Line(processed), _)) => {
-                Some(processed.to_string())
+                Ok(Some(processed.to_string()))
             }
             Ok(ProcessedText::Unprocessed(TextInput::Line(unprocessed))) => {
-                Some(unprocessed.to_string())
+                Ok(Some(unprocessed.to_string()))
             }
-            Err(e) => {
-                // TODO Probably, refactor to return this error
-                crate::log_error!("Error processing aliases: {:?}", e);
-                None
-            }
-            unhandled => panic!("Unexpected result from alias processing: {:?}", unhandled),
+            Ok(unhandled) => panic!("Unexpected result from alias processing: {:?}", unhandled),
+            Err(e) => Err(e),
         }
     }
 }

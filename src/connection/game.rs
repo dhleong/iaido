@@ -36,7 +36,7 @@ impl Connection for GameConnection {
     }
 
     fn send(&mut self, text: String) -> io::Result<()> {
-        if let Some(processed) = self.game.process_to_send(text) {
+        if let Some(processed) = self.game.process_to_send(text)? {
             self.write(processed.as_bytes())?;
             self.write(&vec!['\n' as u8])
         } else {

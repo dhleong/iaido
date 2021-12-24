@@ -164,7 +164,6 @@ impl RpcFn {
                         if i - 1 < config.rpc_args.len() {
                             return Some(config.rpc_args[i - 1].clone());
                         }
-                        panic!("well hell: {:?}", config);
                     }
 
                     match &param.pat.as_ref() {

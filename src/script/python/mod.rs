@@ -33,7 +33,7 @@ use compat::apply_compat;
 
 pub struct PythonScriptingRuntime {
     fns: Arc<Mutex<FnManager>>,
-    vm: Option<vm::Interpreter>,
+    vm: vm::Interpreter,
 }
 
 fn declare_module(vm: &vm::VirtualMachine, name: &str, module: vm::pyobject::PyObjectRef) {
@@ -49,7 +49,7 @@ impl PythonScriptingRuntime {
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let runtime = PythonScriptingRuntime {
             fns: fns.clone(),
-            vm: Some(vm::Interpreter::new(settings, vm::InitParameter::External)),
+            vm: vm::Interpreter::new(settings, vm::InitParameter::External),
         };
 
         let iaido = IaidoCore::new(api.clone(), fns.clone());
@@ -70,10 +70,7 @@ impl PythonScriptingRuntime {
     }
 
     fn with_vm<R>(&self, f: impl FnOnce(&vm::VirtualMachine) -> R) -> R {
-        self.vm
-            .as_ref()
-            .expect("No VM somehow; this should not happen")
-            .enter(f)
+        self.vm.enter(f)
     }
 
     fn format_exception_vm(vm: &vm::VirtualMachine, e: PyBaseExceptionRef) -> String {

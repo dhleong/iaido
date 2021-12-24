@@ -45,26 +45,25 @@ fn declare_module(vm: &vm::VirtualMachine, name: &str, module: vm::pyobject::PyO
 
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
-        let settings = vm::PySettings::default();
-        let fns = Arc::new(Mutex::new(FnManager::new(id)));
-        let runtime = PythonScriptingRuntime {
-            fns: fns.clone(),
-            vm: vm::Interpreter::new(settings, vm::InitParameter::External),
+        let mut runtime = PythonScriptingRuntime {
+            fns: Arc::new(Mutex::new(FnManager::new(id))),
+            vm: Default::default(),
         };
 
-        let iaido = IaidoCore::new(api.clone(), fns.clone());
-        runtime.with_vm(move |vm| {
-            let module = match iaido.clone().to_py_module(vm) {
-                Ok(module) => module,
-                Err(e) => panic!(
-                    "Unable to initialize iaido module: {:?}",
-                    Self::format_exception_vm(vm, e)
-                ),
-            };
-            declare_module(vm, "iaido", module);
+        let iaido = IaidoCore::new(api.clone(), runtime.fns.clone());
+        let result = runtime.with_vm(move |vm| {
+            apply_compat(iaido.clone(), vm);
 
-            apply_compat(iaido, vm);
+            declare_module(vm, "iaido", iaido.to_py_module(vm)?);
+            Ok(())
         });
+
+        if let Err(e) = result {
+            panic!(
+                "Unable to initialize python runtime: {:?}",
+                runtime.format_exception(e)
+            )
+        }
 
         runtime
     }

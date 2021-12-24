@@ -149,7 +149,7 @@ pub struct Match {
 }
 
 impl Match {
-    #[allow(dead_code)] // TODO Remove this when we can...
+    #[allow(dead_code)]
     pub fn group(&self, name: &str) -> Option<&TextLine> {
         self.groups.get(name)
     }

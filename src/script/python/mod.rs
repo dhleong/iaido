@@ -33,48 +33,43 @@ use compat::apply_compat;
 
 pub struct PythonScriptingRuntime {
     fns: Arc<Mutex<FnManager>>,
-    vm: Option<vm::Interpreter>,
+    vm: vm::Interpreter,
+}
+
+fn declare_module(vm: &vm::VirtualMachine, name: &str, module: vm::pyobject::PyObjectRef) {
+    vm.get_attribute(vm.sys_module.clone(), "modules")
+        .expect("Failed to get sys modules")
+        .set_item(name, module, &vm)
+        .expect("failed to insert iaido module");
 }
 
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
-        let settings = vm::PySettings::default();
-        let fns = Arc::new(Mutex::new(FnManager::new(id)));
         let mut runtime = PythonScriptingRuntime {
-            fns: fns.clone(),
-            vm: None,
+            fns: Arc::new(Mutex::new(FnManager::new(id))),
+            vm: Default::default(),
         };
 
-        let iaido = IaidoCore::new(api.clone(), fns.clone());
+        let iaido = IaidoCore::new(api.clone(), runtime.fns.clone());
+        let result = runtime.with_vm(move |vm| {
+            apply_compat(iaido.clone(), vm);
 
-        let iaido_module = iaido.clone();
-        let vm = vm::Interpreter::new_with_init(settings, move |vm| {
-            vm.add_native_module(
-                "iaido".to_string(),
-                Box::new(move |vm| match iaido_module.to_py_module(vm) {
-                    Ok(module) => module,
-                    Err(e) => panic!(
-                        "Unable to initialize iaido module: {:?}",
-                        Self::format_exception_vm(vm, e)
-                    ),
-                }),
-            );
-
-            vm::InitParameter::External
+            declare_module(vm, "iaido", iaido.to_py_module(vm)?);
+            Ok(())
         });
 
-        runtime.vm = Some(vm);
-
-        runtime.with_vm(move |vm| apply_compat(iaido, vm));
+        if let Err(e) = result {
+            panic!(
+                "Unable to initialize python runtime: {:?}",
+                runtime.format_exception(e)
+            )
+        }
 
         runtime
     }
 
     fn with_vm<R>(&self, f: impl FnOnce(&vm::VirtualMachine) -> R) -> R {
-        self.vm
-            .as_ref()
-            .expect("No VM somehow; this should not happen")
-            .enter(f)
+        self.vm.enter(f)
     }
 
     fn format_exception_vm(vm: &vm::VirtualMachine, e: PyBaseExceptionRef) -> String {

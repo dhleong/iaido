@@ -36,36 +36,35 @@ pub struct PythonScriptingRuntime {
     vm: Option<vm::Interpreter>,
 }
 
+fn declare_module(vm: &vm::VirtualMachine, name: &str, module: vm::pyobject::PyObjectRef) {
+    vm.get_attribute(vm.sys_module.clone(), "modules")
+        .expect("Failed to get sys modules")
+        .set_item(name, module, &vm)
+        .expect("failed to insert iaido module");
+}
+
 impl PythonScriptingRuntime {
     fn new(id: Id, api: ApiManagerDelegate) -> Self {
         let settings = vm::PySettings::default();
         let fns = Arc::new(Mutex::new(FnManager::new(id)));
-        let mut runtime = PythonScriptingRuntime {
+        let runtime = PythonScriptingRuntime {
             fns: fns.clone(),
-            vm: None,
+            vm: Some(vm::Interpreter::new(settings, vm::InitParameter::External)),
         };
 
         let iaido = IaidoCore::new(api.clone(), fns.clone());
+        runtime.with_vm(move |vm| {
+            let module = match iaido.clone().to_py_module(vm) {
+                Ok(module) => module,
+                Err(e) => panic!(
+                    "Unable to initialize iaido module: {:?}",
+                    Self::format_exception_vm(vm, e)
+                ),
+            };
+            declare_module(vm, "iaido", module);
 
-        let iaido_module = iaido.clone();
-        let vm = vm::Interpreter::new_with_init(settings, move |vm| {
-            vm.add_native_module(
-                "iaido".to_string(),
-                Box::new(move |vm| match iaido_module.to_py_module(vm) {
-                    Ok(module) => module,
-                    Err(e) => panic!(
-                        "Unable to initialize iaido module: {:?}",
-                        Self::format_exception_vm(vm, e)
-                    ),
-                }),
-            );
-
-            vm::InitParameter::External
+            apply_compat(iaido, vm);
         });
-
-        runtime.vm = Some(vm);
-
-        runtime.with_vm(move |vm| apply_compat(iaido, vm));
 
         runtime
     }

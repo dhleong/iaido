@@ -71,9 +71,12 @@ impl ScriptingManager {
         let result = jobs
             .start(move |_| async move {
                 let lock = scripting.lock().unwrap();
+                let count = scripts.len();
                 for path in scripts {
+                    crate::info!("Loading {}", path);
                     lock.load(delegate.clone(), path)?;
                 }
+                crate::info!("Loaded {} scripts", count);
                 Ok(())
             })
             .join_interruptably(&mut CommandHandlerContext::new_blank(context, map));

@@ -54,7 +54,11 @@ impl IaidoCore {
         };
 
         match mapping {
-            Either::A(_keys) => todo!(),
+            Either::A(to_keys) => {
+                context
+                    .keymap
+                    .remap_keys(mode, keys.into_keys(), to_keys.into_keys())
+            }
             Either::B(f) => {
                 context.keymap.remap_keys_user_fn(
                     mode,

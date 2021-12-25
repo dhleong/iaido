@@ -40,12 +40,17 @@ pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
     let buffer = context.state().current_buffer();
     let buffer_id = match &buffer.source() {
         &BufferSource::Connection(existing_url) if existing_url == &url => {
-            // reuse
+            // Reuse
+            buffer.id()
+        }
+
+        &BufferSource::None if buffer.is_empty() => {
+            // Reuse this, too
             buffer.id()
         }
 
         _ => {
-            // otherwise, create a new buffer for the connection
+            // Otherwise, create a new buffer for the connection
             let new = context.state_mut().buffers.create_mut();
             new.set_source(BufferSource::Connection(url.to_string()));
             new.id()

@@ -58,3 +58,4 @@ arboard = { version = "2.0.1", default-features = false, features = [] }
 native-tls = "0.2.8"
 rand = "0.8.4"
 ritelinked = "0.3.2"
+regex = "1.5.4"

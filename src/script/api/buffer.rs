@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     editing::Id,
-    input::{commands::CommandHandlerContext, KeymapContext},
+    input::{commands::CommandHandlerContext, maps::KeyResult, KeymapContext},
 };
 
 use super::Api;
@@ -33,5 +33,20 @@ impl BufferApiObject {
         } else {
             None
         }
+    }
+
+    #[rpc(passing(self.id))]
+    pub fn alias(
+        context: &mut CommandHandlerContext,
+        id: Id,
+        pattern: String,
+        replacement: String,
+    ) -> KeyResult {
+        if let Some(ref mut conns) = context.state_mut().connections {
+            conns.with_buffer_engine(id, |engine| {
+                engine.aliases.insert_text(pattern, replacement)
+            })?;
+        }
+        Ok(())
     }
 }

@@ -12,6 +12,7 @@ pub trait EditableLine {
         search_range: Range<usize>,
         predicate: P,
     ) -> Option<usize>;
+    fn replacing_range(self, range: Range<usize>, replacement: &mut TextLine) -> TextLine;
     fn subs(&self, start: usize, end: usize) -> Self;
     fn starts_with(&self, s: &str) -> bool;
     fn ends_with(&self, s: &str) -> bool;
@@ -21,6 +22,18 @@ pub trait EditableLine {
 impl EditableLine for TextLine {
     fn append(&mut self, other: &mut TextLine) {
         self.0.append(&mut other.0);
+    }
+
+    fn replacing_range(self, range: Range<usize>, replacement: &mut TextLine) -> TextLine {
+        let mut before = self.subs(0, range.start);
+        let mut after = self.subs(range.end, self.width());
+
+        let mut with_replacement = TextLine::default();
+        with_replacement.append(&mut before);
+        with_replacement.append(replacement);
+        with_replacement.append(&mut after);
+
+        return with_replacement;
     }
 
     fn position<P: Fn(char) -> bool>(

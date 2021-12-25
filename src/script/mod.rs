@@ -1,6 +1,7 @@
 mod api;
 mod bindings;
 mod fns;
+mod poly;
 
 #[cfg(feature = "python")]
 mod python;

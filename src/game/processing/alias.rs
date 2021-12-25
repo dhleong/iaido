@@ -112,11 +112,30 @@ mod tests {
         use super::*;
 
         #[test]
+        fn text_without_vars() {
+            let alias = Alias::compile_text("cook".to_string(), "braise".to_string())
+                .expect("Alias should compile!");
+            let (output, flags) = process(alias, "cook chorizo");
+            assert_eq!(output, "braise chorizo");
+            assert_eq!(flags, ProcessedTextFlags::NONE);
+        }
+
+        #[test]
         fn text_single() {
             let alias = Alias::compile_text("cook $1".to_string(), "Put $1 in a pan".to_string())
                 .expect("Alias should compile!");
             let (output, flags) = process(alias, "cook chorizo");
             assert_eq!(output, "Put chorizo in a pan");
+            assert_eq!(flags, ProcessedTextFlags::NONE);
+        }
+
+        #[test]
+        fn text_single_with_trail() {
+            let alias =
+                Alias::compile_text("cook $1 rare".to_string(), "Sear $1 in a pan".to_string())
+                    .expect("Alias should compile!");
+            let (output, flags) = process(alias, "cook chorizo rare");
+            assert_eq!(output, "Sear chorizo in a pan");
             assert_eq!(flags, ProcessedTextFlags::NONE);
         }
 

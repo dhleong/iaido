@@ -136,6 +136,8 @@ fn simple_matcher_to_pattern(input: &str) -> String {
         p.push_str(">[^ ]+)");
     }
 
+    p.push_str(&regex::escape(&input[last_end..input.len()]));
+
     p.push_str(r"(?:\b|\s|$)");
 
     p

@@ -34,6 +34,7 @@ pub fn result_type(signature: &Signature) -> Option<TokenStream> {
 
 pub struct SimpleType {
     pub name: String,
+    pub generic_types: Option<Vec<SimpleType>>,
     tokens: Type,
     pub is_optional: bool,
     pub is_ref: bool,
@@ -71,32 +72,38 @@ impl SimpleType {
         let first = &stream.path.segments[0];
         let type_ident = first.ident.clone();
         let type_name = type_ident.to_string();
-        if type_name.find("Option").is_some() {
-            match first.arguments {
-                PathArguments::AngleBracketed(ref args) => {
-                    if let GenericArgument::Type(Type::Path(ref actual_type)) = args.args[0] {
-                        if actual_type.path.segments.is_empty() {
-                            return Err(Error::new_spanned(
-                                stream,
-                                "Unexpected optional type length",
-                            ));
-                        }
 
-                        let actual_ident = &actual_type.path.segments[0].ident;
-                        return Ok(Self {
-                            name: actual_ident.to_string(),
-                            tokens: type_ref.clone(),
-                            is_optional: true,
-                            is_ref: false,
-                        });
+        let generic_types: Option<Vec<SimpleType>> = match first.arguments {
+            PathArguments::AngleBracketed(ref args) => {
+                let arg_types = args.args.iter().filter_map(|arg| {
+                    if let GenericArgument::Type(actual_type @ Type::Path(ref path)) = arg {
+                        Some(Self::from_path(&actual_type.clone(), path))
+                    } else {
+                        None
                     }
+                });
+
+                let mut types = vec![];
+                for arg_type in arg_types {
+                    types.push(arg_type?);
                 }
-                _ => {}
+
+                Some(types)
             }
+            _ => None,
+        };
+
+        if type_name.find("Option").is_some() {
+            let mut actual_type = generic_types
+                .expect("Expected Optional param")
+                .swap_remove(0);
+            actual_type.is_optional = true;
+            return Ok(actual_type);
         }
 
         Ok(Self {
             name: type_name,
+            generic_types,
             tokens: type_ref.clone(),
             is_optional: false,
             is_ref: false,

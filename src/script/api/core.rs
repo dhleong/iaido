@@ -7,7 +7,7 @@ use crate::{
         maps::{KeyResult, UserKeyHandler},
         KeymapContext, RemapMode,
     },
-    script::fns::ScriptingFnRef,
+    script::{fns::ScriptingFnRef, poly::Either},
 };
 
 use super::{current::CurrentObjects, Api, Fns};
@@ -45,16 +45,28 @@ impl IaidoCore {
         context: &mut CommandHandlerContext,
         mode: String,
         keys: String,
-        f: ScriptingFnRef,
+        mapping: Either<String, ScriptingFnRef>,
     ) {
         let mode = match mode.as_str() {
             "n" => RemapMode::VimNormal,
             "i" => RemapMode::VimInsert,
             _ => RemapMode::User(mode),
         };
-        context
-            .keymap
-            .remap_keys_user_fn(mode, keys.into_keys(), create_user_keyhandler(f));
+
+        match mapping {
+            Either::A(to_keys) => {
+                context
+                    .keymap
+                    .remap_keys(mode, keys.into_keys(), to_keys.into_keys())
+            }
+            Either::B(f) => {
+                context.keymap.remap_keys_user_fn(
+                    mode,
+                    keys.into_keys(),
+                    create_user_keyhandler(f),
+                );
+            }
+        }
     }
 }
 

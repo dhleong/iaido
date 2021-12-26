@@ -6,11 +6,3 @@ pub enum Either<A, B> {
     A(A),
     B(B),
 }
-
-#[allow(dead_code)]
-#[derive(Clone, Debug)]
-pub enum PickOfThree<A, B, C> {
-    A(A),
-    B(B),
-    C(C),
-}

@@ -1,10 +1,11 @@
 use std::{fmt, io};
 
 use crate::{
+    editing::Id,
     input::{
         commands::{connection, CommandHandlerContext},
         keys::KeysParsable,
-        maps::{KeyResult, UserKeyHandler},
+        maps::{user_key_handler, KeyResult, UserKeyHandler},
         KeymapConfig, KeymapContext, RemapMode,
     },
     script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
@@ -48,32 +49,53 @@ impl IaidoCore {
     }
 
     #[rpc]
+    pub fn buf_set_keymap(
+        context: &mut CommandHandlerContext,
+        buffer_id: Id,
+        mode: String,
+        keys: String,
+        mapping: Either<String, ScriptingFnRef>,
+    ) {
+        // TODO Accept config from a param
+        context.keymap.buf_remap_keys_user_fn(
+            buffer_id,
+            parse_mode(mode),
+            keys.into_keys(),
+            keyhandler(mapping, KeymapConfig { allow_remap: true }),
+        )
+    }
+
+    #[rpc]
     pub fn set_keymap(
         context: &mut CommandHandlerContext,
         mode: String,
         keys: String,
         mapping: Either<String, ScriptingFnRef>,
     ) {
-        let mode = match mode.as_str() {
-            "n" => RemapMode::VimNormal,
-            "i" => RemapMode::VimInsert,
-            _ => RemapMode::User(mode),
-        };
+        // TODO Accept config from a param
+        context.keymap.remap_keys_user_fn(
+            parse_mode(mode),
+            keys.into_keys(),
+            keyhandler(mapping, KeymapConfig { allow_remap: true }),
+        )
+    }
+}
 
-        match mapping {
-            Either::A(to_keys) => {
-                context
-                    .keymap
-                    .remap_keys(mode, keys.into_keys(), to_keys.into_keys())
-            }
-            Either::B(f) => {
-                context.keymap.remap_keys_user_fn(
-                    mode,
-                    keys.into_keys(),
-                    create_user_keyhandler(f),
-                );
-            }
-        }
+fn keyhandler(
+    mapping: Either<String, ScriptingFnRef>,
+    config: KeymapConfig,
+) -> Box<UserKeyHandler> {
+    match mapping {
+        Either::A(to_keys) => user_key_handler(to_keys.into_keys(), config),
+        Either::B(f) => create_user_keyhandler(f),
+    }
+}
+
+fn parse_mode(mode: String) -> RemapMode {
+    match mode.as_str() {
+        "n" => RemapMode::VimNormal,
+        "i" => RemapMode::VimInsert,
+        _ => RemapMode::User(mode),
     }
 }
 

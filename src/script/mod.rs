@@ -1,4 +1,5 @@
 mod api;
+mod args;
 mod bindings;
 mod fns;
 mod poly;
@@ -16,11 +17,11 @@ use crate::{
 };
 pub use api::ApiManagerRpc;
 
-use self::{api::ApiManagerDelegate, fns::ScriptingFnRef};
+use self::{api::ApiManagerDelegate, args::FnArgs, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult;
-    fn invoke(&mut self, f: ScriptingFnRef) -> JobResult;
+    fn invoke(&mut self, f: ScriptingFnRef, args: FnArgs) -> JobResult;
 }
 
 pub trait ScriptingRuntimeFactory {
@@ -132,10 +133,10 @@ impl ScriptingManager {
         Ok(id)
     }
 
-    pub fn invoke(&self, f: ScriptingFnRef) -> JobResult {
+    pub fn invoke(&self, f: ScriptingFnRef, args: FnArgs) -> JobResult {
         let mut runtimes = self.runtimes.borrow_mut();
         if let Some(runtime) = runtimes.get_mut(&f.runtime) {
-            runtime.invoke(f)
+            runtime.invoke(f, args)
         } else {
             // maybe panic?
             Err(JobError::Script("No such runtime".to_string()))

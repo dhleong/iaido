@@ -7,7 +7,7 @@ use std::{
 use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext},
-    script::{fns::ScriptingFnRef, poly::Either, ScriptingManager},
+    script::{args::FnArgs, fns::ScriptingFnRef, poly::Either, ScriptingManager},
 };
 
 use super::{Api, Fns};
@@ -68,7 +68,7 @@ fn create_user_processor(
     Box::new(move |groups| match scripting.try_lock() {
         Ok(scripting) => {
             // FIXME: TODO: Figure out how to pass in a map and get out a string
-            let result = scripting.invoke(f)?;
+            let result = scripting.invoke(f, FnArgs::Map(groups))?;
             Ok(None)
         }
 

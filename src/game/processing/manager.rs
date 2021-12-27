@@ -56,14 +56,13 @@ impl<T: TextProcessor> TextProcessorManager<T> {
             self.processors.remove(&id);
         }
 
-        if !any_processed {
-            Ok(ProcessedText::Unprocessed(to_process.take().unwrap()))
+        Ok(if !any_processed {
+            ProcessedText::Unprocessed(to_process.take().unwrap())
+        } else if let Some(text) = to_process.take() {
+            ProcessedText::Processed(text, ProcessedTextFlags::NONE)
         } else {
-            Ok(ProcessedText::Processed(
-                to_process.take().unwrap(),
-                ProcessedTextFlags::NONE,
-            ))
-        }
+            ProcessedText::Removed(ProcessedTextFlags::NONE)
+        })
     }
 }
 

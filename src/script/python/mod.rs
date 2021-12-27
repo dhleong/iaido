@@ -1,5 +1,6 @@
 #![cfg(feature = "python")]
 
+use rustpython_vm::pyobject::PyObjectRef;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -21,12 +22,14 @@ use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
     api::{core::IaidoCore, ApiManagerDelegate},
+    args::FnArgs,
     bindings::ScriptFile,
     fns::{FnManager, NativeFn, ScriptingFnRef},
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
 mod compat;
+mod impls;
 mod modules;
 pub mod util;
 
@@ -141,19 +144,9 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         }
     }
 
-    fn invoke(&mut self, fn_ref: ScriptingFnRef) -> JobResult {
-        let fns = self.fns.clone();
-        self.with_vm(move |vm| {
-            let lock = fns.lock().unwrap();
-            let native = lock.get(&fn_ref);
-            let f = match native {
-                NativeFn::Py(ref f) => f,
-                _ => panic!("Received non-py Fn ref"),
-            };
-
-            unwrap_error(vm, vm.invoke(&f, vec![]))?;
-            Ok(())
-        })
+    fn invoke(&mut self, fn_ref: ScriptingFnRef, args: FnArgs) -> JobResult {
+        let _: PyObjectRef = self.invoke_dyn(fn_ref, args)?;
+        Ok(())
     }
 }
 

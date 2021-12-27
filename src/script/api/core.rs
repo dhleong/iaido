@@ -7,7 +7,7 @@ use crate::{
         maps::{KeyResult, UserKeyHandler},
         KeymapContext, RemapMode,
     },
-    script::{fns::ScriptingFnRef, poly::Either},
+    script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
 };
 
 use super::{current::CurrentObjects, Api, Fns};
@@ -84,7 +84,7 @@ fn create_user_keyhandler(f: ScriptingFnRef) -> Box<UserKeyHandler> {
             .start(move |_| async move {
                 match scripting.try_lock() {
                     Ok(scripting) => {
-                        scripting.invoke(f)?;
+                        scripting.invoke(f, FnArgs::None)?;
                         Ok(())
                     }
                     Err(_) => Err(io::ErrorKind::WouldBlock.into()),

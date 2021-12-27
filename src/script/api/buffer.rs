@@ -7,7 +7,7 @@ use std::{
 use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext},
-    script::{args::FnArgs, fns::ScriptingFnRef, poly::Either, ScriptingManager},
+    script::{fns::ScriptingFnRef, poly::Either, ScriptingManager},
 };
 
 use super::{connection::ConnectionApiObject, Api, Fns};
@@ -84,7 +84,7 @@ fn create_user_processor(
     f: ScriptingFnRef,
 ) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>> {
     Box::new(move |groups| match scripting.try_lock() {
-        Ok(scripting) => match scripting.invoke(f, FnArgs::Map(groups))? {
+        Ok(scripting) => match scripting.invoke(f, groups.into())? {
             None => Ok(None),
             Some(value) if value.is_string() => Ok(value.to_string()),
             _ => Err(KeyError::InvalidInput(

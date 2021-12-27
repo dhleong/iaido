@@ -1,4 +1,4 @@
-use std::{fmt, io};
+use std::{collections::HashMap, fmt, io};
 
 use crate::{
     editing::Id,
@@ -55,13 +55,13 @@ impl IaidoCore {
         mode: String,
         keys: String,
         mapping: Either<String, ScriptingFnRef>,
+        opts: Option<HashMap<String, FnArgs>>,
     ) {
-        // TODO Accept config from a param
         context.keymap.buf_remap_keys_user_fn(
             buffer_id,
             parse_mode(mode),
             keys.into_keys(),
-            keyhandler(mapping, KeymapConfig { allow_remap: true }),
+            keyhandler(mapping, parse_keymap_config(opts)),
         )
     }
 
@@ -71,12 +71,12 @@ impl IaidoCore {
         mode: String,
         keys: String,
         mapping: Either<String, ScriptingFnRef>,
+        opts: Option<HashMap<String, FnArgs>>,
     ) {
-        // TODO Accept config from a param
         context.keymap.remap_keys_user_fn(
             parse_mode(mode),
             keys.into_keys(),
-            keyhandler(mapping, KeymapConfig { allow_remap: true }),
+            keyhandler(mapping, parse_keymap_config(opts)),
         )
     }
 }
@@ -88,6 +88,19 @@ fn keyhandler(
     match mapping {
         Either::A(to_keys) => user_key_handler(to_keys.into_keys(), config),
         Either::B(f) => create_user_keyhandler(f),
+    }
+}
+
+fn parse_keymap_config(config: Option<HashMap<String, FnArgs>>) -> KeymapConfig {
+    if let Some(config) = config {
+        let allow_remap = if let Some(FnArgs::Bool(noremap)) = config.get("noremap") {
+            !noremap
+        } else {
+            true
+        };
+        KeymapConfig { allow_remap }
+    } else {
+        KeymapConfig::default()
     }
 }
 

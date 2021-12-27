@@ -44,6 +44,10 @@ impl Connections {
         self.buffer_to_connection.get(&buffer_id).cloned()
     }
 
+    pub fn id_to_buffer(&self, id: Id) -> Option<Id> {
+        self.connection_to_buffer.get(&id).cloned()
+    }
+
     pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut GameConnection> {
         if let Some(conn_id) = self.buffer_to_id(buffer_id) {
             self.by_id_mut(conn_id)

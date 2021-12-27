@@ -86,7 +86,7 @@ fn keyhandler(
     config: KeymapConfig,
 ) -> Box<UserKeyHandler> {
     match mapping {
-        Either::A(to_keys) => user_key_handler(to_keys, config),
+        Either::A(to_keys) => user_key_handler(to_keys.into_keys(), config),
         Either::B(f) => create_user_keyhandler(f),
     }
 }

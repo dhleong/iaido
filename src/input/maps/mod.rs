@@ -62,7 +62,7 @@ pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
 pub type UserKeyHandler = dyn Fn(CommandHandlerContext<'_>) -> KeyResult;
 
 pub fn user_key_handler(keys: Vec<Key>, config: KeymapConfig) -> Box<UserKeyHandler> {
-    Box::new(move |ctx| {
+    Box::new(move |mut ctx| {
         ctx.feed_keys(keys.clone(), config)?;
         Ok(())
     })

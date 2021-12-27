@@ -11,7 +11,7 @@ edition = "2018"
 #  - python w/ default macOS linker: ~3.5s
 #  -                  python w/ zld: ~2.6s
 #  -            no languages w/ zld: ~1.4s
-default = ["python"]
+default = []
 
 python = ["rustpython-common", "rustpython-vm", "apigen/python"]
 

@@ -16,6 +16,8 @@ use insert::vim_insert_mode;
 use normal::vim_normal_mode;
 use tree::KeyTreeNode;
 
+use crate::input::source::memory::MemoryKeySource;
+use crate::input::KeymapContextWithKeys;
 use crate::{
     app::widgets::Widget,
     editing::motion::MotionRange,
@@ -402,6 +404,10 @@ impl Keymap for VimKeymap {
 }
 
 impl BoxableKeymap for VimKeymap {
+    fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult {
+        self.process(context)
+    }
+
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {
         crate::input::remap_keys_to_fn(self, mode, from, to)
     }

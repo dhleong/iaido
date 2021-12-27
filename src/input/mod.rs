@@ -15,7 +15,8 @@ use crate::editing::Id;
 use crate::{app::jobs::JobError, delegate_keysource};
 use delegate::delegate;
 
-use self::maps::{KeyHandler, UserKeyHandler};
+use self::maps::{KeyHandler, KeyResult, UserKeyHandler};
+use self::source::memory::MemoryKeySource;
 
 pub type KeyCode = crossterm::event::KeyCode;
 pub type KeyModifiers = crossterm::event::KeyModifiers;
@@ -213,6 +214,7 @@ pub trait BoxableKeymap {
         handler: Box<UserKeyHandler>,
     );
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult;
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
@@ -222,6 +224,7 @@ impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
             fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
             fn buf_remap_keys_user_fn(&mut self, buf_id: Id, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
             fn as_any_mut(&mut self) -> &mut dyn Any;
+            fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult;
         }
     }
 }
@@ -233,5 +236,5 @@ pub trait Keymap {
     /// (or to a parent Keymap) by returning `Ok(())`
     /// Errors received by context.next_key() may simply be propagated upward, where they will be
     /// printed into the active buffer by the main loop
-    fn process<K: KeymapContext>(&mut self, context: &mut K) -> Result<(), KeyError>;
+    fn process<K: KeymapContext>(&mut self, context: &mut K) -> KeyResult;
 }

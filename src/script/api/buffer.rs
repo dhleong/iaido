@@ -10,7 +10,7 @@ use crate::{
     script::{args::FnArgs, fns::ScriptingFnRef, poly::Either, ScriptingManager},
 };
 
-use super::{Api, Fns};
+use super::{connection::ConnectionApiObject, Api, Fns};
 
 #[apigen::ns]
 pub struct BufferApiObject {
@@ -29,6 +29,24 @@ impl fmt::Debug for BufferApiObject {
 impl BufferApiObject {
     pub fn new(api: Api, fns: Fns, id: Id) -> Self {
         Self { api, fns, id }
+    }
+
+    #[rpc(passing(self.id))]
+    fn connection_id(context: &mut CommandHandlerContext, buffer_id: Id) -> Option<Id> {
+        context
+            .state()
+            .connections
+            .as_ref()
+            .and_then(|conns| conns.buffer_to_id(buffer_id))
+    }
+
+    #[property]
+    pub fn connection(&self) -> Option<ConnectionApiObject> {
+        if let Some(id) = self.connection_id() {
+            Some(ConnectionApiObject::new(self.api.clone(), id))
+        } else {
+            None
+        }
     }
 
     #[property]

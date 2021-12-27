@@ -254,6 +254,13 @@ pub mod tests {
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
+
+        fn process_keys(
+            &mut self,
+            _context: &mut crate::input::KeymapContextWithKeys<MemoryKeySource>,
+        ) -> crate::input::maps::KeyResult {
+            todo!()
+        }
     }
 
     pub struct TestKeyHandlerContext {

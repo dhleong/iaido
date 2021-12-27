@@ -5,7 +5,7 @@ use crate::{
         commands::{connection, CommandHandlerContext},
         keys::KeysParsable,
         maps::{KeyResult, UserKeyHandler},
-        KeymapContext, RemapMode,
+        KeymapConfig, KeymapContext, RemapMode,
     },
     script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
 };
@@ -38,6 +38,13 @@ impl IaidoCore {
     #[rpc]
     pub fn echo(context: &mut CommandHandlerContext, text: String) {
         context.state_mut().echom(text);
+    }
+
+    #[rpc]
+    pub fn feedkeys(context: &mut CommandHandlerContext, keys: String, mode: String) -> KeyResult {
+        let keys = keys.into_keys();
+        let allow_remap = mode.find("n").is_none();
+        context.feed_keys(keys, KeymapConfig { allow_remap })
     }
 
     #[rpc]

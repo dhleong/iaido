@@ -19,7 +19,10 @@ use self::{
 };
 use crate::delegate_keysource_with_map;
 
-use super::{maps::KeyResult, BoxableKeymap, Key, KeyError, KeySource, KeymapContext};
+use super::{
+    maps::KeyResult, source::memory::MemoryKeySource, BoxableKeymap, Key, KeyError, KeySource,
+    KeymapConfig, KeymapContext, KeymapContextWithKeys,
+};
 
 pub type CommandHandler = dyn Fn(&mut CommandHandlerContext<'_>) -> KeyResult;
 
@@ -70,6 +73,17 @@ impl CommandHandlerContext<'_> {
     fn split_input(&self) -> impl Iterator<Item = &str> {
         // TODO handle quoted input
         self.input.split_ascii_whitespace()
+    }
+
+    pub fn feed_keys(&mut self, keys: Vec<Key>, config: KeymapConfig) -> KeyResult {
+        let source = MemoryKeySource::from(keys);
+        let mut context = KeymapContextWithKeys::new(Box::new(&mut self.context), source, config);
+
+        while context.keys.poll_key(Duration::from_millis(0))? {
+            self.keymap.process_keys(&mut context)?;
+        }
+
+        Ok(())
     }
 }
 

@@ -43,7 +43,7 @@ impl IaidoCore {
     #[rpc]
     pub fn feedkeys(context: &mut CommandHandlerContext, keys: String, mode: String) -> KeyResult {
         let keys = keys.into_keys();
-        let allow_remap = mode.find("r").is_some();
+        let allow_remap = mode.find("n").is_none();
         context.feed_keys(keys, KeymapConfig { allow_remap })
     }
 

@@ -32,10 +32,6 @@ pub fn python_arg_from(arg: &FnArg) -> SynResult<Option<TokenStream>> {
     }
 
     let simple = SimpleType::from(&ty.as_ref())?;
-    if simple.is_optional {
-        return Err(Error::new_spanned(arg, "Optional args not supported yet"));
-    }
-
     let arg_type = python_type_from_simple(&simple)?;
     Ok(Some(quote! { #pat: #arg_type }))
 }
@@ -46,7 +42,7 @@ fn python_type_from_simple(simple: &SimpleType) -> SynResult<TokenStream> {
         return Ok(quote! { rustpython_vm::pyobject::PyRef<#simple> });
     }
 
-    Ok(match simple.name.as_str() {
+    let mut the_type = match simple.name.as_str() {
         "Id" => quote! { usize },
 
         "Either" => match &simple.generic_types {
@@ -62,6 +58,7 @@ fn python_type_from_simple(simple: &SimpleType) -> SynResult<TokenStream> {
                 ))
             }
         },
+
         "String" => quote! { rustpython_vm::builtins::PyStrRef },
         "ScriptingFnRef" => quote! { rustpython_vm::pyobject::PyObjectRef },
         _ => {
@@ -71,7 +68,13 @@ fn python_type_from_simple(simple: &SimpleType) -> SynResult<TokenStream> {
             );
             return Err(Error::new_spanned(simple, msg));
         }
-    })
+    };
+
+    if simple.is_optional {
+        the_type = quote! { rustpython_vm::function::OptionalOption<#the_type> };
+    }
+
+    Ok(the_type)
 }
 
 pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
@@ -86,10 +89,6 @@ pub fn python_conversion(arg: &FnArg) -> SynResult<Option<TokenStream>> {
     }
 
     let simple = SimpleType::from(&ty.as_ref())?;
-    if simple.is_optional {
-        return Err(Error::new_spanned(arg, "Optional args not supported yet"));
-    }
-
     Ok(Some(python_conversion_simple(pat, &simple)?))
 }
 
@@ -98,7 +97,7 @@ fn python_conversion_simple<T: ToTokens>(pat: T, simple: &SimpleType) -> SynResu
         return Ok(quote! { &#pat });
     }
 
-    Ok(match simple.name.as_str() {
+    let mut conversion = match simple.name.as_str() {
         "Id" => quote! { #pat },
 
         "Either" => match &simple.generic_types {
@@ -135,5 +134,11 @@ fn python_conversion_simple<T: ToTokens>(pat: T, simple: &SimpleType) -> SynResu
                 "Python does not support this type",
             ))
         }
-    })
+    };
+
+    if simple.is_optional {
+        conversion = quote! { #pat.flatten().map(|#pat| { #conversion }) };
+    }
+
+    Ok(conversion)
 }

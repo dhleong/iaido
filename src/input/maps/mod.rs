@@ -61,6 +61,13 @@ pub type KeyResult<T = ()> = Result<T, KeyError>;
 pub type KeyHandler<T> = dyn Fn(KeyHandlerContext<'_, T>) -> KeyResult;
 pub type UserKeyHandler = dyn Fn(CommandHandlerContext<'_>) -> KeyResult;
 
+pub fn user_key_handler(keys: Vec<Key>, config: KeymapConfig) -> Box<UserKeyHandler> {
+    Box::new(move |ctx| {
+        ctx.feed_keys(keys.clone(), config)?;
+        Ok(())
+    })
+}
+
 /// Syntactic sugar for declaring a key handler
 #[macro_export]
 macro_rules! key_handler {

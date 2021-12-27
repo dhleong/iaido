@@ -8,7 +8,8 @@ use std::{
 use rustpython_vm as vm;
 use vm::{
     exceptions::PyBaseExceptionRef,
-    pyobject::{ItemProtocol, PyResult},
+    function::IntoFuncArgs,
+    pyobject::{ItemProtocol, PyResult, TryFromObject},
 };
 
 use crate::{
@@ -80,6 +81,26 @@ impl PythonScriptingRuntime {
 
     fn format_exception(&mut self, e: PyBaseExceptionRef) -> String {
         self.with_vm(|vm| PythonScriptingRuntime::format_exception_vm(vm, e))
+    }
+
+    fn invoke_dyn<T: IntoFuncArgs, R: TryFromObject>(
+        &self,
+        fn_ref: ScriptingFnRef,
+        args: T,
+    ) -> JobResult<R> {
+        let fns = self.fns.clone();
+        self.with_vm(move |vm| {
+            let lock = fns.lock().unwrap();
+            let native = lock.get(&fn_ref);
+            let f = match native {
+                NativeFn::Py(ref f) => f,
+                _ => panic!("Received non-py Fn ref"),
+            };
+
+            let py_result = unwrap_error(vm, vm.invoke(&f, args))?;
+            let result = unwrap_error(vm, R::try_from_object(vm, py_result))?;
+            Ok(result)
+        })
     }
 }
 

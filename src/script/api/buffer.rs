@@ -1,15 +1,21 @@
-use std::fmt;
+use std::{
+    collections::HashMap,
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     editing::Id,
-    input::{commands::CommandHandlerContext, maps::KeyResult, KeymapContext},
+    input::{commands::CommandHandlerContext, maps::KeyResult, KeyError, KeymapContext},
+    script::{fns::ScriptingFnRef, poly::Either, ScriptingManager},
 };
 
-use super::Api;
+use super::{Api, Fns};
 
 #[apigen::ns]
 pub struct BufferApiObject {
     api: Api,
+    fns: Fns,
     pub id: Id,
 }
 
@@ -21,8 +27,8 @@ impl fmt::Debug for BufferApiObject {
 
 #[apigen::ns_impl]
 impl BufferApiObject {
-    pub fn new(api: Api, id: Id) -> Self {
-        Self { api, id }
+    pub fn new(api: Api, fns: Fns, id: Id) -> Self {
+        Self { api, fns, id }
     }
 
     #[property]
@@ -40,13 +46,32 @@ impl BufferApiObject {
         context: &mut CommandHandlerContext,
         id: Id,
         pattern: String,
-        replacement: String,
+        replacement: Either<String, ScriptingFnRef>,
     ) -> KeyResult {
+        let scripting = context.state().scripting.clone();
         if let Some(ref mut conns) = context.state_mut().connections {
-            conns.with_buffer_engine(id, |engine| {
-                engine.aliases.insert_text(pattern, replacement)
+            conns.with_buffer_engine(id, move |engine| match replacement {
+                Either::A(text) => engine.aliases.insert_text(pattern, text),
+                Either::B(f) => engine
+                    .aliases
+                    .insert_fn(pattern, create_user_processor(scripting, f)),
             })?;
         }
         Ok(())
     }
+}
+
+fn create_user_processor(
+    scripting: Arc<Mutex<ScriptingManager>>,
+    f: ScriptingFnRef,
+) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>> {
+    Box::new(move |groups| match scripting.try_lock() {
+        Ok(scripting) => {
+            // FIXME: TODO: Figure out how to pass in a map and get out a string
+            let result = scripting.invoke(f)?;
+            Ok(None)
+        }
+
+        Err(_) => Err(KeyError::IO(std::io::ErrorKind::WouldBlock.into())),
+    })
 }

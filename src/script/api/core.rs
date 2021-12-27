@@ -27,7 +27,7 @@ impl IaidoCore {
 
     #[property]
     pub fn current(&self) -> CurrentObjects {
-        CurrentObjects::new(self.api.clone())
+        CurrentObjects::new(self.api.clone(), self.fns.clone())
     }
 
     #[rpc]

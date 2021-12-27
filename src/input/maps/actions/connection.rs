@@ -1,12 +1,15 @@
 use std::io;
 
-use crate::input::{
-    maps::{KeyHandlerContext, KeyResult},
-    BoxableKeymap, KeyError, KeymapContext,
-};
 use crate::{
     connection::{Connection, ReadValue},
     editing::source::BufferSource,
+};
+use crate::{
+    editing::Id,
+    input::{
+        maps::{KeyHandlerContext, KeyResult},
+        BoxableKeymap, KeyError, KeymapContext,
+    },
 };
 
 /// Send the contents of the current Connection input buffer to
@@ -24,6 +27,14 @@ pub fn send_current_input_buffer<T: BoxableKeymap>(mut ctx: KeyHandlerContext<T>
             return Err(KeyError::IO(io::ErrorKind::NotConnected.into()));
         };
 
+    send_string_to_buffer(&mut ctx, conn_buffer_id, to_send)
+}
+
+pub fn send_string_to_buffer<K: KeymapContext>(
+    ctx: &mut K,
+    conn_buffer_id: Id,
+    to_send: String,
+) -> KeyResult {
     let mut sent = false;
 
     if let Some(ref mut conns) = ctx.state_mut().connections {

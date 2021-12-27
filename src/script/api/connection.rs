@@ -4,8 +4,8 @@ use crate::{
     editing::Id,
     input::{
         commands::{connection::on_disconnect, CommandHandlerContext},
-        maps::KeyResult,
-        KeymapContext,
+        maps::{actions::connection::send_string_to_buffer, KeyResult},
+        KeyError, KeymapContext,
     },
 };
 
@@ -37,5 +37,19 @@ impl ConnectionApiObject {
             on_disconnect(context, buffer_id);
         }
         Ok(())
+    }
+
+    #[rpc(passing(self.id))]
+    pub fn send(context: &mut CommandHandlerContext, id: Id, text: String) -> KeyResult {
+        if let Some(conn_buffer_id) = context
+            .state_mut()
+            .connections
+            .as_ref()
+            .and_then(|conns| conns.id_to_buffer(id))
+        {
+            send_string_to_buffer(context, conn_buffer_id, text)
+        } else {
+            Err(KeyError::IO(std::io::ErrorKind::NotConnected.into()))
+        }
     }
 }

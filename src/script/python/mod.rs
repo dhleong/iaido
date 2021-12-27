@@ -8,6 +8,7 @@ use std::{
 
 use rustpython_vm as vm;
 use vm::{
+    builtins::PyNone,
     exceptions::PyBaseExceptionRef,
     function::IntoFuncArgs,
     pyobject::{ItemProtocol, PyResult, TryFromObject},
@@ -18,11 +19,11 @@ use crate::{
     editing::Id,
 };
 
-use self::{modules::ModuleContained, util::unwrap_error};
+use self::{impls::PyFnReturnable, modules::ModuleContained, util::unwrap_error};
 
 use super::{
     api::{core::IaidoCore, ApiManagerDelegate},
-    args::FnArgs,
+    args::{FnArgs, FnReturnValue},
     bindings::ScriptFile,
     fns::{FnManager, NativeFn, ScriptingFnRef},
     ScriptingRuntime, ScriptingRuntimeFactory,
@@ -144,9 +145,13 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         }
     }
 
-    fn invoke(&mut self, fn_ref: ScriptingFnRef, args: FnArgs) -> JobResult {
-        let _: PyObjectRef = self.invoke_dyn(fn_ref, args)?;
-        Ok(())
+    fn invoke(&mut self, fn_ref: ScriptingFnRef, args: FnArgs) -> JobResult<FnReturnValue> {
+        let value: PyObjectRef = self.invoke_dyn(fn_ref, args)?;
+        if value.payload_is::<PyNone>() {
+            Ok(None)
+        } else {
+            Ok(Some(Box::new(PyFnReturnable(value))))
+        }
     }
 }
 

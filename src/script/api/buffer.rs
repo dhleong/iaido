@@ -66,11 +66,13 @@ fn create_user_processor(
     f: ScriptingFnRef,
 ) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>> {
     Box::new(move |groups| match scripting.try_lock() {
-        Ok(scripting) => {
-            // FIXME: TODO: Figure out how to pass in a map and get out a string
-            let result = scripting.invoke(f, FnArgs::Map(groups))?;
-            Ok(None)
-        }
+        Ok(scripting) => match scripting.invoke(f, FnArgs::Map(groups))? {
+            None => Ok(None),
+            Some(value) if value.is_string() => Ok(value.to_string()),
+            _ => Err(KeyError::InvalidInput(
+                "Returned an unexpected value".to_string(),
+            )),
+        },
 
         Err(_) => Err(KeyError::IO(std::io::ErrorKind::WouldBlock.into())),
     })

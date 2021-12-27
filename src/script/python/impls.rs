@@ -1,9 +1,10 @@
 use rustpython_vm::{
+    builtins::PyStr,
     function::{FuncArgs, IntoFuncArgs},
-    pyobject::{IntoPyObject, ItemProtocol},
+    pyobject::{IntoPyObject, ItemProtocol, PyObjectRef},
 };
 
-use crate::script::args::FnArgs;
+use crate::script::args::{FnArgs, FnReturnable};
 
 impl IntoFuncArgs for FnArgs {
     fn into_args(self, vm: &rustpython_vm::VirtualMachine) -> FuncArgs {
@@ -19,5 +20,17 @@ impl IntoFuncArgs for FnArgs {
                 vec![obj].into()
             }
         }
+    }
+}
+
+pub struct PyFnReturnable(pub PyObjectRef);
+
+impl FnReturnable for PyFnReturnable {
+    fn is_string(&self) -> bool {
+        self.0.payload_is::<PyStr>()
+    }
+
+    fn to_string(&self) -> Option<String> {
+        self.0.downcast_ref::<PyStr>().map(|s| s.to_string())
     }
 }

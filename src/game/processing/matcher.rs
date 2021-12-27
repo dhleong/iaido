@@ -147,7 +147,7 @@ fn simple_matcher_to_pattern(input: &str) -> String {
 pub struct Match {
     pub start: usize,
     pub end: usize,
-    groups: HashMap<String, TextLine>,
+    pub groups: HashMap<String, TextLine>,
 }
 
 impl Match {

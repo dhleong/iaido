@@ -7,6 +7,7 @@ use std::{
 
 use rustpython_vm as vm;
 use vm::{
+    builtins::PyNone,
     exceptions::PyBaseExceptionRef,
     pyobject::{ItemProtocol, PyResult},
 };
@@ -16,16 +17,18 @@ use crate::{
     editing::Id,
 };
 
-use self::{modules::ModuleContained, util::unwrap_error};
+use self::{impls::PyFnReturnable, modules::ModuleContained, util::unwrap_error};
 
 use super::{
     api::{core::IaidoCore, ApiManagerDelegate},
+    args::{FnArgs, FnReturnValue},
     bindings::ScriptFile,
     fns::{FnManager, NativeFn, ScriptingFnRef},
     ScriptingRuntime, ScriptingRuntimeFactory,
 };
 
 mod compat;
+mod impls;
 mod modules;
 pub mod util;
 
@@ -120,7 +123,7 @@ impl ScriptingRuntime for PythonScriptingRuntime {
         }
     }
 
-    fn invoke(&mut self, fn_ref: ScriptingFnRef) -> JobResult {
+    fn invoke(&mut self, fn_ref: ScriptingFnRef, args: FnArgs) -> JobResult<FnReturnValue> {
         let fns = self.fns.clone();
         self.with_vm(move |vm| {
             let lock = fns.lock().unwrap();
@@ -130,8 +133,13 @@ impl ScriptingRuntime for PythonScriptingRuntime {
                 _ => panic!("Received non-py Fn ref"),
             };
 
-            unwrap_error(vm, vm.invoke(&f, vec![]))?;
-            Ok(())
+            let py_result = unwrap_error(vm, vm.invoke(&f, args))?;
+            if py_result.payload_is::<PyNone>() {
+                Ok(None)
+            } else {
+                let result: FnReturnValue = Some(Box::new(PyFnReturnable(py_result)));
+                Ok(result)
+            }
         })
     }
 }

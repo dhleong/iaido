@@ -6,18 +6,19 @@ use crate::{
 };
 
 use super::{
-    buffer::BufferApiObject, connection::ConnectionApiObject, window::WindowApiObject, Api,
+    buffer::BufferApiObject, connection::ConnectionApiObject, window::WindowApiObject, Api, Fns,
 };
 
 #[apigen::ns]
 pub struct CurrentObjects {
     api: Api,
+    fns: Fns,
 }
 
 #[apigen::ns_impl]
 impl CurrentObjects {
-    pub fn new(api: Api) -> Self {
-        Self { api }
+    pub fn new(api: Api, fns: Fns) -> Self {
+        Self { api, fns }
     }
 
     #[rpc]
@@ -27,7 +28,7 @@ impl CurrentObjects {
 
     #[property]
     pub fn buffer(&self) -> BufferApiObject {
-        BufferApiObject::new(self.api.clone(), self.buffer_id())
+        BufferApiObject::new(self.api.clone(), self.fns.clone(), self.buffer_id())
     }
 
     #[rpc]
@@ -65,7 +66,7 @@ impl CurrentObjects {
 
     #[property]
     pub fn window(&self) -> WindowApiObject {
-        WindowApiObject::new(self.api.clone(), self.window_id())
+        WindowApiObject::new(self.api.clone(), self.fns.clone(), self.window_id())
     }
 }
 

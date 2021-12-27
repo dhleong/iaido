@@ -7,7 +7,7 @@ use crate::{
         maps::{KeyResult, UserKeyHandler},
         KeymapContext, RemapMode,
     },
-    script::{fns::ScriptingFnRef, poly::Either},
+    script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
 };
 
 use super::{current::CurrentObjects, Api, Fns};
@@ -27,7 +27,7 @@ impl IaidoCore {
 
     #[property]
     pub fn current(&self) -> CurrentObjects {
-        CurrentObjects::new(self.api.clone())
+        CurrentObjects::new(self.api.clone(), self.fns.clone())
     }
 
     #[rpc]
@@ -84,7 +84,7 @@ fn create_user_keyhandler(f: ScriptingFnRef) -> Box<UserKeyHandler> {
             .start(move |_| async move {
                 match scripting.try_lock() {
                     Ok(scripting) => {
-                        scripting.invoke(f)?;
+                        scripting.invoke(f, FnArgs::None)?;
                         Ok(())
                     }
                     Err(_) => Err(io::ErrorKind::WouldBlock.into()),

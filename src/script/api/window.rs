@@ -5,24 +5,25 @@ use crate::{
     input::{commands::CommandHandlerContext, KeymapContext},
 };
 
-use super::{buffer::BufferApiObject, Api};
+use super::{buffer::BufferApiObject, Api, Fns};
 
 #[apigen::ns]
 pub struct WindowApiObject {
     api: Api,
+    fns: Fns,
     id: Id,
 }
 
 #[apigen::ns_impl]
 impl WindowApiObject {
-    pub fn new(api: Api, id: Id) -> Self {
-        Self { api, id }
+    pub fn new(api: Api, fns: Fns, id: Id) -> Self {
+        Self { api, fns, id }
     }
 
     #[property]
     pub fn buffer(&self) -> Option<BufferApiObject> {
         if let Some(id) = self.buffer_id() {
-            Some(BufferApiObject::new(self.api.clone(), id))
+            Some(BufferApiObject::new(self.api.clone(), self.fns.clone(), id))
         } else {
             None
         }

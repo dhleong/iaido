@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use crate::{
@@ -11,7 +12,7 @@ use super::{
     ProcessedText, ProcessedTextFlags, TextInput, TextProcessor,
 };
 
-type Processor = dyn Fn(Match) -> Option<TextLine>;
+type Processor = dyn Fn(Match) -> KeyResult<Option<TextLine>>;
 
 pub struct Alias {
     matcher: Matcher,
@@ -21,9 +22,16 @@ pub struct Alias {
 
 impl Alias {
     pub fn compile_text(input: String, replacement: String) -> KeyResult<Alias> {
+        Self::compile_fn(
+            input,
+            SubstitutionProcessor { replacement }.into_processor(),
+        )
+    }
+
+    pub fn compile_fn(input: String, processor: Box<Processor>) -> KeyResult<Alias> {
         Ok(Alias {
             matcher: Matcher::compile(input)?,
-            processor: SubstitutionProcessor { replacement }.into_processor(),
+            processor,
             one_shot: false,
         })
     }
@@ -53,12 +61,13 @@ impl TextProcessor for Alias {
 
                     let range = found.start..found.end;
                     let result = match (self.processor)(found) {
-                        None => ProcessedText::Removed(flags),
-                        Some(mut output) => {
+                        Ok(None) => ProcessedText::Removed(flags),
+                        Ok(Some(mut output)) => {
                             let with_replacement = input_text.replacing_range(range, &mut output);
 
                             ProcessedText::Processed(TextInput::Line(with_replacement), flags)
                         }
+                        Err(e) => return Err(e),
                     };
 
                     Ok(result)
@@ -76,13 +85,37 @@ struct SubstitutionProcessor {
 
 impl SubstitutionProcessor {
     pub fn into_processor(self) -> Box<Processor> {
-        Box::new(move |m| Some(m.expand(&self.replacement).into()))
+        Box::new(move |m| Ok(Some(m.expand(&self.replacement).into())))
     }
 }
 
 impl TextProcessorManager<Alias> {
     pub fn insert_text(&mut self, pattern: String, replacement: String) -> KeyResult {
         let alias = Alias::compile_text(pattern.to_string(), replacement)?;
+        self.insert(pattern, alias);
+        Ok(())
+    }
+
+    pub fn insert_fn(
+        &mut self,
+        pattern: String,
+        replacement: Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>>,
+    ) -> KeyResult {
+        let alias = Alias::compile_fn(
+            pattern.to_string(),
+            Box::new(move |m| {
+                let map: HashMap<String, String> = m
+                    .groups
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect();
+                if let Some(s) = replacement(map)? {
+                    Ok(Some(s.into()))
+                } else {
+                    Ok(None)
+                }
+            }),
+        )?;
         self.insert(pattern, alias);
         Ok(())
     }

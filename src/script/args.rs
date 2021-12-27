@@ -19,12 +19,3 @@ impl Into<FnArgs> for HashMap<String, String> {
         FnArgs::Map(m)
     }
 }
-
-pub trait FnReturnable {
-    fn is_string(&self) -> bool;
-    fn is_truthy(&self) -> bool;
-
-    fn to_string(&self) -> Option<String>;
-}
-
-pub type FnReturnValue = Option<Box<dyn FnReturnable>>;

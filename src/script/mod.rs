@@ -17,15 +17,11 @@ use crate::{
 };
 pub use api::ApiManagerRpc;
 
-use self::{
-    api::ApiManagerDelegate,
-    args::{FnArgs, FnReturnValue},
-    fns::ScriptingFnRef,
-};
+use self::{api::ApiManagerDelegate, args::FnArgs, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: PathBuf) -> JobResult;
-    fn invoke(&mut self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnReturnValue>;
+    fn invoke(&mut self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnArgs>;
 }
 
 pub trait ScriptingRuntimeFactory {
@@ -137,7 +133,7 @@ impl ScriptingManager {
         Ok(id)
     }
 
-    pub fn invoke(&self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnReturnValue> {
+    pub fn invoke(&self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnArgs> {
         let mut runtimes = self.runtimes.borrow_mut();
         if let Some(runtime) = runtimes.get_mut(&f.runtime) {
             runtime.invoke(f, args)

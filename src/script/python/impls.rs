@@ -1,13 +1,12 @@
-use std::{cmp::Ordering, collections::HashMap};
+use std::collections::HashMap;
 
-use rustpython_common::borrow::BorrowValue;
 use rustpython_vm::{
-    builtins::{PyDict, PyInt, PyNone, PyStr},
+    builtins::{PyDict, PyNone, PyStr},
     function::{FuncArgs, IntoFuncArgs},
     pyobject::{IdProtocol, IntoPyObject, ItemProtocol, PyObjectRef, TryFromObject},
 };
 
-use crate::script::args::{FnArgs, FnReturnable};
+use crate::script::args::FnArgs;
 
 impl IntoPyObject for FnArgs {
     fn into_pyobject(self, vm: &rustpython_vm::VirtualMachine) -> PyObjectRef {
@@ -76,27 +75,5 @@ impl TryFromObject for FnArgs {
             return Ok(Self::Bool(false));
         }
         Ok(Self::None)
-    }
-}
-
-pub struct PyFnReturnable(pub PyObjectRef);
-
-impl FnReturnable for PyFnReturnable {
-    fn is_string(&self) -> bool {
-        self.0.payload_is::<PyStr>()
-    }
-
-    fn is_truthy(&self) -> bool {
-        if self.0.payload_is::<PyInt>() {
-            if let Some(as_int) = self.0.downcast_ref::<PyInt>() {
-                return as_int.borrow_value().cmp(&0u32.into()) != Ordering::Equal;
-            }
-        }
-
-        false
-    }
-
-    fn to_string(&self) -> Option<String> {
-        self.0.downcast_ref::<PyStr>().map(|s| s.to_string())
     }
 }

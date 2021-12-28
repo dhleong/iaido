@@ -8,7 +8,12 @@ mod poly;
 mod python;
 
 use dirs;
-use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    io,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     app::jobs::{JobError, JobResult},
@@ -20,12 +25,12 @@ pub use api::ApiManagerRpc;
 use self::{api::ApiManagerDelegate, args::FnArgs, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
-    fn load(&mut self, path: PathBuf) -> JobResult;
+    fn load(&mut self, path: &Path) -> JobResult;
     fn invoke(&mut self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnArgs>;
 }
 
 pub trait ScriptingRuntimeFactory {
-    fn handles_file(&self, path: &PathBuf) -> bool;
+    fn handles_file(&self, path: &Path) -> bool;
 
     fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
 }
@@ -76,7 +81,7 @@ impl ScriptingManager {
                 let count = scripts.len();
                 for path in scripts {
                     crate::info!("Loading {}", path);
-                    lock.load(delegate.clone(), PathBuf::from(path))?;
+                    lock.load(delegate.clone(), &PathBuf::from(path))?;
                 }
                 crate::info!("Loaded {} scripts", count);
                 Ok(())
@@ -89,7 +94,7 @@ impl ScriptingManager {
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: PathBuf) -> JobResult<Id> {
+    pub fn load(&self, api: ApiManagerDelegate, path: &Path) -> JobResult<Id> {
         if !path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, path.to_string_lossy()).into());
         }
@@ -110,8 +115,8 @@ impl ScriptingManager {
                 format!(
                     "No scripting engine available that supports {}",
                     path.file_name()
-                        .and_then(|name| Some(name.to_string_lossy().to_string()))
-                        .unwrap_or_else(|| path.to_string_lossy().to_string()),
+                        .and_then(|name| Some(name.to_string_lossy()))
+                        .unwrap_or_else(|| path.to_string_lossy()),
                 ),
             )
             .into());

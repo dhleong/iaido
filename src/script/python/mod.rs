@@ -1,7 +1,7 @@
 #![cfg(feature = "python")]
 
 use std::{
-    path::PathBuf,
+    path::Path,
     sync::{Arc, Mutex},
 };
 
@@ -86,8 +86,8 @@ impl PythonScriptingRuntime {
 }
 
 impl ScriptingRuntime for PythonScriptingRuntime {
-    fn load(&mut self, path: PathBuf) -> JobResult {
-        let script = ScriptFile::read_from(path.clone())?;
+    fn load(&mut self, path: &Path) -> JobResult {
+        let script = ScriptFile::read_from(path)?;
 
         let result: PyResult<()> = self.with_vm(move |runtime| {
             let scope = runtime.new_scope_with_builtins();
@@ -144,7 +144,7 @@ impl ScriptingRuntimeFactory for PythonScriptingRuntimeFactory {
         Box::new(PythonScriptingRuntime::new(id, app))
     }
 
-    fn handles_file(&self, path: &std::path::PathBuf) -> bool {
+    fn handles_file(&self, path: &std::path::Path) -> bool {
         if let Some(ext) = path.extension() {
             return ext == "py";
         }

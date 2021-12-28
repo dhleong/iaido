@@ -35,13 +35,25 @@ fn reload_buffer_source(context: &mut CommandHandlerContext) -> KeyResult {
     {
         source_path(context, path)?;
     } else {
+        // TODO Probably, check for an associated buffer via Connections
+        // to handle running this while eg focusing the input buffer
         context.state_mut().echom("No script loaded in this bufer");
     }
     Ok(())
 }
 
 fn source_path(context: &mut CommandHandlerContext, file_path: PathBuf) -> KeyResult {
-    // TODO Clear config on any connection
+    let buffer_id = context.state().current_buffer().id();
+    if let Some(conn) = context
+        .state_mut()
+        .connections
+        .as_mut()
+        .and_then(|conns| conns.by_buffer_id(buffer_id))
+    {
+        // Clear config on any associated connection
+        conn.game.reset();
+    }
+
     let path_str = file_path.to_string_lossy().to_string();
     ScriptingManager::load_script(&mut context.context, &mut context.keymap, file_path);
     context.state_mut().echom(format!("Sourced {}", path_str));

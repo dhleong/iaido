@@ -17,6 +17,10 @@ impl<T: TextProcessor> TextProcessorManager<T> {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.processors.clear();
+    }
+
     pub fn insert(&mut self, description: String, processor: T) -> Option<T> {
         self.processors.insert(description, processor)
     }

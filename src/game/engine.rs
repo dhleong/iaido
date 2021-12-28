@@ -70,4 +70,10 @@ impl GameEngine {
             Err(e) => Err(e),
         }
     }
+
+    /// Reset any configured state on this Engine; relevant when re-loading
+    /// a script, for example, to clear previously-created state
+    pub fn reset(&mut self) {
+        self.aliases.clear();
+    }
 }

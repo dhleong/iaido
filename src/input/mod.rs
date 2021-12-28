@@ -15,6 +15,7 @@ use crate::editing::Id;
 use crate::{app::jobs::JobError, delegate_keysource};
 use delegate::delegate;
 
+use self::maps::prompt::PromptConfig;
 use self::maps::{KeyHandler, KeyResult, UserKeyHandler};
 use self::source::memory::MemoryKeySource;
 
@@ -215,6 +216,8 @@ pub trait BoxableKeymap {
     );
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult;
+
+    fn prompt(&mut self, config: PromptConfig);
 }
 
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {

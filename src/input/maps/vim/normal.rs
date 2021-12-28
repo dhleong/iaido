@@ -9,6 +9,7 @@ use std::rc::Rc;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 
+use crate::input::maps::prompt::PromptConfig;
 use crate::input::{
     commands::CommandHandlerContext,
     completion::commands::CommandsCompleter,
@@ -30,7 +31,6 @@ use crate::{key_handler, vim_tree};
 
 use super::{
     motions::{vim_linewise_motions, vim_standard_motions},
-    prompt::VimPromptConfig,
     tree::KeyTreeNode,
     VimKeymap, VimMode,
 };
@@ -176,7 +176,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             ctx.state_mut().clear_echo();
             ctx.state_mut().prompt.activate(":".into());
 
-            ctx.keymap.push_mode(VimPromptConfig{
+            ctx.keymap.push_mode(PromptConfig{
                 prompt: ":".into(),
                 history_key: ":".into(),
                 handler: Box::new(handle_command),

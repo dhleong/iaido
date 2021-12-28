@@ -7,6 +7,7 @@ mod buffer;
 mod connection;
 pub mod core;
 mod current;
+mod ui;
 mod window;
 
 use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError};

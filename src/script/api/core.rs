@@ -11,7 +11,7 @@ use crate::{
     script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
 };
 
-use super::{current::CurrentObjects, Api, Fns};
+use super::{current::CurrentObjects, ui::ScriptUi, Api, Fns};
 
 #[apigen::ns]
 #[derive(Clone)]
@@ -29,6 +29,11 @@ impl IaidoCore {
     #[property]
     pub fn current(&self) -> CurrentObjects {
         CurrentObjects::new(self.api.clone(), self.fns.clone())
+    }
+
+    #[property]
+    pub fn ui(&self) -> ScriptUi {
+        ScriptUi::new(self.api.clone(), self.fns.clone())
     }
 
     #[rpc]

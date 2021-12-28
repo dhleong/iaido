@@ -1,34 +1,22 @@
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
+use crate::input::maps::prompt::PromptConfig;
 use crate::{
     editing::text::EditableLine,
-    input::{
-        commands::{CommandHandler, CommandHandlerContext},
-        completion::Completer,
-        history::HistoryCursor,
-        KeyCode, KeymapContext,
-    },
+    input::{commands::CommandHandlerContext, history::HistoryCursor, KeyCode, KeymapContext},
     key_handler, vim_tree,
 };
 
 use super::{insert::vim_insert_mappings, tree::KeyTreeNode, VimKeymap, VimMode};
 
-pub struct VimPromptConfig {
-    pub prompt: String,
-    pub history_key: String,
-    pub handler: Box<CommandHandler>,
-    pub completer: Option<Rc<dyn Completer>>,
-}
-
-impl Into<VimMode> for VimPromptConfig {
+impl Into<VimMode> for PromptConfig {
     fn into(mut self) -> VimMode {
         let prompt = self.prompt.clone();
         let prompt_len = prompt.len();
         let mode_id = format!("prompt:{}", prompt);
         let completer = self.completer.take();
 
-        VimMode::new(mode_id.clone(), vim_insert_mappings() + mappings(self))
+        VimMode::new(mode_id, vim_insert_mappings() + mappings(self))
             .with_completer(completer)
             .on_default(key_handler!(
                 VimKeymap | ctx | {
@@ -60,7 +48,7 @@ impl Into<VimMode> for VimPromptConfig {
     }
 }
 
-fn mappings(config: VimPromptConfig) -> KeyTreeNode {
+fn mappings(config: PromptConfig) -> KeyTreeNode {
     let up_prompt = config.prompt.to_string();
     let down_prompt = config.prompt.to_string();
     let prompt_len = config.prompt.len();

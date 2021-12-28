@@ -8,6 +8,7 @@ use super::{
 };
 
 pub mod actions;
+pub mod prompt;
 pub mod vim;
 
 pub struct KeyHandlerContext<'a, T: BoxableKeymap> {

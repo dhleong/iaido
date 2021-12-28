@@ -1,8 +1,8 @@
 use crate::editing::motion::search::SearchMotion;
 use crate::editing::CursorPosition;
 use crate::input::commands::CommandHandler;
+use crate::input::maps::prompt::PromptConfig;
 use crate::input::maps::vim::motion::{apply_motion, apply_motion_returning};
-use crate::input::maps::vim::prompt::VimPromptConfig;
 use crate::input::maps::vim::tree::KeyTreeNode;
 use crate::input::maps::vim::VimKeymap;
 use crate::input::maps::CommandHandlerContext;
@@ -116,7 +116,7 @@ fn activate_search(
     ctx.state_mut().prompt.activate(ui.to_string().into());
 
     ctx.keymap.push_mode(
-        VimPromptConfig {
+        PromptConfig {
             prompt: ui.to_string(),
             history_key: "/".to_string(),
             handler,

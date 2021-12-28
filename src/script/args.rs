@@ -1,14 +1,21 @@
 use std::collections::HashMap;
 
+#[derive(Clone, Debug)]
 pub enum FnArgs {
     None,
-    Map(HashMap<String, String>),
+    Bool(bool),
+    String(String),
+    Map(HashMap<String, FnArgs>),
 }
 
-pub trait FnReturnable {
-    fn is_string(&self) -> bool;
+impl Into<FnArgs> for HashMap<String, String> {
+    fn into(self) -> FnArgs {
+        let mut m: HashMap<String, FnArgs> = Default::default();
 
-    fn to_string(&self) -> Option<String>;
+        for (k, v) in self {
+            m.insert(k, FnArgs::String(v));
+        }
+
+        FnArgs::Map(m)
+    }
 }
-
-pub type FnReturnValue = Option<Box<dyn FnReturnable>>;

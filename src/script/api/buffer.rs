@@ -84,9 +84,9 @@ fn create_user_processor(
     f: ScriptingFnRef,
 ) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>> {
     Box::new(move |groups| match scripting.try_lock() {
-        Ok(scripting) => match scripting.invoke(f, FnArgs::Map(groups))? {
-            None => Ok(None),
-            Some(value) if value.is_string() => Ok(value.to_string()),
+        Ok(scripting) => match scripting.invoke(f, groups.into())? {
+            FnArgs::None => Ok(None),
+            FnArgs::String(s) => Ok(Some(s)),
             _ => Err(KeyError::InvalidInput(
                 "Returned an unexpected value".to_string(),
             )),

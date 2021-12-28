@@ -59,6 +59,20 @@ fn python_type_from_simple(simple: &SimpleType) -> SynResult<TokenStream> {
             }
         },
 
+        "HashMap" => match &simple.generic_types {
+            Some(args)
+                if args.len() == 2 && args[0].name == "String" && args[1].name == "FnArgs" =>
+            {
+                quote! { crate::script::args::FnArgs }
+            }
+            _ => {
+                return Err(Error::new_spanned(
+                    simple,
+                    "`HashMap` must be exactly of type `HashMap<String, FnArgs>`",
+                ))
+            }
+        },
+
         "String" => quote! { rustpython_vm::builtins::PyStrRef },
         "ScriptingFnRef" => quote! { rustpython_vm::pyobject::PyObjectRef },
         _ => {
@@ -117,6 +131,25 @@ fn python_conversion_simple<T: ToTokens>(pat: T, simple: &SimpleType) -> SynResu
                 return Err(Error::new_spanned(
                     simple,
                     "Either requires exactly 2 generic type parameters",
+                ))
+            }
+        },
+
+        "HashMap" => match &simple.generic_types {
+            Some(args)
+                if args.len() == 2 && args[0].name == "String" && args[1].name == "FnArgs" =>
+            {
+                quote! {
+                    match #pat {
+                        crate::script::args::FnArgs::Map(m) => m,
+                        _ => panic!("Unexpected value"),
+                    }
+                }
+            }
+            _ => {
+                return Err(Error::new_spanned(
+                    simple,
+                    "`HashMap` must be exactly of type `HashMap<String, FnArgs>`",
                 ))
             }
         },

@@ -162,7 +162,7 @@ where
             connect(&mut ctx, uri.to_string())?;
         }
         Some(CliInit::ScriptFile(path)) => {
-            ScriptingManager::load_scripts(app_keys, map, vec![path]);
+            ScriptingManager::load_script(app_keys, map, path);
         }
         None => {} // nop
     }

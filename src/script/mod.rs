@@ -8,7 +8,12 @@ mod poly;
 mod python;
 
 use dirs;
-use std::{cell::RefCell, collections::HashMap, io, path::PathBuf};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    io,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     app::jobs::{JobError, JobResult},
@@ -20,12 +25,12 @@ pub use api::ApiManagerRpc;
 use self::{api::ApiManagerDelegate, args::FnArgs, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
-    fn load(&mut self, path: PathBuf) -> JobResult;
+    fn load(&mut self, path: &Path) -> JobResult;
     fn invoke(&mut self, f: ScriptingFnRef, args: FnArgs) -> JobResult<FnArgs>;
 }
 
 pub trait ScriptingRuntimeFactory {
-    fn handles_file(&self, path: &PathBuf) -> bool;
+    fn handles_file(&self, path: &Path) -> bool;
 
     fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
 }
@@ -61,10 +66,23 @@ impl ScriptingManager {
         Self::load_scripts(context, map, init_scripts)
     }
 
+    pub fn load_script<K: KeymapContext, KM: BoxableKeymap>(
+        context: &mut K,
+        map: &mut KM,
+        script: PathBuf,
+    ) {
+        context
+            .state_mut()
+            .current_buffer_mut()
+            .config_mut()
+            .loaded_script = Some(script.clone());
+        Self::load_scripts(context, map, vec![script])
+    }
+
     pub fn load_scripts<K: KeymapContext, KM: BoxableKeymap>(
         context: &mut K,
         map: &mut KM,
-        scripts: Vec<String>,
+        scripts: Vec<PathBuf>,
     ) {
         let scripting = context.state().scripting.clone();
         let delegate = context.state().api.as_ref().unwrap().delegate();
@@ -75,8 +93,8 @@ impl ScriptingManager {
                 let lock = scripting.lock().unwrap();
                 let count = scripts.len();
                 for path in scripts {
-                    crate::info!("Loading {}", path);
-                    lock.load(delegate.clone(), path)?;
+                    crate::info!("Loading {}", path.to_string_lossy());
+                    lock.load(delegate.clone(), &path)?;
                 }
                 crate::info!("Loaded {} scripts", count);
                 Ok(())
@@ -89,15 +107,14 @@ impl ScriptingManager {
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: String) -> JobResult<Id> {
-        let path_buf = PathBuf::from(path.clone());
-        if !path_buf.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, path).into());
+    pub fn load(&self, api: ApiManagerDelegate, path: &Path) -> JobResult<Id> {
+        if !path.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, path.to_string_lossy()).into());
         }
 
         let mut runtime_id = None;
         for (id, factory) in self.runtime_factories.iter().enumerate() {
-            if factory.handles_file(&path_buf) {
+            if factory.handles_file(&path) {
                 runtime_id = Some(id);
                 break;
             }
@@ -110,10 +127,9 @@ impl ScriptingManager {
                 io::ErrorKind::NotFound,
                 format!(
                     "No scripting engine available that supports {}",
-                    path_buf
-                        .file_name()
-                        .and_then(|name| Some(name.to_string_lossy().to_string()))
-                        .unwrap_or(path),
+                    path.file_name()
+                        .and_then(|name| Some(name.to_string_lossy()))
+                        .unwrap_or_else(|| path.to_string_lossy()),
                 ),
             )
             .into());
@@ -128,7 +144,7 @@ impl ScriptingManager {
             runtimes.get_mut(&id).unwrap()
         };
 
-        runtime.load(path_buf)?;
+        runtime.load(path)?;
 
         Ok(id)
     }
@@ -172,15 +188,16 @@ impl ScriptingManager {
         }
     }
 
-    fn find_init_scripts(&self) -> Vec<String> {
+    fn find_init_scripts(&self) -> Vec<PathBuf> {
         if let Some(dir) = ScriptingManager::config_dir() {
             if let Ok(contents) = dir.read_dir() {
                 return contents
                     .filter_map(|f| {
                         if let Ok(entry) = f {
                             if let Some(name) = entry.file_name().to_str() {
-                                if name.starts_with("init.") && self.supports_file(&entry.path()) {
-                                    return Some(entry.path().to_string_lossy().to_string());
+                                let path = entry.path();
+                                if name.starts_with("init.") && self.supports_file(&path) {
+                                    return Some(path);
                                 }
                             }
                         }

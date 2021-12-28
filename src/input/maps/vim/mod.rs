@@ -705,9 +705,59 @@ macro_rules! vim_tree {
     }};
 }
 
-#[macro_export]
-macro_rules! vim_motion {
-    ($struct:expr) => {
-        |ctx| {}
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{editing::motion::tests::window, input::keys::KeysParsable};
+    use indoc::indoc;
+
+    #[test]
+    fn enter_user_mode() {
+        let ctx = window(indoc! {"
+            Take my |love
+        "});
+        let mut vim = VimKeymap::default();
+        vim.remap_keys_fn(
+            RemapMode::User("user".to_string()),
+            "gh".into_keys(),
+            Box::new(|mut ctx| {
+                ctx.state_mut().current_window_mut().cursor = (0, 0).into();
+                Ok(())
+            }),
+        );
+
+        vim.enter_user_mode("user".to_string());
+
+        ctx.feed_keys(vim, "gh").assert_visual_match(indoc! {"
+            |Take my love
+        "});
+    }
+
+    #[test]
+    fn remap_in_user_mode_shouldnt_panic() {
+        let ctx = window(indoc! {"
+            Take my |love
+        "});
+        let mut vim = VimKeymap::default();
+        vim.remap_keys_fn(
+            RemapMode::User("user".to_string()),
+            "gh".into_keys(),
+            Box::new(|mut ctx| {
+                ctx.state_mut().current_window_mut().cursor = (0, 0).into();
+                Ok(())
+            }),
+        );
+
+        vim.remap_keys(
+            RemapMode::User("user".to_string()),
+            "g0".into_keys(),
+            "gh".into_keys(),
+        );
+
+        vim.enter_user_mode("user".to_string());
+
+        ctx.feed_keys(vim, "g0").assert_visual_match(indoc! {"
+            |Take my love
+        "});
+    }
 }

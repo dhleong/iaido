@@ -76,7 +76,7 @@ impl ScriptingManager {
                 let count = scripts.len();
                 for path in scripts {
                     crate::info!("Loading {}", path);
-                    lock.load(delegate.clone(), path)?;
+                    lock.load(delegate.clone(), PathBuf::from(path))?;
                 }
                 crate::info!("Loaded {} scripts", count);
                 Ok(())
@@ -89,15 +89,14 @@ impl ScriptingManager {
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: String) -> JobResult<Id> {
-        let path_buf = PathBuf::from(path.clone());
-        if !path_buf.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, path).into());
+    pub fn load(&self, api: ApiManagerDelegate, path: PathBuf) -> JobResult<Id> {
+        if !path.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, path.to_string_lossy()).into());
         }
 
         let mut runtime_id = None;
         for (id, factory) in self.runtime_factories.iter().enumerate() {
-            if factory.handles_file(&path_buf) {
+            if factory.handles_file(&path) {
                 runtime_id = Some(id);
                 break;
             }
@@ -110,10 +109,9 @@ impl ScriptingManager {
                 io::ErrorKind::NotFound,
                 format!(
                     "No scripting engine available that supports {}",
-                    path_buf
-                        .file_name()
+                    path.file_name()
                         .and_then(|name| Some(name.to_string_lossy().to_string()))
-                        .unwrap_or(path),
+                        .unwrap_or_else(|| path.to_string_lossy().to_string()),
                 ),
             )
             .into());
@@ -128,7 +126,7 @@ impl ScriptingManager {
             runtimes.get_mut(&id).unwrap()
         };
 
-        runtime.load(path_buf)?;
+        runtime.load(path)?;
 
         Ok(id)
     }

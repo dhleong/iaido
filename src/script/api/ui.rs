@@ -47,15 +47,22 @@ impl ScriptUi {
             }
         });
 
-        context.keymap.prompt(PromptConfig {
+        let config = PromptConfig {
             prompt: match config.get("prompt") {
-                Some(FnArgs::String(s)) => s,
+                Some(FnArgs::String(s)) => s.to_string(),
                 _ => ">".to_string(),
             },
             history_key: "@".to_string(),
             handler,
             completer: None,
-        });
+        };
+
+        context.state_mut().clear_echo();
+        context
+            .state_mut()
+            .prompt
+            .activate(config.prompt.clone().into());
+        context.keymap.prompt(config);
         Ok(())
     }
 }

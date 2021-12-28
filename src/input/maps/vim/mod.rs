@@ -33,6 +33,7 @@ use crate::{
 
 use self::mode_stack::VimModeStack;
 
+use super::prompt::PromptConfig;
 use super::{KeyHandlerContext, KeyResult, UserKeyHandler};
 
 type KeyHandler = super::KeyHandler<VimKeymap>;
@@ -406,6 +407,10 @@ impl Keymap for VimKeymap {
 impl BoxableKeymap for VimKeymap {
     fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult {
         self.process(context)
+    }
+
+    fn prompt(&mut self, config: PromptConfig) {
+        self.push_mode(config.into());
     }
 
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>) {

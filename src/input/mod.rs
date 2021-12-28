@@ -228,6 +228,7 @@ impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
             fn buf_remap_keys_user_fn(&mut self, buf_id: Id, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
             fn as_any_mut(&mut self) -> &mut dyn Any;
             fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult;
+            fn prompt(&mut self, config: PromptConfig);
         }
     }
 }

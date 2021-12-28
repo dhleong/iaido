@@ -404,6 +404,27 @@ impl Keymap for VimKeymap {
 }
 
 impl BoxableKeymap for VimKeymap {
+    fn enter_user_mode(&mut self, mode_name: String) -> bool {
+        let remap_mode = RemapMode::User(mode_name.clone());
+        if let Some(mappings) = self.user_maps.get(&remap_mode) {
+            let mode_id = mode_name.clone();
+            let mut mode = VimMode::new(
+                mode_name,
+                crate::vim_tree! {
+                    "<esc>" => move |?mut ctx| {
+                        ctx.keymap.pop_mode(&mode_id);
+                        Ok(())
+                    },
+                } + mappings.clone(),
+            );
+            mode.shows_keys = true;
+            self.push_mode(mode);
+            return true;
+        }
+
+        return false;
+    }
+
     fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult {
         self.process(context)
     }
@@ -451,6 +472,7 @@ impl BoxableKeymap for VimKeymap {
             }),
         );
     }
+
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }

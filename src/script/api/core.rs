@@ -6,7 +6,7 @@ use crate::{
         commands::{connection, CommandHandlerContext},
         keys::KeysParsable,
         maps::{user_key_handler, KeyResult, UserKeyHandler},
-        KeymapConfig, KeymapContext, RemapMode,
+        KeyError, KeymapConfig, KeymapContext, RemapMode,
     },
     script::{args::FnArgs, fns::ScriptingFnRef, poly::Either},
 };
@@ -39,6 +39,15 @@ impl IaidoCore {
     #[rpc]
     pub fn echo(context: &mut CommandHandlerContext, text: String) {
         context.state_mut().echom(text);
+    }
+
+    #[rpc]
+    pub fn enter_mode(context: &mut CommandHandlerContext, mode: String) -> KeyResult {
+        if context.keymap.enter_user_mode(mode.clone()) {
+            Ok(())
+        } else {
+            Err(KeyError::InvalidInput(format!("No such mode: `{}`", mode)))
+        }
     }
 
     #[rpc]

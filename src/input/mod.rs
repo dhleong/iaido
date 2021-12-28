@@ -204,6 +204,7 @@ pub trait Remappable<T: Keymap + BoxableKeymap>: BoxableKeymap {
 }
 
 pub trait BoxableKeymap {
+    fn enter_user_mode(&mut self, mode: String) -> bool;
     fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
     fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
     fn buf_remap_keys_user_fn(
@@ -220,6 +221,7 @@ pub trait BoxableKeymap {
 impl BoxableKeymap for Box<&mut dyn BoxableKeymap> {
     delegate! {
         to (**self) {
+            fn enter_user_mode(&mut self, mode: String) -> bool;
             fn remap_keys(&mut self, mode: RemapMode, from: Vec<Key>, to: Vec<Key>);
             fn remap_keys_user_fn(&mut self, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);
             fn buf_remap_keys_user_fn(&mut self, buf_id: Id, mode: RemapMode, keys: Vec<Key>, handler: Box<UserKeyHandler>);

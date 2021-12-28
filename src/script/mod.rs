@@ -71,6 +71,11 @@ impl ScriptingManager {
         map: &mut KM,
         script: PathBuf,
     ) {
+        context
+            .state_mut()
+            .current_buffer_mut()
+            .config_mut()
+            .loaded_script = Some(script.clone());
         Self::load_scripts(context, map, vec![script])
     }
 

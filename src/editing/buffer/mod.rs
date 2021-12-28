@@ -5,7 +5,7 @@ mod util;
 pub use memory::MemoryBuffer;
 pub use undoable::UndoableBuffer;
 
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 use crate::{
     connection::ReadValue,
@@ -124,6 +124,7 @@ impl Default for BufHidden {
 #[derive(Default)]
 pub struct BufferConfig {
     pub bufhidden: BufHidden,
+    pub loaded_script: Option<PathBuf>,
 }
 
 pub trait Buffer: HasId + Send + Sync {

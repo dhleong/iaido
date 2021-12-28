@@ -66,10 +66,18 @@ impl ScriptingManager {
         Self::load_scripts(context, map, init_scripts)
     }
 
+    pub fn load_script<K: KeymapContext, KM: BoxableKeymap>(
+        context: &mut K,
+        map: &mut KM,
+        script: PathBuf,
+    ) {
+        Self::load_scripts(context, map, vec![script])
+    }
+
     pub fn load_scripts<K: KeymapContext, KM: BoxableKeymap>(
         context: &mut K,
         map: &mut KM,
-        scripts: Vec<String>,
+        scripts: Vec<PathBuf>,
     ) {
         let scripting = context.state().scripting.clone();
         let delegate = context.state().api.as_ref().unwrap().delegate();
@@ -80,8 +88,8 @@ impl ScriptingManager {
                 let lock = scripting.lock().unwrap();
                 let count = scripts.len();
                 for path in scripts {
-                    crate::info!("Loading {}", path);
-                    lock.load(delegate.clone(), &PathBuf::from(path))?;
+                    crate::info!("Loading {}", path.to_string_lossy());
+                    lock.load(delegate.clone(), &path)?;
                 }
                 crate::info!("Loaded {} scripts", count);
                 Ok(())
@@ -175,15 +183,16 @@ impl ScriptingManager {
         }
     }
 
-    fn find_init_scripts(&self) -> Vec<String> {
+    fn find_init_scripts(&self) -> Vec<PathBuf> {
         if let Some(dir) = ScriptingManager::config_dir() {
             if let Ok(contents) = dir.read_dir() {
                 return contents
                     .filter_map(|f| {
                         if let Ok(entry) = f {
                             if let Some(name) = entry.file_name().to_str() {
-                                if name.starts_with("init.") && self.supports_file(&entry.path()) {
-                                    return Some(entry.path().to_string_lossy().to_string());
+                                let path = entry.path();
+                                if name.starts_with("init.") && self.supports_file(&path) {
+                                    return Some(path);
                                 }
                             }
                         }

@@ -5,7 +5,7 @@ use indoc::indoc;
 
 pub enum CliInit {
     Uri(String),
-    ScriptFile(String),
+    ScriptFile(PathBuf),
 }
 
 pub struct Args {
@@ -73,9 +73,7 @@ fn parse_target(target: &str, port: Option<&str>) -> Result<CliInit, clap::Error
         return Ok(CliInit::ScriptFile(
             path_buf
                 .canonicalize()
-                .expect("Unable to canonicalize path")
-                .to_string_lossy()
-                .to_string(),
+                .expect("Unable to canonicalize path"),
         ));
     }
 

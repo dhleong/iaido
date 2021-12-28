@@ -20,11 +20,7 @@ declare_commands!(declare_script {
 fn source_path(context: &mut CommandHandlerContext, file_path: PathBuf) -> KeyResult {
     // TODO Stash file_path somewhere so we can :reload
 
-    ScriptingManager::load_scripts(
-        &mut context.context,
-        &mut context.keymap,
-        vec![file_path.to_string_lossy().to_string()],
-    );
+    ScriptingManager::load_script(&mut context.context, &mut context.keymap, file_path);
 
     Ok(())
 }

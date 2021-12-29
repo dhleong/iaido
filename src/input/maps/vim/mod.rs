@@ -40,14 +40,15 @@ type OperatorFn = dyn Fn(&mut KeyHandlerContext<'_, VimKeymap>, MotionRange) -> 
 
 // ======= modes ==========================================
 
+#[derive(Clone)]
 pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
     pub shows_keys: bool,
     pub allows_linewise: bool,
-    pub default_handler: Option<Box<KeyHandler>>,
-    pub after_handler: Option<Box<KeyHandler>>,
-    pub exit_handler: Option<Box<KeyHandler>>,
+    pub default_handler: Option<Rc<KeyHandler>>,
+    pub after_handler: Option<Rc<KeyHandler>>,
+    pub exit_handler: Option<Rc<KeyHandler>>,
     pub completer: Option<Rc<dyn Completer>>,
 }
 
@@ -81,17 +82,17 @@ impl VimMode {
     }
 
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
-        self.after_handler = Some(handler);
+        self.after_handler = Some(Rc::new(handler));
         self
     }
 
     pub fn on_exit(mut self, handler: Box<KeyHandler>) -> Self {
-        self.exit_handler = Some(handler);
+        self.exit_handler = Some(Rc::new(handler));
         self
     }
 
     pub fn on_default(mut self, handler: Box<KeyHandler>) -> Self {
-        self.default_handler = Some(handler);
+        self.default_handler = Some(Rc::new(handler));
         self
     }
 }
@@ -262,12 +263,12 @@ impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
-        let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
+        let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.peek() {
             let show_keys = mode.shows_keys;
             if !show_keys {
                 context.state_mut().keymap_widget = None;
             }
-            (mode, true, show_keys)
+            (mode.clone(), true, show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
@@ -382,9 +383,10 @@ impl Keymap for VimKeymap {
         self.active_completer = None;
 
         if mode_from_stack {
-            // Return the moved mode value back to the stack...
-            if let Some(mode) = self.mode_stack.return_top(mode) {
-                // Or call its "Exit" handler if the stack rejected it
+            // Call the mode's "Exit" handler if it's no longer on the stack
+            if !self.mode_stack.contains(&mode.id) {
+                self.mode_stack.pop_if(&mode.id);
+
                 if let Some(on_exit) = mode.exit_handler {
                     on_exit(KeyHandlerContext {
                         context: Box::new(context),

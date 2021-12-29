@@ -45,6 +45,7 @@ pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
     pub shows_keys: bool,
+    pub keymap_widget: Option<Widget>,
     pub allows_linewise: bool,
     pub default_handler: Option<Rc<KeyHandler>>,
     pub after_handler: Option<Rc<KeyHandler>>,
@@ -59,6 +60,7 @@ impl VimMode {
             mappings,
             allows_linewise: true,
             shows_keys: false,
+            keymap_widget: None,
             default_handler: None,
             after_handler: None,
             exit_handler: None,
@@ -203,11 +205,16 @@ impl VimKeymap {
     }
 
     fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
-        context.state_mut().keymap_widget = Some(Widget::Spread(vec![
-            Widget::Space,
-            Widget::Space,
-            Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
-        ]));
+        let keys = Widget::Literal(render_keys_buffer(&self.keys_buffer).into());
+        context.state_mut().keymap_widget = Some(match &context.state().keymap_widget {
+            // Reuse manually-provided widgets:
+            Some(Widget::Spread(items)) if items.len() == 3 => {
+                Widget::Spread(vec![items[0].clone(), items[1].clone(), keys])
+            }
+
+            // Overwrite:
+            _ => Widget::Spread(vec![Widget::Space, Widget::Space, keys]),
+        });
     }
 
     fn buffer_maps(
@@ -268,6 +275,9 @@ impl Keymap for VimKeymap {
             if !show_keys {
                 context.state_mut().keymap_widget = None;
             }
+            if let Some(widget) = &mode.keymap_widget {
+                context.state_mut().keymap_widget = Some(widget.clone());
+            }
             (mode.clone(), true, show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
@@ -278,6 +288,7 @@ impl Keymap for VimKeymap {
                 false,
             )
         } else {
+            context.state_mut().keymap_widget = None;
             self.render_keys_buffer(context);
             (
                 vim_normal_mode()
@@ -411,7 +422,7 @@ impl BoxableKeymap for VimKeymap {
         if let Some(mappings) = self.user_maps.get(&remap_mode) {
             let mode_id = mode_name.clone();
             let mut mode = VimMode::new(
-                mode_name,
+                mode_name.clone(),
                 crate::vim_tree! {
                     "<esc>" => move |?mut ctx| {
                         ctx.keymap.pop_mode(&mode_id);
@@ -420,6 +431,11 @@ impl BoxableKeymap for VimKeymap {
                 } + mappings.clone(),
             );
             mode.shows_keys = true;
+            mode.keymap_widget = Some(Widget::Spread(vec![
+                Widget::Literal(format!("--{}--", mode_name).into()),
+                Widget::Space,
+                Widget::Space,
+            ]));
             self.push_mode(mode);
             return true;
         }

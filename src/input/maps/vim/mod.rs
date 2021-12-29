@@ -123,10 +123,8 @@ impl ops::Add<&KeyTreeNode> for VimMode {
     type Output = VimMode;
 
     fn add(self, rhs: &KeyTreeNode) -> Self::Output {
-        let mut new = VimMode::new(self.id, &self.mappings + rhs);
-        new.after_handler = self.after_handler;
-        new.completer = self.completer;
-        new.default_handler = self.default_handler;
+        let mut new = self.clone();
+        new.mappings = &self.mappings + rhs;
         new
     }
 }
@@ -270,33 +268,25 @@ impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
-        let (mode, show_keys) = if let Some(mode) = self.mode_stack.peek() {
-            let show_keys = mode.shows_keys;
-            if !show_keys {
+        let mode = if let Some(mode) = self.mode_stack.peek() {
+            if !mode.shows_keys {
                 context.state_mut().keymap_widget = None;
             }
             if let Some(widget) = &mode.keymap_widget {
                 context.state_mut().keymap_widget = Some(widget.clone());
             }
-            (mode.clone(), show_keys)
+            mode.clone()
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
-            (
-                vim_insert_mode(&buffer_source)
-                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert),
-                false,
-            )
+            vim_insert_mode(&buffer_source)
+                + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert)
         } else {
             context.state_mut().keymap_widget = None;
             self.render_keys_buffer(context);
-            (
-                vim_normal_mode()
-                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal),
-                true,
-            )
+            vim_normal_mode() + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal)
         };
 
-        if !show_keys && !self.keys_buffer.is_empty() {
+        if !mode.shows_keys && !self.keys_buffer.is_empty() {
             self.keys_buffer.clear();
         }
 
@@ -308,7 +298,7 @@ impl Keymap for VimKeymap {
 
         loop {
             if let Some(key) = context.next_key_with_map(Some(Box::new(self)))? {
-                if show_keys {
+                if mode.shows_keys {
                     self.keys_buffer.push(key.clone());
                 }
 
@@ -324,7 +314,7 @@ impl Keymap for VimKeymap {
                         .current_buffer_mut()
                         .push_change_key(key);
 
-                    if show_keys {
+                    if mode.shows_keys {
                         // NOTE: render here since some key handlers
                         // also read from keysource
                         self.render_keys_buffer(context);
@@ -340,7 +330,7 @@ impl Keymap for VimKeymap {
                             key,
                         });
 
-                        if show_keys && !self.has_pending_state() {
+                        if mode.shows_keys && !self.has_pending_state() {
                             self.keys_buffer.clear();
                             self.render_keys_buffer(context);
                         }
@@ -350,7 +340,7 @@ impl Keymap for VimKeymap {
                         current = next;
                         at_root = false;
 
-                        if show_keys {
+                        if mode.shows_keys {
                             self.render_keys_buffer(context);
                         }
                     }
@@ -375,7 +365,7 @@ impl Keymap for VimKeymap {
             }
         }
 
-        if self.has_pending_state() && show_keys {
+        if self.has_pending_state() && mode.shows_keys {
             self.render_keys_buffer(context);
         }
 
@@ -404,7 +394,7 @@ impl Keymap for VimKeymap {
             }
         }
 
-        if show_keys {
+        if mode.shows_keys {
             self.render_keys_buffer(context);
         }
 

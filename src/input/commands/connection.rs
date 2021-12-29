@@ -25,6 +25,30 @@ declare_commands!(declare_connection {
     pub fn disconnect(context) {
         disconnect(context)
     }
+
+    /// Reconnect to the most-recently connected server associated with
+    /// the current buffer.
+    pub fn reconnect(context) {
+        let current_buffer_id = context.state().current_buffer().id();
+        if context.state_mut().connections.as_mut().and_then(|conns| conns.by_buffer_id(current_buffer_id)).is_some() {
+            return Err(KeyError::InvalidInput("Current buffer is still connected!".to_string()));
+        }
+
+        if let Some((id, url)) = get_associated_connection(context) {
+            let win_id = context
+                .state_mut()
+                .current_tab_mut()
+                .windows_for_buffer(id)
+                .next()
+                .map(|win| win.id);
+            if let Some(win_id) = win_id {
+                context.state_mut().current_tab_mut().set_focus(win_id);
+            }
+            connect(context, url)
+        } else {
+            Err(KeyError::InvalidInput("No associated connection for current buffer".to_string()))
+        }
+    }
 });
 
 fn parse_url(url: &str) -> Result<Url, url::ParseError> {
@@ -52,12 +76,15 @@ pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         _ => {
             // Otherwise, create a new buffer for the connection
             let new = context.state_mut().buffers.create_mut();
-            new.set_source(BufferSource::Connection(url.to_string()));
             new.id()
         }
     };
 
     let state = context.state_mut();
+    if let Some(buf) = state.buffers.by_id_mut(buffer_id) {
+        buf.set_source(BufferSource::Connection(url.to_string()));
+    }
+
     let tab = state.tabpages.current_tab_mut();
     let new_window = tab.new_connection(&mut state.buffers, buffer_id);
     let input_buffer_id = new_window.input.buffer;
@@ -125,6 +152,27 @@ pub fn on_disconnect(context: &mut CommandHandlerContext, buffer_id: Id) {
         .winsbuf_by_id(buffer_id)
         .expect("Could not find current buffer")
         .append_line("Disconnected.".into());
+}
+
+/// If possible, returns the buffer ID and URL of a connection (possibly defunct) associated with
+/// the current buffer
+pub fn get_associated_connection(context: &CommandHandlerContext) -> Option<(Id, String)> {
+    let buffer = context.state().current_buffer();
+    match &buffer.source() {
+        &BufferSource::Connection(url) => Some((buffer.id(), url.to_string())),
+        &BufferSource::ConnectionInputForBuffer(buffer_id) => {
+            match context
+                .state()
+                .buffers
+                .by_id(buffer_id.to_owned())
+                .map(|buf| buf.source())
+            {
+                Some(BufferSource::Connection(url)) => Some((*buffer_id, url.to_string())),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]

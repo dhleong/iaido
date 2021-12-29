@@ -270,7 +270,7 @@ impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
-        let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.peek() {
+        let (mode, show_keys) = if let Some(mode) = self.mode_stack.peek() {
             let show_keys = mode.shows_keys;
             if !show_keys {
                 context.state_mut().keymap_widget = None;
@@ -278,13 +278,12 @@ impl Keymap for VimKeymap {
             if let Some(widget) = &mode.keymap_widget {
                 context.state_mut().keymap_widget = Some(widget.clone());
             }
-            (mode.clone(), true, show_keys)
+            (mode.clone(), show_keys)
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
             (
                 vim_insert_mode(&buffer_source)
                     + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert),
-                false,
                 false,
             )
         } else {
@@ -293,7 +292,6 @@ impl Keymap for VimKeymap {
             (
                 vim_normal_mode()
                     + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal),
-                false,
                 true,
             )
         };
@@ -393,18 +391,16 @@ impl Keymap for VimKeymap {
 
         self.active_completer = None;
 
-        if mode_from_stack {
-            // Call the mode's "Exit" handler if it's no longer on the stack
-            if !self.mode_stack.contains(&mode.id) {
-                self.mode_stack.pop_if(&mode.id);
+        // Call the mode's "Exit" handler if it's no longer on the stack
+        if !self.mode_stack.contains(&mode.id) {
+            self.mode_stack.pop_if(&mode.id);
 
-                if let Some(on_exit) = mode.exit_handler {
-                    on_exit(KeyHandlerContext {
-                        context: Box::new(context),
-                        keymap: self,
-                        key: last_key,
-                    })?;
-                }
+            if let Some(on_exit) = mode.exit_handler {
+                on_exit(KeyHandlerContext {
+                    context: Box::new(context),
+                    keymap: self,
+                    key: last_key,
+                })?;
             }
         }
 

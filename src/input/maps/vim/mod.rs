@@ -40,14 +40,16 @@ type OperatorFn = dyn Fn(&mut KeyHandlerContext<'_, VimKeymap>, MotionRange) -> 
 
 // ======= modes ==========================================
 
+#[derive(Clone)]
 pub struct VimMode {
     pub id: String,
     pub mappings: KeyTreeNode,
     pub shows_keys: bool,
+    pub keymap_widget: Option<Widget>,
     pub allows_linewise: bool,
-    pub default_handler: Option<Box<KeyHandler>>,
-    pub after_handler: Option<Box<KeyHandler>>,
-    pub exit_handler: Option<Box<KeyHandler>>,
+    pub default_handler: Option<Rc<KeyHandler>>,
+    pub after_handler: Option<Rc<KeyHandler>>,
+    pub exit_handler: Option<Rc<KeyHandler>>,
     pub completer: Option<Rc<dyn Completer>>,
 }
 
@@ -58,6 +60,7 @@ impl VimMode {
             mappings,
             allows_linewise: true,
             shows_keys: false,
+            keymap_widget: None,
             default_handler: None,
             after_handler: None,
             exit_handler: None,
@@ -81,17 +84,17 @@ impl VimMode {
     }
 
     pub fn on_after(mut self, handler: Box<KeyHandler>) -> Self {
-        self.after_handler = Some(handler);
+        self.after_handler = Some(Rc::new(handler));
         self
     }
 
     pub fn on_exit(mut self, handler: Box<KeyHandler>) -> Self {
-        self.exit_handler = Some(handler);
+        self.exit_handler = Some(Rc::new(handler));
         self
     }
 
     pub fn on_default(mut self, handler: Box<KeyHandler>) -> Self {
-        self.default_handler = Some(handler);
+        self.default_handler = Some(Rc::new(handler));
         self
     }
 }
@@ -120,10 +123,8 @@ impl ops::Add<&KeyTreeNode> for VimMode {
     type Output = VimMode;
 
     fn add(self, rhs: &KeyTreeNode) -> Self::Output {
-        let mut new = VimMode::new(self.id, &self.mappings + rhs);
-        new.after_handler = self.after_handler;
-        new.completer = self.completer;
-        new.default_handler = self.default_handler;
+        let mut new = self.clone();
+        new.mappings = &self.mappings + rhs;
         new
     }
 }
@@ -202,11 +203,16 @@ impl VimKeymap {
     }
 
     fn render_keys_buffer<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) {
-        context.state_mut().keymap_widget = Some(Widget::Spread(vec![
-            Widget::Space,
-            Widget::Space,
-            Widget::Literal(render_keys_buffer(&self.keys_buffer).into()),
-        ]));
+        let keys = Widget::Literal(render_keys_buffer(&self.keys_buffer).into());
+        context.state_mut().keymap_widget = Some(match &context.state().keymap_widget {
+            // Reuse manually-provided widgets:
+            Some(Widget::Spread(items)) if items.len() == 3 => {
+                Widget::Spread(vec![items[0].clone(), items[1].clone(), keys])
+            }
+
+            // Overwrite:
+            _ => Widget::Spread(vec![Widget::Space, Widget::Space, keys]),
+        });
     }
 
     fn buffer_maps(
@@ -262,31 +268,25 @@ impl Keymap for VimKeymap {
     fn process<'a, K: KeymapContext>(&'a mut self, context: &'a mut K) -> Result<(), KeyError> {
         let buf_id = context.state().current_buffer().id();
         let buffer_source = context.state().current_buffer().source().clone();
-        let (mode, mode_from_stack, show_keys) = if let Some(mode) = self.mode_stack.take_top() {
-            let show_keys = mode.shows_keys;
-            if !show_keys {
+        let mode = if let Some(mode) = self.mode_stack.peek() {
+            if !mode.shows_keys {
                 context.state_mut().keymap_widget = None;
             }
-            (mode, true, show_keys)
+            if let Some(widget) = &mode.keymap_widget {
+                context.state_mut().keymap_widget = Some(widget.clone());
+            }
+            mode.clone()
         } else if context.state().current_window().inserting {
             context.state_mut().keymap_widget = Some(Widget::Literal("--INSERT--".into()));
-            (
-                vim_insert_mode(&buffer_source)
-                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert),
-                false,
-                false,
-            )
+            vim_insert_mode(&buffer_source)
+                + self.buffer_maps(buf_id, context.config(), &RemapMode::VimInsert)
         } else {
+            context.state_mut().keymap_widget = None;
             self.render_keys_buffer(context);
-            (
-                vim_normal_mode()
-                    + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal),
-                false,
-                true,
-            )
+            vim_normal_mode() + self.buffer_maps(buf_id, context.config(), &RemapMode::VimNormal)
         };
 
-        if !show_keys && !self.keys_buffer.is_empty() {
+        if !mode.shows_keys && !self.keys_buffer.is_empty() {
             self.keys_buffer.clear();
         }
 
@@ -298,7 +298,7 @@ impl Keymap for VimKeymap {
 
         loop {
             if let Some(key) = context.next_key_with_map(Some(Box::new(self)))? {
-                if show_keys {
+                if mode.shows_keys {
                     self.keys_buffer.push(key.clone());
                 }
 
@@ -314,7 +314,7 @@ impl Keymap for VimKeymap {
                         .current_buffer_mut()
                         .push_change_key(key);
 
-                    if show_keys {
+                    if mode.shows_keys {
                         // NOTE: render here since some key handlers
                         // also read from keysource
                         self.render_keys_buffer(context);
@@ -330,7 +330,7 @@ impl Keymap for VimKeymap {
                             key,
                         });
 
-                        if show_keys && !self.has_pending_state() {
+                        if mode.shows_keys && !self.has_pending_state() {
                             self.keys_buffer.clear();
                             self.render_keys_buffer(context);
                         }
@@ -340,7 +340,7 @@ impl Keymap for VimKeymap {
                         current = next;
                         at_root = false;
 
-                        if show_keys {
+                        if mode.shows_keys {
                             self.render_keys_buffer(context);
                         }
                     }
@@ -365,7 +365,7 @@ impl Keymap for VimKeymap {
             }
         }
 
-        if self.has_pending_state() && show_keys {
+        if self.has_pending_state() && mode.shows_keys {
             self.render_keys_buffer(context);
         }
 
@@ -381,21 +381,20 @@ impl Keymap for VimKeymap {
 
         self.active_completer = None;
 
-        if mode_from_stack {
-            // Return the moved mode value back to the stack...
-            if let Some(mode) = self.mode_stack.return_top(mode) {
-                // Or call its "Exit" handler if the stack rejected it
-                if let Some(on_exit) = mode.exit_handler {
-                    on_exit(KeyHandlerContext {
-                        context: Box::new(context),
-                        keymap: self,
-                        key: last_key,
-                    })?;
-                }
+        // Call the mode's "Exit" handler if it's no longer on the stack
+        if !self.mode_stack.contains(&mode.id) {
+            self.mode_stack.pop_if(&mode.id);
+
+            if let Some(on_exit) = mode.exit_handler {
+                on_exit(KeyHandlerContext {
+                    context: Box::new(context),
+                    keymap: self,
+                    key: last_key,
+                })?;
             }
         }
 
-        if show_keys {
+        if mode.shows_keys {
             self.render_keys_buffer(context);
         }
 
@@ -404,6 +403,32 @@ impl Keymap for VimKeymap {
 }
 
 impl BoxableKeymap for VimKeymap {
+    fn enter_user_mode(&mut self, mode_name: String) -> bool {
+        let remap_mode = RemapMode::User(mode_name.clone());
+        if let Some(mappings) = self.user_maps.get(&remap_mode) {
+            let mode_id = mode_name.clone();
+            let mut mode = VimMode::new(
+                mode_name.clone(),
+                crate::vim_tree! {
+                    "<esc>" => move |?mut ctx| {
+                        ctx.keymap.pop_mode(&mode_id);
+                        Ok(())
+                    },
+                } + mappings.clone(),
+            );
+            mode.shows_keys = true;
+            mode.keymap_widget = Some(Widget::Spread(vec![
+                Widget::Literal(format!("--{}--", mode_name).into()),
+                Widget::Space,
+                Widget::Space,
+            ]));
+            self.push_mode(mode);
+            return true;
+        }
+
+        return false;
+    }
+
     fn process_keys(&mut self, context: &mut KeymapContextWithKeys<MemoryKeySource>) -> KeyResult {
         self.process(context)
     }
@@ -451,6 +476,7 @@ impl BoxableKeymap for VimKeymap {
             }),
         );
     }
+
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -683,9 +709,59 @@ macro_rules! vim_tree {
     }};
 }
 
-#[macro_export]
-macro_rules! vim_motion {
-    ($struct:expr) => {
-        |ctx| {}
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{editing::motion::tests::window, input::keys::KeysParsable};
+    use indoc::indoc;
+
+    #[test]
+    fn enter_user_mode() {
+        let ctx = window(indoc! {"
+            Take my |love
+        "});
+        let mut vim = VimKeymap::default();
+        vim.remap_keys_fn(
+            RemapMode::User("user".to_string()),
+            "gh".into_keys(),
+            Box::new(|mut ctx| {
+                ctx.state_mut().current_window_mut().cursor = (0, 0).into();
+                Ok(())
+            }),
+        );
+
+        vim.enter_user_mode("user".to_string());
+
+        ctx.feed_keys(vim, "gh").assert_visual_match(indoc! {"
+            |Take my love
+        "});
+    }
+
+    #[test]
+    fn remap_in_user_mode_shouldnt_panic() {
+        let ctx = window(indoc! {"
+            Take my |love
+        "});
+        let mut vim = VimKeymap::default();
+        vim.remap_keys_fn(
+            RemapMode::User("user".to_string()),
+            "gh".into_keys(),
+            Box::new(|mut ctx| {
+                ctx.state_mut().current_window_mut().cursor = (0, 0).into();
+                Ok(())
+            }),
+        );
+
+        vim.remap_keys(
+            RemapMode::User("user".to_string()),
+            "g0".into_keys(),
+            "gh".into_keys(),
+        );
+
+        vim.enter_user_mode("user".to_string());
+
+        ctx.feed_keys(vim, "g0").assert_visual_match(indoc! {"
+            |Take my love
+        "});
+    }
 }

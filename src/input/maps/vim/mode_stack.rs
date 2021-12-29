@@ -47,27 +47,4 @@ impl VimModeStack {
             None
         }
     }
-
-    /// Returns the Mode if it should no longer be on the stack,
-    /// else None if it was accepted
-    pub fn return_top(&mut self, mode: VimMode) -> Option<VimMode> {
-        if self.stack.contains(&mode.id) {
-            self.modes.insert(mode.id.clone(), mode);
-            None
-        } else {
-            Some(mode)
-        }
-    }
-
-    pub fn take_top(&mut self) -> Option<VimMode> {
-        if let Some(id) = self.stack.last() {
-            Some(
-                self.modes
-                    .remove(id)
-                    .expect(&format!("Top of stack mode {} not found", id)),
-            )
-        } else {
-            None
-        }
-    }
 }

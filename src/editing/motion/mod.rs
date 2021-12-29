@@ -223,6 +223,10 @@ pub mod tests {
     pub struct TestBoxableKeymap;
 
     impl BoxableKeymap for TestBoxableKeymap {
+        fn enter_user_mode(&mut self, _mode: String) -> bool {
+            todo!()
+        }
+
         fn remap_keys(
             &mut self,
             _mode: crate::input::RemapMode,

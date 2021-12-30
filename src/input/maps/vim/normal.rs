@@ -7,18 +7,21 @@ mod window;
 
 use std::rc::Rc;
 
-use crate::input::{
-    commands::CommandHandlerContext,
-    completion::commands::CommandsCompleter,
-    maps::vim::cmdline::{self, CmdlineSink},
-    maps::{KeyHandlerContext, KeyResult},
-    KeyError, KeymapContext,
-};
 use crate::{
     editing::motion::char::CharMotion,
     editing::motion::linewise::{ToLineEndMotion, ToLineStartMotion},
     editing::motion::{Motion, MotionFlags, MotionRange},
     editing::text::TextLine,
+};
+use crate::{
+    editing::source::BufferSource,
+    input::{
+        commands::CommandHandlerContext,
+        completion::commands::CommandsCompleter,
+        maps::vim::cmdline::{self, CmdlineSink},
+        maps::{KeyHandlerContext, KeyResult},
+        KeyError, KeymapContext,
+    },
 };
 use crate::{key_handler, vim_tree};
 
@@ -72,11 +75,15 @@ fn cmd_mode_access() -> KeyTreeNode {
 
         "qi" => |ctx| {
             let buffer_id = ctx.state().current_buffer().id();
+            let conn_buffer_id = match ctx.state().current_buffer().source() {
+                &BufferSource::ConnectionInputForBuffer(conn_buff_id) => conn_buff_id,
+                _ => buffer_id,
+            };
             let mut conns = ctx.state_mut().connections.take().expect("Connections obj missing");
             let result = if let Some(conn) = conns.by_buffer_id(buffer_id) {
                 let history = &conn.game.history;
 
-                cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(buffer_id))
+                cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(conn_buffer_id))
             } else {
                 Err(KeyError::IO(std::io::ErrorKind::NotConnected.into()))
             };

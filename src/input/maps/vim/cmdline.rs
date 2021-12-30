@@ -70,14 +70,22 @@ fn cmdline_to_prompt(
                     .current_tab_mut()
                     .set_focus_to_buffer(input_buffer_id)
                     .is_some();
-                if let Some(mut winsbuf) = ctx.state_mut().winsbuf_by_id(input_buffer_id) {
-                    winsbuf.clear();
-                    winsbuf.append(cmd.into());
-                    found_window
-                } else {
-                    // No winsbuf; this *should not* be possible, but perhaps we got disconnected
-                    // or otherwise tore down the input UI while the cmdline window was open?
-                    false
+                match ctx.state_mut().winsbuf_by_id(input_buffer_id) {
+                    Some(mut winsbuf) if !cmd.is_empty() => {
+                        winsbuf.clear();
+                        winsbuf.append(cmd.into());
+                        found_window
+                    }
+
+                    _ => {
+                        // No winsbuf or nothing selected; it's unlikely that there's no winsbuf,
+                        // but perhaps we got disconnected or otherwise tore down the input UI
+                        // while the cmdline window was open?
+                        // If we selected nothing, we *probably* don't want to override whatever
+                        // might have been in the winsbuf before, and we *definitely* don't want to
+                        // send it
+                        false
+                    }
                 }
             } else {
                 // Couldn't find the input buffer

@@ -79,6 +79,7 @@ fn cmd_mode_access() -> KeyTreeNode {
                 &BufferSource::ConnectionInputForBuffer(conn_buff_id) => conn_buff_id,
                 _ => buffer_id,
             };
+
             let mut conns = ctx.state_mut().connections.take().expect("Connections obj missing");
             let result = if let Some(conn) = conns.by_buffer_id(buffer_id) {
                 let history = &conn.game.history;

@@ -48,6 +48,19 @@ impl Connections {
         self.connection_to_buffer.get(&id).cloned()
     }
 
+    pub fn id_to_buffers(&self, id: Id) -> Vec<Id> {
+        self.buffer_to_connection
+            .iter()
+            .filter_map(|(buff_id, conn_id)| {
+                if *conn_id == id {
+                    Some(buff_id.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut GameConnection> {
         if let Some(conn_id) = self.buffer_to_id(buffer_id) {
             self.by_id_mut(conn_id)

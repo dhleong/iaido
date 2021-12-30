@@ -166,6 +166,18 @@ impl Tabpage {
         self.layout.by_id_mut(id).unwrap().focused = true;
     }
 
+    /// Returns the Id of the focused window, if the buffer was found
+    pub fn set_focus_to_buffer(&mut self, buffer_id: Id) -> Option<Id> {
+        let win_id =
+            if let Some(win_id) = self.windows_for_buffer(buffer_id).next().map(|win| win.id) {
+                win_id
+            } else {
+                return None;
+            };
+        self.set_focus(win_id);
+        Some(win_id)
+    }
+
     fn window_for_split(&mut self) -> &mut Box<Window> {
         self.layout
             .by_id_for_split(self.current)

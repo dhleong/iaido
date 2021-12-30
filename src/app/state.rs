@@ -277,6 +277,26 @@ impl AppState {
         window.scrolled_lines = 0;
         window.scroll_offset = 0;
     }
+
+    pub fn conn_input_buffer_id(&self, conn_id: Id) -> Option<Id> {
+        if let Some((Some(output_buffer_id), buffer_ids)) = self
+            .connections
+            .as_ref()
+            .map(|conns| (conns.id_to_buffer(conn_id), conns.id_to_buffers(conn_id)))
+        {
+            // NOTE: There should be two buffer IDs per connection: the input
+            // and the output. We have a direct mapping to the output buffer,
+            // but don't frequently need to find the input buffer (yet) so
+            // this is a somewhat straightforward way to look it up
+            buffer_ids
+                .into_iter()
+                .filter(|id| id != &output_buffer_id)
+                .next()
+                .to_owned()
+        } else {
+            None
+        }
+    }
 }
 
 impl Default for AppState {

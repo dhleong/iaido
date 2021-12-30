@@ -4,10 +4,11 @@ use tui::{
 };
 
 use crate::{
+    connection::Connection,
     editing::{buffer::BufHidden, gutter::Gutter, source::BufferSource},
     input::{
         keys::KeysParsable,
-        maps::{actions::connection::send_string_to_buffer, KeyHandlerContext, KeyResult},
+        maps::{KeyHandlerContext, KeyResult},
         KeymapContext, RemapMode, Remappable,
     },
 };
@@ -27,8 +28,7 @@ pub enum CmdlineSink {
 fn cmdline_to_prompt(
     mut ctx: KeyHandlerContext<VimKeymap>,
     sink: CmdlineSink,
-    for_submit: bool,
-) -> KeyResult<KeyHandlerContext<VimKeymap>> {
+) -> KeyResult<(bool, KeyHandlerContext<VimKeymap>)> {
     let cmd = if let Some(cmd_spans) = ctx
         .state()
         .current_buffer()
@@ -43,7 +43,7 @@ fn cmdline_to_prompt(
     let buffer_id = ctx.state().current_buffer().id();
     ctx.state_mut().delete_buffer(buffer_id);
 
-    match sink {
+    let can_submit = match sink {
         CmdlineSink::SubmitPrompt(prompt_key) => {
             // Is this *too* hacky? Just feed each char as a key:
             // Perhaps we should match on prompt_key and invoke eg `handle_command`,
@@ -53,27 +53,58 @@ fn cmdline_to_prompt(
             let cmd_as_keys: Vec<Key> =
                 cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
             ctx = ctx.feed_keys_noremap(cmd_as_keys)?;
+            true
         }
 
         CmdlineSink::ConnectionBuffer(conn_buffer_id) => {
-            if for_submit {
-                send_string_to_buffer(&mut ctx, conn_buffer_id, cmd)?
+            if let Some(input_buffer_id) = ctx
+                .state_mut()
+                .connections
+                .as_mut()
+                .and_then(|conns| conns.by_buffer_id(conn_buffer_id))
+                .map(|conn| conn.id())
+                .and_then(|conn_id| ctx.state().conn_input_buffer_id(conn_id))
+            {
+                let found_window = ctx
+                    .state_mut()
+                    .current_tab_mut()
+                    .set_focus_to_buffer(input_buffer_id)
+                    .is_some();
+                if let Some(mut winsbuf) = ctx.state_mut().winsbuf_by_id(input_buffer_id) {
+                    winsbuf.clear();
+                    winsbuf.append(cmd.into());
+                    found_window
+                } else {
+                    // No winsbuf; this *should not* be possible, but perhaps we got disconnected
+                    // or otherwise tore down the input UI while the cmdline window was open?
+                    false
+                }
+            } else {
+                // Couldn't find the input buffer
+                false
             }
         }
-    }
+    };
 
-    Ok(ctx)
+    Ok((can_submit, ctx))
 }
 
 fn cancel_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
-    cmdline_to_prompt(ctx, sink, false)?;
+    cmdline_to_prompt(ctx, sink)?;
     Ok(())
 }
 
 fn submit_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
-    let ctx = cmdline_to_prompt(ctx, sink, true)?;
-    if let CmdlineSink::SubmitPrompt(_) = sink {
-        ctx.feed_keys_noremap("<cr>".into_keys())?;
+    let (can_submit, ctx) = cmdline_to_prompt(ctx, sink)?;
+    if can_submit {
+        match sink {
+            CmdlineSink::SubmitPrompt(_) => {
+                ctx.feed_keys_noremap("<cr>".into_keys())?;
+            }
+            CmdlineSink::ConnectionBuffer(_) => {
+                ctx.feed_keys_noremap("a<cr><esc>".into_keys())?;
+            }
+        }
     }
     Ok(())
 }

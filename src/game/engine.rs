@@ -6,6 +6,7 @@ use crate::editing::text::EditableLine;
 use crate::input::completion::{
     BoxedSuggestions, CompletableContext, Completer, CompletionContext,
 };
+use crate::input::history::History;
 use crate::input::maps::KeyResult;
 
 use super::completion::{CompletionSource, GameCompletionsFactory, ProcessFlags};
@@ -16,6 +17,7 @@ use super::processing::{ProcessedText, TextInput, TextProcessor};
 pub struct GameEngine {
     pub aliases: TextProcessorManager<Alias>,
     pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
+    pub history: History<String>,
 }
 
 impl Completer for Rc<Mutex<dyn CompletionSource>> {
@@ -34,6 +36,7 @@ impl Default for GameEngine {
         Self {
             aliases: TextProcessorManager::new(),
             completer: Some(Rc::new(Mutex::new(GameCompletionsFactory::create()))),
+            history: Default::default(),
         }
     }
 }
@@ -57,6 +60,8 @@ impl GameEngine {
             let mut guard = completions.lock().unwrap();
             guard.process(text, ProcessFlags::SENT);
         }
+
+        self.history.insert(value.to_string());
 
         match self.aliases.process(TextInput::Line(value.into())) {
             Ok(ProcessedText::Removed(_)) => Ok(None),

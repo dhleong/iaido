@@ -7,10 +7,10 @@ mod window;
 
 use std::rc::Rc;
 
-use crate::input::maps::vim::cmdline;
 use crate::input::{
     commands::CommandHandlerContext,
     completion::commands::CommandsCompleter,
+    maps::vim::cmdline::{self, CmdlineSink},
     maps::{KeyHandlerContext, KeyResult},
     KeyError, KeymapContext,
 };
@@ -60,14 +60,14 @@ fn cmd_mode_access() -> KeyTreeNode {
         },
 
         "q:" => |?mut ctx| {
-            cmdline::open(ctx, ":".to_string(), ":".into())
+            cmdline::open(ctx, ":".to_string(), CmdlineSink::SubmitPrompt(":"))
         },
 
         "q/" => |?mut ctx| {
-            cmdline::open(ctx, "/".to_string(), "/".into())
+            cmdline::open(ctx, "/".to_string(), CmdlineSink::SubmitPrompt("/"))
         },
         "q?" => |?mut ctx| {
-            cmdline::open(ctx, "/".to_string(), "?".into())
+            cmdline::open(ctx, "/".to_string(), CmdlineSink::SubmitPrompt("?"))
         },
 
         "qi" => |ctx| {
@@ -76,8 +76,7 @@ fn cmd_mode_access() -> KeyTreeNode {
             let result = if let Some(conn) = conns.by_buffer_id(buffer_id) {
                 let history = &conn.game.history;
 
-                // FIXME: Handle sending the submitted line to the conn
-                cmdline::open_from_history(&mut ctx, history, "!".to_string(), "".into())
+                cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(buffer_id))
             } else {
                 Err(KeyError::IO(std::io::ErrorKind::NotConnected.into()))
             };

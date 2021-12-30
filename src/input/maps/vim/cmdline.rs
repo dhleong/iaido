@@ -4,23 +4,29 @@ use tui::{
 };
 
 use crate::{
-    editing::text::EditableLine,
-    input::{history::History, Key, KeyCode},
-};
-use crate::{
     editing::{buffer::BufHidden, gutter::Gutter, source::BufferSource},
     input::{
         keys::KeysParsable,
-        maps::{KeyHandlerContext, KeyResult},
+        maps::{actions::connection::send_string_to_buffer, KeyHandlerContext, KeyResult},
         KeymapContext, RemapMode, Remappable,
     },
+};
+use crate::{
+    editing::{text::EditableLine, Id},
+    input::{history::History, Key, KeyCode},
 };
 
 use super::VimKeymap;
 
+#[derive(Clone, Copy, Debug)]
+pub enum CmdlineSink {
+    SubmitPrompt(&'static str),
+    ConnectionBuffer(Id),
+}
+
 fn cmdline_to_prompt(
     mut ctx: KeyHandlerContext<VimKeymap>,
-    prompt_key: String,
+    sink: CmdlineSink,
 ) -> KeyResult<KeyHandlerContext<VimKeymap>> {
     let cmd = if let Some(cmd_spans) = ctx
         .state()
@@ -36,23 +42,33 @@ fn cmdline_to_prompt(
     let buffer_id = ctx.state().current_buffer().id();
     ctx.state_mut().delete_buffer(buffer_id);
 
-    // Is this *too* hacky? Just feed each char as a key:
-    // Perhaps we should match on prompt_key and invoke eg `handle_command`,
-    // `handle_forward_search`, etc. directly...
-    ctx = ctx.feed_keys_noremap(prompt_key.into_keys())?;
+    match sink {
+        CmdlineSink::SubmitPrompt(prompt_key) => {
+            // Is this *too* hacky? Just feed each char as a key:
+            // Perhaps we should match on prompt_key and invoke eg `handle_command`,
+            // `handle_forward_search`, etc. directly...
+            ctx = ctx.feed_keys_noremap(prompt_key.into_keys())?;
 
-    let cmd_as_keys: Vec<Key> = cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
-    ctx = ctx.feed_keys_noremap(cmd_as_keys)?;
+            let cmd_as_keys: Vec<Key> =
+                cmd.chars().map(|ch| Key::from(KeyCode::Char(ch))).collect();
+            ctx = ctx.feed_keys_noremap(cmd_as_keys)?;
+        }
+
+        CmdlineSink::ConnectionBuffer(conn_buffer_id) => {
+            send_string_to_buffer(&mut ctx, conn_buffer_id, cmd)?
+        }
+    }
+
     Ok(ctx)
 }
 
-fn cancel_cmdline(ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> KeyResult {
-    cmdline_to_prompt(ctx, prompt_key)?;
+fn cancel_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
+    cmdline_to_prompt(ctx, sink)?;
     Ok(())
 }
 
-fn submit_cmdline(ctx: KeyHandlerContext<VimKeymap>, prompt_key: String) -> KeyResult {
-    let ctx = cmdline_to_prompt(ctx, prompt_key)?;
+fn submit_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
+    let ctx = cmdline_to_prompt(ctx, sink)?;
     ctx.feed_keys_noremap("<cr>".into_keys())?;
     Ok(())
 }
@@ -61,7 +77,7 @@ pub fn open_from_history(
     ctx: &mut KeyHandlerContext<VimKeymap>,
     history: &History<String>,
     history_key: String,
-    prompt_key: String,
+    sink: CmdlineSink,
 ) -> KeyResult<()> {
     ctx.state_mut().clear_echo();
 
@@ -81,34 +97,31 @@ pub fn open_from_history(
     ctx.state_mut().set_current_window_buffer(buf_id);
 
     // Bind <cr> to submit the input
-    let normal_prompt_key = prompt_key.clone();
-    let insert_prompt_key = prompt_key.clone();
     ctx.keymap.buf_remap_keys_fn(
         buf_id,
         RemapMode::VimNormal,
         "<cr>".into_keys(),
-        Box::new(move |ctx| submit_cmdline(ctx, normal_prompt_key.to_string())),
+        Box::new(move |ctx| submit_cmdline(ctx, sink)),
     );
     ctx.keymap.buf_remap_keys_fn(
         buf_id,
         RemapMode::VimInsert,
         "<cr>".into_keys(),
-        Box::new(move |ctx| submit_cmdline(ctx, insert_prompt_key.to_string())),
+        Box::new(move |ctx| submit_cmdline(ctx, sink)),
     );
 
     // Bind <ctrl-c> to cancel the mode
-    let normal_prompt_key = prompt_key.clone();
     ctx.keymap.buf_remap_keys_fn(
         buf_id,
         RemapMode::VimNormal,
         "<ctrl-c>".into_keys(),
-        Box::new(move |ctx| cancel_cmdline(ctx, normal_prompt_key.to_string())),
+        Box::new(move |ctx| cancel_cmdline(ctx, sink)),
     );
     ctx.keymap.buf_remap_keys_fn(
         buf_id,
         RemapMode::VimInsert,
         "<ctrl-c>".into_keys(),
-        Box::new(move |ctx| cancel_cmdline(ctx, prompt_key.to_string())),
+        Box::new(move |ctx| cancel_cmdline(ctx, sink)),
     );
 
     let win = ctx.state_mut().current_tab_mut().by_id_mut(win_id).unwrap();
@@ -139,11 +152,11 @@ pub fn open_from_history(
 pub fn open(
     mut ctx: KeyHandlerContext<VimKeymap>,
     history_key: String,
-    prompt_key: String,
+    sink: CmdlineSink,
 ) -> KeyResult<()> {
     let history = ctx.keymap.histories.take(&history_key);
 
-    open_from_history(&mut ctx, &history, history_key.clone(), prompt_key)?;
+    open_from_history(&mut ctx, &history, history_key.clone(), sink)?;
 
     ctx.keymap
         .histories

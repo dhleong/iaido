@@ -109,16 +109,18 @@ impl Tabpage {
         })
     }
 
-    /// Like hsplit, but always splits at the top-most level
+    /// Like hsplit, but always splits at the top-most level and always
+    /// moves focus to the new window
     pub fn split_bottom(&mut self) -> Id {
-        self.split_with(|layout, _, new_window| {
+        self.split_with_focus(|layout, _, new_window| {
             layout.add_window(new_window);
         })
     }
 
-    /// Like hsplit, but always splits at the top-most level
+    /// Like hsplit, but always splits at the top-most level and always
+    /// moves focus to the enw window
     pub fn split_top(&mut self) -> Id {
-        self.split_with(|layout, _, new_window| {
+        self.split_with_focus(|layout, _, new_window| {
             layout.insert_window(0, new_window);
         })
     }
@@ -127,6 +129,13 @@ impl Tabpage {
         self.split_with(|layout, old_id, new_window| {
             layout.vsplit(old_id, new_window);
         })
+    }
+
+    /// Like [split_with], but *always* moves focus to the new window
+    fn split_with_focus(&mut self, perform: impl FnOnce(&mut LinearLayout, Id, Box<Window>)) -> Id {
+        let id = self.split_with(perform);
+        self.set_focus(id);
+        id
     }
 
     fn split_with(&mut self, perform: impl FnOnce(&mut LinearLayout, Id, Box<Window>)) -> Id {

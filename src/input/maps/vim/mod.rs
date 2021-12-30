@@ -1,3 +1,4 @@
+mod cmdline;
 mod insert;
 mod mode_stack;
 mod motion;

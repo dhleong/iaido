@@ -33,6 +33,10 @@ impl<'a> WinsBuf<'a> {
         });
     }
 
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+    }
+
     #[inline]
     fn adjusting_cursor(&mut self, action: impl FnOnce(&mut WinsBuf)) {
         let lines_before = self.buffer.lines_count();

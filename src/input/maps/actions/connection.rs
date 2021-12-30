@@ -27,7 +27,13 @@ pub fn send_current_input_buffer<T: BoxableKeymap>(mut ctx: KeyHandlerContext<T>
             return Err(KeyError::IO(io::ErrorKind::NotConnected.into()));
         };
 
-    send_string_to_buffer(&mut ctx, conn_buffer_id, to_send)
+    let result = send_string_to_buffer(&mut ctx, conn_buffer_id, to_send);
+
+    if result.is_ok() {
+        ctx.state_mut().current_buffer_mut().clear();
+    }
+
+    result
 }
 
 pub fn send_string_to_buffer<K: KeymapContext>(
@@ -45,7 +51,6 @@ pub fn send_string_to_buffer<K: KeymapContext>(
     }
 
     if sent {
-        ctx.state_mut().current_buffer_mut().clear();
         if let Some(mut output) = ctx.state_mut().winsbuf_by_id(conn_buffer_id) {
             output.append_value(ReadValue::Text(to_send.into()));
             output.append_value(ReadValue::Newline);

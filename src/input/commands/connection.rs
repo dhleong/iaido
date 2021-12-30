@@ -35,15 +35,7 @@ declare_commands!(declare_connection {
         }
 
         if let Some((id, url)) = get_associated_connection(context) {
-            let win_id = context
-                .state_mut()
-                .current_tab_mut()
-                .windows_for_buffer(id)
-                .next()
-                .map(|win| win.id);
-            if let Some(win_id) = win_id {
-                context.state_mut().current_tab_mut().set_focus(win_id);
-            }
+            context.state_mut().current_tab_mut().set_focus_to_buffer(id);
             connect(context, url)
         } else {
             Err(KeyError::InvalidInput("No associated connection for current buffer".to_string()))

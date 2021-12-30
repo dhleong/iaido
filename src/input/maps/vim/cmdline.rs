@@ -27,6 +27,7 @@ pub enum CmdlineSink {
 fn cmdline_to_prompt(
     mut ctx: KeyHandlerContext<VimKeymap>,
     sink: CmdlineSink,
+    for_submit: bool,
 ) -> KeyResult<KeyHandlerContext<VimKeymap>> {
     let cmd = if let Some(cmd_spans) = ctx
         .state()
@@ -55,7 +56,9 @@ fn cmdline_to_prompt(
         }
 
         CmdlineSink::ConnectionBuffer(conn_buffer_id) => {
-            send_string_to_buffer(&mut ctx, conn_buffer_id, cmd)?
+            if for_submit {
+                send_string_to_buffer(&mut ctx, conn_buffer_id, cmd)?
+            }
         }
     }
 
@@ -63,13 +66,15 @@ fn cmdline_to_prompt(
 }
 
 fn cancel_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
-    cmdline_to_prompt(ctx, sink)?;
+    cmdline_to_prompt(ctx, sink, false)?;
     Ok(())
 }
 
 fn submit_cmdline(ctx: KeyHandlerContext<VimKeymap>, sink: CmdlineSink) -> KeyResult {
-    let ctx = cmdline_to_prompt(ctx, sink)?;
-    ctx.feed_keys_noremap("<cr>".into_keys())?;
+    let ctx = cmdline_to_prompt(ctx, sink, true)?;
+    if let CmdlineSink::SubmitPrompt(_) = sink {
+        ctx.feed_keys_noremap("<cr>".into_keys())?;
+    }
     Ok(())
 }
 

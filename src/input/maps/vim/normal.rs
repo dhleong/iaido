@@ -109,6 +109,7 @@ fn open_cmdline_mode(
         count += 1;
     }
 
+    ctx.state_mut().current_tab_mut().set_focus(win_id);
     ctx.state_mut().set_current_window_buffer(buf_id);
     ctx.keymap
         .histories

@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     connection::{Connection, ReadValue},
-    editing::source::BufferSource,
+    editing::{source::BufferSource, window::WindowFlags},
 };
 use crate::{
     editing::Id,
@@ -54,6 +54,17 @@ pub fn send_string_to_buffer<K: KeymapContext>(
         if let Some(mut output) = ctx.state_mut().winsbuf_by_id(conn_buffer_id) {
             output.append_value(ReadValue::Text(to_send.into()));
             output.append_value(ReadValue::Newline);
+
+            // When sending anything, jump to the end in the "first"
+            // PROTECTED (IE: main output) Window for this buffer
+            let last_line = output.buffer.lines_count().checked_sub(1).unwrap_or(0);
+            if let Some(mut first) =
+                output.first_window(|win| win.flags.contains(WindowFlags::PROTECTED))
+            {
+                first.scrolled_lines = 0;
+                first.scroll_offset = 0;
+                first.cursor = (last_line, 0).into();
+            }
         }
         return Ok(());
     }

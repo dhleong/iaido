@@ -95,7 +95,15 @@ fn paste_after_cursor(state: &mut app::State, mut text: CopiedRange) {
     let single_line_width = single_line_width(&text);
 
     if single_line_width > 0 {
-        state.current_window_mut().cursor.col += 1;
+        let win = state.current_window();
+        let buf_id = win.buffer;
+        let mut cursor = win.cursor;
+        cursor.col += 1;
+
+        let buf = state.buffers.by_id(buf_id).expect("Expected a buffer");
+        cursor = win.clamp_cursor(buf, cursor);
+
+        state.current_window_mut().cursor = cursor;
     } else {
         let cursor = state.current_window().cursor;
         state.current_window_mut().cursor = CursorPosition {
@@ -243,6 +251,24 @@ mod tests {
             ctx.assert_visual_match(indoc! {"
                 Take my love
                 |Take my land
+            "});
+        }
+
+        #[test]
+        fn paste_single_line_after_cursor_when_empty() {
+            let ctx = window(indoc! {"
+                ~
+            "});
+
+            let mut state = crate::app::State::default();
+            state
+                .registers
+                .by_name('a')
+                .write("Take my love".to_string());
+
+            let (mut ctx, _) = ctx.feed_vim_with_state(state, "\"ap");
+            ctx.assert_visual_match(indoc! {"
+                Take my lov|e
             "});
         }
 

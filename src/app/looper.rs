@@ -86,8 +86,8 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
 
                 dirty = self.process_async(&mut keymap)?;
 
-                // finally, check for input:
-                match self.events.poll_event(Duration::from_millis(10))? {
+                // Finally, check for input:
+                match self.events.poll_event(Duration::from_millis(100))? {
                     Some(_) => break,
                     None => {}
                 }
@@ -95,7 +95,7 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
 
             match self.events.next_event()? {
                 UiEvent::Key(key) => {
-                    // if dirty, render one more time before returning the key
+                    // If dirty, render one more time before returning the key
                     if dirty {
                         self.app.render();
                     }

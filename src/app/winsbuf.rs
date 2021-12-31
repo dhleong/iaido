@@ -37,6 +37,16 @@ impl<'a> WinsBuf<'a> {
         self.buffer.clear();
     }
 
+    pub fn first_window(
+        &mut self,
+        predicate: impl Fn(&Box<Window>) -> bool,
+    ) -> Option<&mut &'a mut Box<Window>> {
+        self.windows
+            .iter_mut()
+            .filter(|win| predicate(win))
+            .min_by_key(|win| win.id)
+    }
+
     #[inline]
     fn adjusting_cursor(&mut self, action: impl FnOnce(&mut WinsBuf)) {
         let lines_before = self.buffer.lines_count();

@@ -31,8 +31,8 @@ apigen = { path = "./apigen", default-features = false }
 indoc = "1.0"
 
 # "ui"
-crossterm = { version = "0.19" }
-tui = { version = "0.14", default-features = false, features = ["crossterm"] }
+crossterm = { version = "0.22.1" }
+tui = { version = "0.16", default-features = false, features = ["crossterm"] }
 
 # "ui"-adjacent: this is used to help colorize help files
 pulldown-cmark = { version = "0.8", default-features = false }

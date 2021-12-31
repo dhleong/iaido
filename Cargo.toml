@@ -43,7 +43,7 @@ rustpython-common = { git = "https://github.com/RustPython/RustPython.git", rev 
 
 # etc:
 genawaiter = "0.99.1"
-telnet = "0.1.4"
+telnet = "0.2.1"
 url = "2.2.2"
 vte = "0.10.1"
 tokio = { version = "1.2.0", features = ["rt-multi-thread"] }

@@ -31,15 +31,15 @@ impl Connection for TelnetConnection {
 
     fn read(&mut self) -> io::Result<Option<ReadValue>> {
         match self.telnet.read_nonblocking()? {
-            telnet::TelnetEvent::Data(data) => {
+            telnet::Event::Data(data) => {
                 self.pipeline.feed(&data, data.len());
             }
-            telnet::TelnetEvent::UnknownIAC(_) => {}
-            telnet::TelnetEvent::Negotiation(_, _) => {}
-            telnet::TelnetEvent::Subnegotiation(_, _) => {}
-            telnet::TelnetEvent::TimedOut => {}
-            telnet::TelnetEvent::NoData => {}
-            telnet::TelnetEvent::Error(e) => {
+            telnet::Event::UnknownIAC(_) => {}
+            telnet::Event::Negotiation(_, _) => {}
+            telnet::Event::Subnegotiation(_, _) => {}
+            telnet::Event::TimedOut => {}
+            telnet::Event::NoData => {}
+            telnet::Event::Error(e) => {
                 return Err(io::Error::new(io::ErrorKind::Other, e));
             }
         }

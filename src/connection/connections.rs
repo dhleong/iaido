@@ -162,7 +162,7 @@ impl Connections {
                     }
                     Err(e) => {
                         any_updated = true;
-                        winsbuf.append(TextLines::from(e.to_string()));
+                        winsbuf.append(TextLines::from(format!("Disconnected: {}", e)));
                         to_buffer.remove(&conn.id());
                         return RetainAction::Remove;
                     }

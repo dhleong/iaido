@@ -305,6 +305,7 @@ impl Default for AppState {
     fn default() -> Self {
         let buffers = Buffers::new();
         let tabpages = Tabpages::new(Size { w: 0, h: 0 });
+        let dispatcher = Dispatcher::default();
         let mut app = Self {
             running: true,
             showing_splash: true,
@@ -320,8 +321,8 @@ impl Default for AppState {
             connections: Some(Connections::default()),
             scripting: Arc::new(Mutex::new(ScriptingManager::default())),
             api: Some(ApiManagerRpc::default()),
-            dispatcher: Default::default(),
-            jobs: Jobs::new(),
+            jobs: Jobs::new(dispatcher.sender.clone()),
+            dispatcher,
         };
 
         // create the default tabpage

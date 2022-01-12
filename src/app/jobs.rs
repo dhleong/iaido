@@ -10,6 +10,8 @@ use crate::{
     input::{maps::KeyResult, Key, KeyError, KeySource},
 };
 
+use super::dispatcher::DispatchSender;
+
 const MAX_TASKS_PER_TICK: u16 = 10;
 
 #[derive(Debug)]
@@ -38,18 +40,13 @@ impl From<JobError> for KeyError {
 
 pub type JobResult<T = ()> = Result<T, JobError>;
 
-type StateAction = dyn (FnOnce(&mut app::State) -> JobResult) + Send + Sync;
-
 pub enum MainThreadAction {
-    OnState(Box<StateAction>),
-    Echo(String),
-
     JobComplete(Id),
     Err(Id),
 }
 
 pub struct JobContext {
-    to_main: mpsc::Sender<MainThreadAction>,
+    dispatcher: DispatchSender,
 }
 
 impl JobContext {
@@ -57,19 +54,8 @@ impl JobContext {
     where
         F: (FnOnce(&mut app::State) -> JobResult) + Send + Sync + 'static,
     {
-        self.send(MainThreadAction::OnState(Box::new(on_state)))
-    }
-
-    #[allow(unused)]
-    pub fn echo(&self, message: String) -> JobResult {
-        self.send(MainThreadAction::Echo(message))
-    }
-
-    pub fn send(&self, action: MainThreadAction) -> JobResult {
-        match self.to_main.send(action) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(io::Error::new(io::ErrorKind::BrokenPipe, e).into()),
-        }
+        self.dispatcher.spawn(on_state).background();
+        Ok(())
     }
 }
 
@@ -109,16 +95,18 @@ impl JobRecord {
 
 pub struct Jobs {
     ids: Ids,
+    dispatcher: DispatchSender,
     to_main: mpsc::Sender<MainThreadAction>,
     from_job: mpsc::Receiver<MainThreadAction>,
     jobs: HashMap<Id, JobRecord>,
 }
 
 impl Jobs {
-    pub fn new() -> Self {
+    pub fn new(dispatcher: DispatchSender) -> Self {
         let (tx, rx) = mpsc::channel::<MainThreadAction>();
         Self {
             ids: Ids::new(),
+            dispatcher,
             to_main: tx,
             from_job: rx,
             jobs: HashMap::new(),
@@ -132,9 +120,6 @@ impl Jobs {
         for _ in 0..MAX_TASKS_PER_TICK {
             match state.jobs.next_action()? {
                 None => return Ok(dirty),
-
-                Some(MainThreadAction::OnState(closure)) => closure(state)?,
-                Some(MainThreadAction::Echo(msg)) => state.echo(msg.into()),
 
                 Some(MainThreadAction::JobComplete(id)) => {
                     state.jobs.jobs.remove(&id);
@@ -177,7 +162,7 @@ impl Jobs {
         let id = self.ids.next();
         let to_main = self.to_main.clone();
         let context = JobContext {
-            to_main: to_main.clone(),
+            dispatcher: self.dispatcher.clone(),
         };
 
         let (to_job, await_channel) = mpsc::channel();

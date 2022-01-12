@@ -7,11 +7,16 @@ use std::{
 use crate::app;
 use crate::input::{maps::KeyResult, Key, KeyError, KeySource};
 
+#[must_use = "Use background to ignore the launch and any result"]
 pub struct DispatchRecord<R> {
     from_main: Receiver<R>,
 }
 
 impl<R> DispatchRecord<R> {
+    pub fn background(&self) {
+        // nop
+    }
+
     pub fn join(&self) -> KeyResult<R> {
         Ok(self.from_main.recv().unwrap())
     }
@@ -49,23 +54,34 @@ impl<R: Send, F: FnOnce(&mut app::State) -> R + Send> PendingDispatch<R, F> {
     #[allow(unused)]
     pub fn execute(&mut self, state: &mut app::State) {
         if let Some(f) = self.f.take() {
-            self.to_caller.send(f(state)).unwrap();
+            let result = f(state);
+
+            // NOTE: A SendError means that the receiver has been deallocated,
+            // so we can just ignore it:
+            self.to_caller.send(result).ok();
         }
     }
 }
 
-type BoxedPendingDispatch = Box<dyn FnMut(&mut app::State)>;
+type BoxedPendingDispatch = Box<dyn FnMut(&mut app::State) + Send>;
 
-/// Provides access to the main thread
+/// Provides access to the main thread. The sender side may be trivially
+/// cloned
 pub struct Dispatcher {
-    to_main: Sender<BoxedPendingDispatch>,
+    pub sender: DispatchSender,
     rx: Receiver<BoxedPendingDispatch>,
+}
+
+#[derive(Clone)]
+pub struct DispatchSender {
+    to_main: Sender<BoxedPendingDispatch>,
 }
 
 impl Default for Dispatcher {
     fn default() -> Self {
         let (tx, rx) = mpsc::channel();
-        Dispatcher { to_main: tx, rx }
+        let sender = DispatchSender { to_main: tx };
+        Dispatcher { sender, rx }
     }
 }
 
@@ -88,7 +104,17 @@ impl Dispatcher {
         }
     }
 
-    pub fn spawn<R, F>(&mut self, f: F) -> DispatchRecord<R>
+    pub fn spawn<R, F>(&self, f: F) -> DispatchRecord<R>
+    where
+        R: Send + 'static,
+        F: FnOnce(&mut app::State) -> R + Send + 'static,
+    {
+        self.sender.spawn(f)
+    }
+}
+
+impl DispatchSender {
+    pub fn spawn<R, F>(&self, f: F) -> DispatchRecord<R>
     where
         R: Send + 'static,
         F: FnOnce(&mut app::State) -> R + Send + 'static,

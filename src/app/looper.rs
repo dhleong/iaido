@@ -21,7 +21,7 @@ use crate::{
     script::ScriptingManager,
 };
 
-use super::jobs::Jobs;
+use super::{dispatcher::Dispatcher, jobs::Jobs};
 
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
@@ -34,6 +34,9 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
         keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<bool, KeyError> {
         let mut dirty = false;
+
+        // New main loop processor:
+        dirty |= Dispatcher::process(&mut self.app.state)?;
 
         // process incoming data from connections
         if let Some(mut connections) = self.app.state.connections.take() {

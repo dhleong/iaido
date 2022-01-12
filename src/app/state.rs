@@ -24,6 +24,7 @@ use crate::{
 
 use super::{
     bufwin::BufWin,
+    dispatcher::Dispatcher,
     jobs::{JobError, Jobs},
     popup::PopupMenu,
     prompt::Prompt,
@@ -55,6 +56,7 @@ pub struct AppState {
     pub api: Option<ApiManagerRpc>,
 
     pub jobs: Jobs,
+    pub dispatcher: Dispatcher,
 }
 
 impl AppState {
@@ -318,6 +320,7 @@ impl Default for AppState {
             connections: Some(Connections::default()),
             scripting: Arc::new(Mutex::new(ScriptingManager::default())),
             api: Some(ApiManagerRpc::default()),
+            dispatcher: Default::default(),
             jobs: Jobs::new(),
         };
 

@@ -10,7 +10,7 @@ use crate::{
     input::{maps::KeyResult, Key, KeyError, KeySource},
 };
 
-use super::dispatcher::DispatchSender;
+use super::dispatcher::{DispatchRecord, DispatchSender};
 
 const MAX_TASKS_PER_TICK: u16 = 10;
 
@@ -56,6 +56,14 @@ impl JobContext {
     {
         self.dispatcher.spawn(on_state).background();
         Ok(())
+    }
+
+    pub fn spawn<R, F>(&self, f: F) -> DispatchRecord<R>
+    where
+        R: Send + 'static,
+        F: FnOnce(&mut app::State) -> R + Send + 'static,
+    {
+        self.dispatcher.spawn(f)
     }
 }
 

@@ -1,19 +1,50 @@
-use std::{collections::HashMap, io, sync::Mutex};
+use std::{
+    collections::HashMap,
+    io,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
+use tokio::sync::{
+    mpsc,
+    oneshot::{self, error::TryRecvError},
+};
 use url::Url;
 
 use crate::{
     app::{
         self,
-        jobs::{JobRecord, Jobs},
+        jobs::{JobContext, JobRecord, Jobs},
     },
     editing::{ids::Ids, text::TextLines, Id},
     game::engine::GameEngine,
 };
 
-use super::{game::GameConnection, Connection, ConnectionFactories};
+use super::{game::GameConnection, transport::Transport, Connection, ConnectionFactories};
 
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
+
+struct ConnectionRecord {
+    stop_read_signal: Option<oneshot::Sender<()>>,
+    outgoing: mpsc::UnboundedSender<String>,
+}
+
+impl Drop for ConnectionRecord {
+    fn drop(&mut self) {
+        if let Some(signal) = self.stop_read_signal.take() {
+            signal.send(()).ok();
+        }
+    }
+}
+
+impl ConnectionRecord {
+    pub fn send(&mut self, message: String) -> io::Result<()> {
+        match self.outgoing.send(message) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(io::ErrorKind::NotConnected.into()),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct Connections {
@@ -105,6 +136,58 @@ impl Connections {
                 Ok(())
             })
         })
+    }
+
+    fn launch(
+        ctx: JobContext,
+        connection: Arc<Mutex<Box<dyn Transport + Send>>>,
+    ) -> ConnectionRecord {
+        let buffer_id = 0usize; // TODO
+        let readable = connection.clone();
+        let (tx_signal, mut rx_signal) = oneshot::channel::<()>();
+        tokio::task::spawn_blocking(move || {
+            loop {
+                match rx_signal.try_recv() {
+                    Err(TryRecvError::Empty) => {} // Nop
+                    _ => break, // Any other message, we should drop the connection
+                }
+
+                let mut conn = readable.lock().unwrap();
+                let read = conn.read_timeout(Duration::from_millis(250));
+                let record = ctx.spawn(move |state| {
+                    let mut buffer = state
+                        .winsbuf_by_id(buffer_id)
+                        .expect("Could not find buffer for connection");
+                    match read {
+                        Ok(Some(value)) => buffer.append_value(value),
+                        Ok(None) => {} // nop
+                        Err(e) => {
+                            buffer.append(format!("Disconnected: {}", e).into());
+                            return false;
+                        }
+                    }
+                    true
+                });
+
+                if !record.join().expect("spawn error") {
+                    break; // Disconnected
+                }
+            }
+        });
+
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let writable = connection.clone();
+        tokio::spawn(async move {
+            while let Some(to_send) = rx.recv().await {
+                let mut conn = writable.lock().unwrap();
+                conn.send(&to_send); // TODO
+            }
+        });
+
+        ConnectionRecord {
+            stop_read_signal: Some(tx_signal),
+            outgoing: tx,
+        }
     }
 
     /// Returns the associated buffer ID

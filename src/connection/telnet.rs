@@ -92,7 +92,7 @@ impl ConnectionFactory for TelnetConnectionFactory {
         Box::new(TelnetConnectionFactory)
     }
 
-    fn create(&self, id: Id, uri: &Url) -> Option<std::io::Result<Box<dyn Connection + Send>>> {
+    fn create(&self, id: Id, uri: &Url) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
         let secure = match uri.scheme() {
             "telnet" => false,
             "ssl" => true,

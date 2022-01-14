@@ -38,12 +38,6 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
         // New main loop processor:
         dirty |= Dispatcher::process(&mut self.app.state)?;
 
-        // process incoming data from connections
-        if let Some(mut connections) = self.app.state.connections.take() {
-            dirty |= connections.process(&mut self.app.state);
-            self.app.state.connections = Some(connections);
-        }
-
         // process messages from jobs
         dirty |= Jobs::process(&mut self.app.state)?;
 

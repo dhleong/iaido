@@ -45,6 +45,7 @@ pub enum MainThreadAction {
     Err(Id),
 }
 
+#[derive(Clone)]
 pub struct JobContext {
     dispatcher: DispatchSender,
 }

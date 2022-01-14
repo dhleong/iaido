@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::editing::{text::TextLine, Id};
 
-use self::telnet::TelnetConnectionFactory;
+use self::{telnet::TelnetConnectionFactory, transport::Transport};
 
 mod ansi;
 pub mod connections;
@@ -31,7 +31,7 @@ pub trait Connection {
 
 pub trait ConnectionFactory: Send + Sync {
     fn clone_boxed(&self) -> Box<dyn ConnectionFactory>;
-    fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Connection + Send>>>;
+    fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Transport + Send>>>;
 }
 
 pub struct ConnectionFactories {
@@ -53,7 +53,7 @@ impl ConnectionFactories {
         }
     }
 
-    pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Connection + Send>> {
+    pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Transport + Send>> {
         for f in &self.factories {
             match f.create(id, &uri) {
                 None => {} // unsupported

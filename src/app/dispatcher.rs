@@ -7,6 +7,8 @@ use std::{
 use crate::app;
 use crate::input::{maps::KeyResult, Key, KeyError, KeySource};
 
+const MAX_TASKS_PER_TICK: u16 = 10;
+
 #[must_use = "Use background to ignore the launch and any result"]
 pub struct DispatchRecord<R> {
     from_main: Receiver<R>,
@@ -87,12 +89,16 @@ impl Default for Dispatcher {
 
 impl Dispatcher {
     pub fn process(state: &mut app::State) -> io::Result<bool> {
-        if let Some(mut action) = state.dispatcher.next_action()? {
-            action(state);
-            Ok(true)
-        } else {
-            Ok(false)
+        let mut any_tasks = false;
+        for _ in 0..MAX_TASKS_PER_TICK {
+            if let Some(mut action) = state.dispatcher.next_action()? {
+                action(state);
+                any_tasks = true;
+            } else {
+                break;
+            }
         }
+        Ok(any_tasks)
     }
 
     fn next_action(&mut self) -> io::Result<Option<BoxedPendingDispatch>> {

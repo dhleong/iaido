@@ -50,6 +50,7 @@ impl ConnectionRecord {
 pub struct Connections {
     ids: Ids,
     all: Vec<GameConnection>,
+    by_id: HashMap<Id, ConnectionRecord>,
     connection_to_buffer: HashMap<Id, Id>,
 
     // NOTE: More than one Buffer may be associated with a Connection
@@ -127,11 +128,14 @@ impl Connections {
         jobs.start(move |ctx| async move {
             let connection = Mutex::new(factory.create(id, uri)?);
 
+            let record = Connections::launch(ctx.clone(), buffer_id, Arc::new(connection));
+
             ctx.run(move |state| {
-                state.connections.as_mut().unwrap().add(
+                state.connections.as_mut().unwrap().add_record(
                     buffer_id,
                     input_buffer_id,
-                    connection.into_inner().unwrap(),
+                    // connection.into_inner().unwrap(),
+                    record,
                 );
                 Ok(())
             })
@@ -140,9 +144,9 @@ impl Connections {
 
     fn launch(
         ctx: JobContext,
+        buffer_id: Id,
         connection: Arc<Mutex<Box<dyn Transport + Send>>>,
     ) -> ConnectionRecord {
-        let buffer_id = 0usize; // TODO
         let readable = connection.clone();
         let (tx_signal, mut rx_signal) = oneshot::channel::<()>();
         tokio::task::spawn_blocking(move || {
@@ -256,6 +260,10 @@ impl Connections {
             return RetainAction::Keep;
         });
         any_updated
+    }
+
+    fn add_record(&mut self, buffer_id: Id, input_buffer_id: Id, record: ConnectionRecord) {
+        self.by_id.insert(buffer_id, record);
     }
 
     fn add(&mut self, buffer_id: Id, input_buffer_id: Id, connection: Box<dyn Connection>) {

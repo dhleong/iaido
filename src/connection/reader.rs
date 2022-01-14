@@ -70,28 +70,27 @@ impl TransportReader {
     fn read_once(&mut self) -> bool {
         let mut conn = self.transport.lock().unwrap();
         let read = conn.read_timeout(Duration::from_millis(250));
-        if let Ok(None) = read {
-            // Nothing read
-            return true;
-        }
+        let result = match read {
+            Ok(None) => {
+                // Nothing read
+                return true;
+            }
+            Ok(_) => true,
+            Err(_) => false,
+        };
 
         let buffer_id = self.buffer_id;
-        self.ctx
-            .spawn(move |state| {
-                let mut buffer = state
-                    .winsbuf_by_id(buffer_id)
-                    .expect("Could not find buffer for connection");
-                match read {
-                    Ok(Some(value)) => buffer.append_value(value),
-                    Ok(None) => {} // nop
-                    Err(e) => {
-                        buffer.append(format!("Disconnected: {}", e).into());
-                        return false;
-                    }
-                }
-                true
-            })
-            .join()
-            .expect("Spawn error")
+        self.ctx.run(move |state| {
+            let mut buffer = state
+                .winsbuf_by_id(buffer_id)
+                .expect("Could not find buffer for connection");
+            match read {
+                Ok(Some(value)) => buffer.append_value(value),
+                Ok(None) => (), // nop
+                Err(e) => buffer.append(format!("Disconnected: {}", e).into()),
+            };
+        });
+
+        return result;
     }
 }

@@ -64,6 +64,10 @@ impl Connection for TelnetConnection {
 
 impl Transport for TelnetConnection {
     fn read_timeout(&mut self, duration: std::time::Duration) -> io::Result<Option<ReadValue>> {
+        if let Some(pending) = self.pipeline.next() {
+            return Ok(Some(pending));
+        }
+
         let event = self.telnet.read_timeout(duration)?;
         self.process_event(event)
     }

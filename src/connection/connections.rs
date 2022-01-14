@@ -26,6 +26,7 @@ use super::{
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
 
 struct ConnectionRecord {
+    #[allow(unused)]
     stop_read_signal: StopSignal,
     outgoing: mpsc::UnboundedSender<String>,
 }
@@ -124,14 +125,14 @@ impl Connections {
             let record = Connections::launch(ctx.clone(), buffer_id, Arc::new(connection));
 
             ctx.run(move |state| {
-                state.connections.as_mut().unwrap().add_record(
-                    buffer_id,
-                    input_buffer_id,
-                    // connection.into_inner().unwrap(),
-                    record,
-                );
-                Ok(())
-            })
+                state
+                    .connections
+                    .as_mut()
+                    .unwrap()
+                    .add_record(buffer_id, input_buffer_id, record);
+            });
+
+            Ok(())
         })
     }
 
@@ -183,46 +184,6 @@ impl Connections {
             io::ErrorKind::NotFound,
             format!("#{}: No connection for buffer", buffer_id),
         ))
-    }
-
-    pub fn process(&mut self, app: &mut app::State) -> bool {
-        let to_buffer = &mut self.connection_to_buffer;
-        let mut any_updated = false;
-        retain(&mut self.all, |conn| {
-            let buffer_id = to_buffer[&conn.id()];
-            let mut winsbuf = app
-                .winsbuf_by_id(buffer_id)
-                .expect("Could not find buffer for connection");
-            let lines_per_redraw = winsbuf
-                .windows
-                .iter()
-                .map(|win| win.size.h)
-                .max()
-                .unwrap_or(DEFAULT_LINES_PER_REDRAW);
-
-            for _ in 0..lines_per_redraw {
-                match conn.read() {
-                    Ok(None) => break, // nop
-                    Ok(Some(value)) => {
-                        any_updated = true;
-
-                        if let Some(processed) = conn.game.process_received(value) {
-                            winsbuf.append_value(processed);
-                        }
-                    }
-                    Err(e) => {
-                        any_updated = true;
-                        winsbuf.append(TextLines::from(format!("Disconnected: {}", e)));
-                        to_buffer.remove(&conn.id());
-                        return RetainAction::Remove;
-                    }
-                }
-            }
-
-            // keep the conn, by default
-            return RetainAction::Keep;
-        });
-        any_updated
     }
 
     fn add_record(&mut self, buffer_id: Id, input_buffer_id: Id, record: ConnectionRecord) {

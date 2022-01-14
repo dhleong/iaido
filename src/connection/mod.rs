@@ -9,6 +9,7 @@ use self::{telnet::TelnetConnectionFactory, transport::Transport};
 mod ansi;
 pub mod connections;
 pub mod game;
+mod reader;
 mod telnet;
 mod tls;
 mod transport;

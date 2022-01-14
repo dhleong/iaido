@@ -1,13 +1,13 @@
 use std::{
     io,
     sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::app;
 use crate::input::{maps::KeyResult, Key, KeyError, KeySource};
 
-const MAX_TASKS_PER_TICK: u16 = 10;
+const MAX_PER_FRAME_DURATION: Duration = Duration::from_millis(50);
 
 #[must_use = "Use background to ignore the launch and any result"]
 pub struct DispatchRecord<R> {
@@ -90,11 +90,16 @@ impl Default for Dispatcher {
 impl Dispatcher {
     pub fn process(state: &mut app::State) -> io::Result<bool> {
         let mut any_tasks = false;
-        for _ in 0..MAX_TASKS_PER_TICK {
+        let start = Instant::now();
+        loop {
             if let Some(mut action) = state.dispatcher.next_action()? {
                 action(state);
                 any_tasks = true;
             } else {
+                break;
+            }
+
+            if start.elapsed() >= MAX_PER_FRAME_DURATION {
                 break;
             }
         }

@@ -51,12 +51,11 @@ pub struct JobContext {
 }
 
 impl JobContext {
-    pub fn run<F>(&self, on_state: F) -> JobResult
+    pub fn run<F>(&self, on_state: F)
     where
-        F: (FnOnce(&mut app::State) -> JobResult) + Send + Sync + 'static,
+        F: (FnOnce(&mut app::State)) + Send + Sync + 'static,
     {
-        self.dispatcher.spawn(on_state).background();
-        Ok(())
+        self.spawn(on_state).background();
     }
 
     pub fn spawn<R, F>(&self, f: F) -> DispatchRecord<R>

@@ -2,13 +2,9 @@ use std::{
     collections::HashMap,
     io,
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
-use tokio::sync::{
-    mpsc,
-    oneshot::{self, error::TryRecvError},
-};
+use tokio::sync::mpsc;
 use url::Url;
 
 use crate::{
@@ -20,21 +16,18 @@ use crate::{
     game::engine::GameEngine,
 };
 
-use super::{game::GameConnection, transport::Transport, Connection, ConnectionFactories};
+use super::{
+    game::GameConnection,
+    reader::{StopSignal, TransportReader},
+    transport::Transport,
+    Connection, ConnectionFactories,
+};
 
 const DEFAULT_LINES_PER_REDRAW: u16 = 10;
 
 struct ConnectionRecord {
-    stop_read_signal: Option<oneshot::Sender<()>>,
+    stop_read_signal: StopSignal,
     outgoing: mpsc::UnboundedSender<String>,
-}
-
-impl Drop for ConnectionRecord {
-    fn drop(&mut self) {
-        if let Some(signal) = self.stop_read_signal.take() {
-            signal.send(()).ok();
-        }
-    }
 }
 
 impl ConnectionRecord {
@@ -147,37 +140,7 @@ impl Connections {
         buffer_id: Id,
         connection: Arc<Mutex<Box<dyn Transport + Send>>>,
     ) -> ConnectionRecord {
-        let readable = connection.clone();
-        let (tx_signal, mut rx_signal) = oneshot::channel::<()>();
-        tokio::task::spawn_blocking(move || {
-            loop {
-                match rx_signal.try_recv() {
-                    Err(TryRecvError::Empty) => {} // Nop
-                    _ => break, // Any other message, we should drop the connection
-                }
-
-                let mut conn = readable.lock().unwrap();
-                let read = conn.read_timeout(Duration::from_millis(250));
-                let record = ctx.spawn(move |state| {
-                    let mut buffer = state
-                        .winsbuf_by_id(buffer_id)
-                        .expect("Could not find buffer for connection");
-                    match read {
-                        Ok(Some(value)) => buffer.append_value(value),
-                        Ok(None) => {} // nop
-                        Err(e) => {
-                            buffer.append(format!("Disconnected: {}", e).into());
-                            return false;
-                        }
-                    }
-                    true
-                });
-
-                if !record.join().expect("spawn error") {
-                    break; // Disconnected
-                }
-            }
-        });
+        let stop_read_signal = TransportReader::spawn(ctx.clone(), buffer_id, connection.clone());
 
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         let writable = connection.clone();
@@ -189,7 +152,7 @@ impl Connections {
         });
 
         ConnectionRecord {
-            stop_read_signal: Some(tx_signal),
+            stop_read_signal,
             outgoing: tx,
         }
     }

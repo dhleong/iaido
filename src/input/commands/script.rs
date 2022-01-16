@@ -51,7 +51,7 @@ fn source_path(context: &mut CommandHandlerContext, file_path: PathBuf) -> KeyRe
         .and_then(|conns| conns.by_buffer_id(buffer_id))
     {
         // Clear config on any associated connection
-        conn.game.reset();
+        conn.with_engine_mut(|engine| engine.reset());
     }
 
     let path_str = file_path.to_string_lossy().to_string();

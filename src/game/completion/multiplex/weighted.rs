@@ -14,12 +14,12 @@ impl RandomnessSource for ThreadRngRandomnessSource {
     }
 }
 
-struct WeightedRandomSelector<T: RandomnessSource> {
+struct WeightedRandomSelector<T: RandomnessSource + Send> {
     pub weights: Vec<u8>,
     pub random: T,
 }
 
-impl<T: RandomnessSource> MultiplexSelector for WeightedRandomSelector<T> {
+impl<T: RandomnessSource + Send> MultiplexSelector for WeightedRandomSelector<T> {
     fn select(&mut self, candidates: Vec<Option<&Completion>>) -> usize {
         let mut die_roll = self.random.next_percentage();
         let mut sorted_weight_indexes: Vec<usize> = (0..self.weights.len()).collect();
@@ -59,7 +59,7 @@ impl<T: RandomnessSource> MultiplexSelector for WeightedRandomSelector<T> {
     }
 }
 
-pub struct WeightedRandomSelectorFactory<T: 'static + RandomnessSource> {
+pub struct WeightedRandomSelectorFactory<T: 'static + RandomnessSource + Send> {
     pub weights: Vec<u8>,
     pub random: T,
 }
@@ -77,8 +77,8 @@ impl WeightedRandomSelectorFactory<ThreadRngRandomnessSource> {
     }
 }
 
-impl<T: RandomnessSource> MultiplexSelectorFactory for WeightedRandomSelectorFactory<T> {
-    fn create(&self, _context: CompletionContext) -> Box<dyn MultiplexSelector> {
+impl<T: RandomnessSource + Send> MultiplexSelectorFactory for WeightedRandomSelectorFactory<T> {
+    fn create(&self, _context: CompletionContext) -> Box<dyn MultiplexSelector + Send> {
         Box::new(WeightedRandomSelector {
             weights: self.weights.clone(),
             random: self.random.clone(),
@@ -129,7 +129,10 @@ mod tests {
             .collect()
     }
 
-    fn select(selector: &mut Box<dyn MultiplexSelector>, candidate_strings: Vec<&str>) -> usize {
+    fn select(
+        selector: &mut Box<dyn MultiplexSelector + Send>,
+        candidate_strings: Vec<&str>,
+    ) -> usize {
         let candidates = candidates(candidate_strings);
         selector.select(
             candidates

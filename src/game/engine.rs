@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::connection::ReadValue;
 use crate::editing::text::EditableLine;
@@ -16,7 +16,7 @@ use super::processing::{ProcessedText, TextInput, TextProcessor};
 
 pub struct GameEngine {
     pub aliases: TextProcessorManager<Alias>,
-    pub completer: Option<Rc<Mutex<dyn CompletionSource>>>,
+    pub completer: Option<Arc<Mutex<dyn CompletionSource + Send>>>,
     pub history: History<String>,
 }
 
@@ -31,11 +31,22 @@ impl Completer for Rc<Mutex<dyn CompletionSource>> {
     }
 }
 
+impl Completer for Arc<Mutex<dyn CompletionSource + Send>> {
+    fn suggest(
+        &self,
+        app: Box<&dyn CompletableContext>,
+        context: CompletionContext,
+    ) -> BoxedSuggestions {
+        let completer = self.lock().unwrap();
+        completer.suggest(app, context)
+    }
+}
+
 impl Default for GameEngine {
     fn default() -> Self {
         Self {
             aliases: TextProcessorManager::new(),
-            completer: Some(Rc::new(Mutex::new(GameCompletionsFactory::create()))),
+            completer: Some(Arc::new(Mutex::new(GameCompletionsFactory::create()))),
             history: Default::default(),
         }
     }

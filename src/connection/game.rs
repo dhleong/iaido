@@ -1,24 +1,23 @@
 use delegate::delegate;
-use std::io;
+use std::{io, time::Duration};
 
-use crate::editing::Id;
 use crate::game::engine::GameEngine;
 
-use super::{Connection, ReadValue};
+use super::{transport::Transport, ReadValue};
 
 pub struct GameConnection {
-    conn: Box<dyn Connection>,
+    conn: Box<dyn Transport + Send>,
     pub game: GameEngine,
 }
 
 impl GameConnection {
-    pub fn with_engine(conn: Box<dyn Connection>, game: GameEngine) -> Self {
+    pub fn with_engine(conn: Box<dyn Transport + Send>, game: GameEngine) -> Self {
         Self { conn, game }
     }
 }
 
-impl From<Box<dyn Connection>> for GameConnection {
-    fn from(conn: Box<dyn Connection>) -> Self {
+impl From<Box<dyn Transport + Send>> for GameConnection {
+    fn from(conn: Box<dyn Transport + Send>) -> Self {
         Self {
             conn,
             game: GameEngine::default(),
@@ -26,19 +25,16 @@ impl From<Box<dyn Connection>> for GameConnection {
     }
 }
 
-impl Connection for GameConnection {
+impl Transport for GameConnection {
     delegate! {
         to (self.conn) {
-            fn id(&self) -> Id;
-            fn read(&mut self) -> io::Result<Option<ReadValue>>;
-            fn write(&mut self, bytes: &[u8]) -> io::Result<()>;
+            fn read_timeout(&mut self, duration: Duration) -> io::Result<Option<ReadValue>>;
         }
     }
 
-    fn send(&mut self, text: String) -> io::Result<()> {
-        if let Some(processed) = self.game.process_to_send(text)? {
-            self.write(processed.as_bytes())?;
-            self.write(&vec!['\n' as u8])
+    fn send(&mut self, text: &str) -> io::Result<()> {
+        if let Some(processed) = self.game.process_to_send(text.to_string())? {
+            self.conn.send(&processed)
         } else {
             Ok(())
         }

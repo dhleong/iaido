@@ -7,7 +7,7 @@ use crate::game::completion::{CompletionSource, ProcessFlags};
 
 pub struct GameCompletionsFactory;
 
-fn create_sent_source() -> MultiplexCompletionSource<Box<dyn SimpleCompletionSource>> {
+fn create_sent_source() -> MultiplexCompletionSource<Box<dyn SimpleCompletionSource + Send>> {
     MultiplexCompletionSource {
         sources: vec![
             Box::new(MarkovCompletionSource::default()),
@@ -30,7 +30,7 @@ fn create_sent_source() -> MultiplexCompletionSource<Box<dyn SimpleCompletionSou
 }
 
 impl GameCompletionsFactory {
-    pub fn create() -> MultiplexCompletionSource<Box<dyn CompletionSource>> {
+    pub fn create() -> MultiplexCompletionSource<Box<dyn CompletionSource + Send>> {
         let sent_source =
             FlaggedCompletionSource::accepting_flags(create_sent_source(), ProcessFlags::SENT);
 

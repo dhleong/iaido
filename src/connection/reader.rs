@@ -28,18 +28,14 @@ impl Drop for StopSignal {
     }
 }
 
-pub struct TransportReader {
+pub struct TransportReader<T: Transport> {
     ctx: JobContext,
     buffer_id: Id,
-    transport: Arc<Mutex<Box<dyn Transport + Send>>>,
+    transport: Arc<Mutex<T>>,
 }
 
-impl TransportReader {
-    pub fn spawn(
-        ctx: JobContext,
-        buffer_id: Id,
-        transport: Arc<Mutex<Box<dyn Transport + Send>>>,
-    ) -> StopSignal {
+impl<T: Transport + Send + 'static> TransportReader<T> {
+    pub fn spawn(ctx: JobContext, buffer_id: Id, transport: Arc<Mutex<T>>) -> StopSignal {
         let (tx, rx) = oneshot::channel();
 
         tokio::task::spawn_blocking(move || {

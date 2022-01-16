@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::{
-    connection::{Connection, ReadValue},
+    connection::ReadValue,
     editing::{source::BufferSource, window::WindowFlags},
 };
 use crate::{

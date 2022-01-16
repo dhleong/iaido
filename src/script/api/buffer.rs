@@ -82,7 +82,7 @@ impl BufferApiObject {
 fn create_user_processor(
     scripting: Arc<Mutex<ScriptingManager>>,
     f: ScriptingFnRef,
-) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>> {
+) -> Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>> + Send> {
     Box::new(move |groups| match scripting.try_lock() {
         Ok(scripting) => match scripting.invoke(f, groups.into())? {
             FnArgs::None => Ok(None),

@@ -1,4 +1,3 @@
-use delegate::delegate;
 use std::{io, time::Duration};
 
 use crate::game::engine::GameEngine;
@@ -26,9 +25,11 @@ impl From<Box<dyn Transport + Send>> for GameConnection {
 }
 
 impl Transport for GameConnection {
-    delegate! {
-        to (self.conn) {
-            fn read_timeout(&mut self, duration: Duration) -> io::Result<Option<ReadValue>>;
+    fn read_timeout(&mut self, duration: Duration) -> io::Result<Option<ReadValue>> {
+        if let Some(value) = self.conn.read_timeout(duration)? {
+            Ok(self.game.process_received(value))
+        } else {
+            Ok(None)
         }
     }
 

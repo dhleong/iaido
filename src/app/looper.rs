@@ -5,7 +5,6 @@ use std::{sync::Mutex, time::Duration};
 use crate::{
     app::{self, App},
     cli::{self, CliInit},
-    editing::text::TextLines,
     input::{
         commands::{connection::connect, CommandHandlerContext},
         maps::KeyResult,
@@ -21,7 +20,7 @@ use crate::{
     script::ScriptingManager,
 };
 
-use super::{dispatcher::Dispatcher, jobs::Jobs};
+use super::dispatcher::Dispatcher;
 
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
@@ -37,9 +36,6 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
 
         // New main loop processor:
         dirty |= Dispatcher::process(&mut self.app.state)?;
-
-        // process messages from jobs
-        dirty |= Jobs::process(&mut self.app.state)?;
 
         if let Some(ref mut keymap) = keymap {
             // ... and from scripts
@@ -195,8 +191,5 @@ where
     U: UI,
     UE: UiEvents,
 {
-    let error = format!("ERR: {:?}", e);
-    for line in error.split("\n") {
-        app_keys.state_mut().echom(TextLines::raw(line.to_string()));
-    }
+    app_keys.state_mut().echom_error(e);
 }

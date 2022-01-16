@@ -12,8 +12,6 @@ use crate::{
 
 use super::dispatcher::{DispatchRecord, DispatchSender};
 
-const MAX_TASKS_PER_TICK: u16 = 10;
-
 #[derive(Debug)]
 pub enum JobError {
     IO(io::Error),
@@ -39,11 +37,6 @@ impl From<JobError> for KeyError {
 }
 
 pub type JobResult<T = ()> = Result<T, JobError>;
-
-pub enum MainThreadAction {
-    JobComplete(Id),
-    Err(Id),
-}
 
 #[derive(Clone)]
 pub struct JobContext {
@@ -104,53 +97,16 @@ impl JobRecord {
 pub struct Jobs {
     ids: Ids,
     dispatcher: DispatchSender,
-    to_main: mpsc::Sender<MainThreadAction>,
-    from_job: mpsc::Receiver<MainThreadAction>,
     jobs: HashMap<Id, JobRecord>,
 }
 
 impl Jobs {
     pub fn new(dispatcher: DispatchSender) -> Self {
-        let (tx, rx) = mpsc::channel::<MainThreadAction>();
         Self {
             ids: Ids::new(),
             dispatcher,
-            to_main: tx,
-            from_job: rx,
             jobs: HashMap::new(),
         }
-    }
-
-    /// Process messages from Jobs meant to be handled on the main thread.
-    /// This should probably be called in looper.
-    pub fn process(state: &mut app::State) -> JobResult<bool> {
-        let mut dirty = false;
-        for _ in 0..MAX_TASKS_PER_TICK {
-            match state.jobs.next_action()? {
-                None => return Ok(dirty),
-
-                Some(MainThreadAction::JobComplete(id)) => {
-                    state.jobs.jobs.remove(&id);
-                }
-                Some(MainThreadAction::Err(id)) => {
-                    match state.jobs.jobs.get_mut(&id) {
-                        Some(job) => {
-                            match job.await_channel.recv() {
-                                Err(_) => {} // already handled
-                                Ok(None) => panic!("Expected an error from job, but got success"),
-                                Ok(Some(e)) => return Err(e.into()),
-                            };
-                        }
-
-                        _ => {} // job 404; ignore (already handled)
-                    };
-                }
-            };
-
-            dirty = true;
-        }
-
-        Ok(dirty)
     }
 
     pub fn cancel_all(&mut self) {
@@ -168,7 +124,6 @@ impl Jobs {
         F: Future<Output = JobResult> + Send + 'static,
     {
         let id = self.ids.next();
-        let to_main = self.to_main.clone();
         let context = JobContext {
             dispatcher: self.dispatcher.clone(),
         };
@@ -176,17 +131,23 @@ impl Jobs {
         let (to_job, await_channel) = mpsc::channel();
 
         let handle = tokio::spawn(async move {
+            let result_context = context.clone();
             match task(context).await {
                 Err(e) => {
-                    let _ = to_main.send(MainThreadAction::Err(id));
-                    let _ = to_job.send(Some(e));
+                    to_job.send(Some(e)).ok();
+                    result_context.run(move |state| {
+                        Jobs::process_err(state, id);
+                    });
                 }
                 _ => {
                     // success!
-                    let _ = to_job.send(None);
+                    to_job.send(None).ok();
                 }
             };
-            let _ = to_main.send(MainThreadAction::JobComplete(id));
+
+            result_context.run(move |state| {
+                state.jobs.jobs.remove(&id);
+            });
         });
         JobRecord {
             id,
@@ -209,11 +170,17 @@ impl Jobs {
         return id;
     }
 
-    fn next_action(&mut self) -> io::Result<Option<MainThreadAction>> {
-        match self.from_job.try_recv() {
-            Ok(action) => Ok(Some(action)),
-            Err(mpsc::TryRecvError::Empty) => Ok(None),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+    fn process_err(state: &mut app::State, id: Id) {
+        match state.jobs.jobs.get_mut(&id) {
+            Some(job) => {
+                match job.await_channel.recv() {
+                    Err(_) => {} // already handled
+                    Ok(None) => panic!("Expected an error from job, but got success"),
+                    Ok(Some(e)) => state.echom_error(e.into()),
+                }
+            }
+
+            _ => {} // job 404; ignore (already handled)
         }
     }
 }

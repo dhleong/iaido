@@ -150,7 +150,7 @@ impl Connections {
         buffer_id: Id,
         connection: Arc<Mutex<GameConnection>>,
     ) -> ConnectionRecord {
-        let stop_read_signal = TransportReader::spawn(ctx, buffer_id, connection.clone());
+        let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
 
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         let writable = connection.clone();
@@ -172,10 +172,16 @@ impl Connections {
     /// Returns the associated buffer ID
     pub fn disconnect(&mut self, connection_id: Id) -> io::Result<Id> {
         if self.by_id.remove(&connection_id).is_some() {
-            return Ok(self
+            let buffer = self
                 .connection_to_buffer
                 .remove(&connection_id)
-                .expect("No buffer associated with connection"));
+                .expect("No buffer associated with connection");
+
+            // Clean up all buffer->conn mappings
+            self.buffer_to_connection
+                .retain(|_buf_id, conn_id| *conn_id != connection_id);
+
+            return Ok(buffer);
         }
 
         Err(io::Error::new(

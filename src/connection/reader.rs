@@ -35,7 +35,7 @@ pub struct TransportReader<T: Transport> {
 }
 
 impl<T: Transport + Send + 'static> TransportReader<T> {
-    pub fn spawn(ctx: JobContext, buffer_id: Id, transport: Arc<Mutex<T>>) -> StopSignal {
+    pub fn spawn(ctx: JobContext, id: Id, buffer_id: Id, transport: Arc<Mutex<T>>) -> StopSignal {
         let (tx, rx) = oneshot::channel();
 
         tokio::task::spawn_blocking(move || {
@@ -45,6 +45,13 @@ impl<T: Transport + Send + 'static> TransportReader<T> {
                 transport,
             };
             reader.loop_until(rx);
+            reader
+                .ctx
+                .spawn(move |ctx| {
+                    ctx.connections.as_mut().unwrap().disconnect(id).ok();
+                })
+                .join()
+                .ok();
         });
 
         StopSignal { tx: Some(tx) }

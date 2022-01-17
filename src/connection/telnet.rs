@@ -73,7 +73,8 @@ impl Transport for TelnetConnection {
     }
 
     fn send(&mut self, text: &str) -> io::Result<()> {
-        self.write(text.as_bytes())
+        self.write(text.as_bytes())?;
+        self.write(b"\r\n")
     }
 }
 

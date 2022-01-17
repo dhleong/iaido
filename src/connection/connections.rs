@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    io,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, io, sync::Mutex};
 
 use tokio::sync::mpsc;
 use url::Url;
@@ -25,7 +21,7 @@ pub struct ConnectionRecord {
     #[allow(unused)]
     stop_read_signal: StopSignal,
     outgoing: mpsc::UnboundedSender<String>,
-    connection: Arc<Mutex<GameConnection>>,
+    connection: GameConnection,
 }
 
 impl ConnectionRecord {
@@ -37,13 +33,13 @@ impl ConnectionRecord {
     }
 
     pub fn with_engine<R, F: FnOnce(&GameEngine) -> R>(&self, f: F) -> R {
-        let conn = self.connection.lock().unwrap();
-        f(&conn.game)
+        let game = self.connection.game.lock().unwrap();
+        f(&game)
     }
 
     pub fn with_engine_mut<R, F: FnOnce(&mut GameEngine) -> R>(&mut self, f: F) -> R {
-        let mut conn = self.connection.lock().unwrap();
-        f(&mut conn.game)
+        let mut game = self.connection.game.lock().unwrap();
+        f(&mut game)
     }
 }
 
@@ -148,16 +144,15 @@ impl Connections {
         id: Id,
         ctx: JobContext,
         buffer_id: Id,
-        connection: Arc<Mutex<GameConnection>>,
+        connection: GameConnection,
     ) -> ConnectionRecord {
         let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
 
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        let writable = connection.clone();
+        let mut writable = connection.clone();
         tokio::spawn(async move {
             while let Some(to_send) = rx.recv().await {
-                let mut conn = writable.lock().unwrap();
-                conn.send(&to_send); // TODO send result... somewhere
+                writable.send(&to_send); // TODO send result... somewhere
             }
         });
 
@@ -217,8 +212,7 @@ impl Connections {
 
         let transport = GameConnection::with_engine(transport, engine);
 
-        let record =
-            Connections::launch(id, ctx.clone(), buffer_id, Arc::new(Mutex::new(transport)));
+        let record = Connections::launch(id, ctx.clone(), buffer_id, transport);
 
         self.add_record(id, buffer_id, input_buffer_id, record);
     }

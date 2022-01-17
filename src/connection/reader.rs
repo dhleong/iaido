@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::time::Duration;
 
 use tokio::sync::oneshot::{self, error::TryRecvError, Sender};
 
@@ -31,11 +28,11 @@ impl Drop for StopSignal {
 pub struct TransportReader<T: Transport> {
     ctx: JobContext,
     buffer_id: Id,
-    transport: Arc<Mutex<T>>,
+    transport: T,
 }
 
 impl<T: Transport + Send + 'static> TransportReader<T> {
-    pub fn spawn(ctx: JobContext, id: Id, buffer_id: Id, transport: Arc<Mutex<T>>) -> StopSignal {
+    pub fn spawn(ctx: JobContext, id: Id, buffer_id: Id, transport: T) -> StopSignal {
         let (tx, rx) = oneshot::channel();
 
         tokio::task::spawn_blocking(move || {
@@ -71,8 +68,7 @@ impl<T: Transport + Send + 'static> TransportReader<T> {
     }
 
     fn read_once(&mut self) -> bool {
-        let mut conn = self.transport.lock().unwrap();
-        let read = conn.read_timeout(Duration::from_millis(250));
+        let read = self.transport.read_timeout(Duration::from_millis(250));
         let result = match read {
             Ok(None) => {
                 // Nothing read

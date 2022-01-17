@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{thread::yield_now, time::Duration};
 
 use tokio::sync::oneshot::{self, error::TryRecvError, Sender};
 
@@ -64,6 +64,8 @@ impl<T: Transport + Send + 'static> TransportReader<T> {
             if !self.read_once() {
                 break;
             }
+
+            yield_now();
         }
     }
 

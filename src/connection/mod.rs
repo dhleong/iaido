@@ -12,7 +12,7 @@ pub mod game;
 mod reader;
 mod telnet;
 mod tls;
-mod transport;
+pub mod transport;
 
 #[derive(Debug, PartialEq)]
 pub enum ReadValue {

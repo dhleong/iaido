@@ -95,23 +95,25 @@ mod tests {
 
     #[cfg(test)]
     mod check_hide_buffer {
+        use std::time::Duration;
+
+        use crate::connection::transport::Transport;
+        use crate::editing::motion::tests::TestKeyHandlerContext;
         use crate::editing::FocusDirection;
-        use crate::{connection::Connection, editing::motion::tests::TestKeyHandlerContext};
 
         use super::*;
 
-        struct TestConnection;
+        struct TestTransport;
 
-        impl Connection for TestConnection {
-            fn id(&self) -> Id {
-                0
-            }
-
-            fn read(&mut self) -> std::io::Result<Option<crate::connection::ReadValue>> {
+        impl Transport for TestTransport {
+            fn read_timeout(
+                &mut self,
+                _timeout: Duration,
+            ) -> std::io::Result<Option<crate::connection::ReadValue>> {
                 Ok(None)
             }
 
-            fn write(&mut self, _bytes: &[u8]) -> std::io::Result<()> {
+            fn send(&mut self, _text: &str) -> std::io::Result<()> {
                 Ok(())
             }
         }
@@ -133,7 +135,7 @@ mod tests {
                 .connections
                 .as_mut()
                 .unwrap()
-                .add_for_test(buf_id, Box::new(TestConnection));
+                .add_for_test(buf_id, Box::new(TestTransport));
 
             // we should not be able to hide a single, connected window
             let connected = check_hide_buffer(&mut ctx, HideBufArgs { force: false });

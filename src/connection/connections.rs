@@ -13,7 +13,7 @@ use super::{
     game::GameConnection,
     reader::{StopSignal, TransportReader},
     transport::Transport,
-    Connection, ConnectionFactories,
+    ConnectionFactories,
 };
 
 pub struct ConnectionRecord {
@@ -229,7 +229,21 @@ impl Connections {
     }
 
     #[cfg(test)]
-    pub fn add_for_test(&mut self, _buffer_id: Id, _connection: Box<dyn Connection>) {
-        // TODO
+    pub fn add_for_test(&mut self, buffer_id: Id, transport: Box<dyn Transport + Send>) {
+        let (stop_read_signal, _) = StopSignal::new();
+        let (outgoing, _) = mpsc::unbounded_channel();
+        let (_, outgoing_results) = std::sync::mpsc::channel();
+        self.add_record(
+            0,
+            buffer_id,
+            0,
+            ConnectionRecord {
+                id: 0,
+                stop_read_signal,
+                outgoing,
+                outgoing_results,
+                connection: GameConnection::with_engine(transport, Default::default()),
+            },
+        );
     }
 }

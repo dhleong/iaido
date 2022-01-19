@@ -11,6 +11,11 @@ pub struct StopSignal {
 }
 
 impl StopSignal {
+    pub fn new() -> (Self, oneshot::Receiver<()>) {
+        let (tx, rx) = oneshot::channel();
+        (StopSignal { tx: Some(tx) }, rx)
+    }
+
     pub fn stop(&mut self) {
         if let Some(tx) = self.tx.take() {
             // If it failed, then we probably already stopped reading
@@ -33,7 +38,7 @@ pub struct TransportReader<T: Transport> {
 
 impl<T: Transport + Send + 'static> TransportReader<T> {
     pub fn spawn(ctx: JobContext, id: Id, buffer_id: Id, transport: T) -> StopSignal {
-        let (tx, rx) = oneshot::channel();
+        let (signal, rx) = StopSignal::new();
 
         tokio::task::spawn_blocking(move || {
             let mut reader = TransportReader {
@@ -51,7 +56,7 @@ impl<T: Transport + Send + 'static> TransportReader<T> {
                 .ok();
         });
 
-        StopSignal { tx: Some(tx) }
+        signal
     }
 
     pub fn loop_until(&mut self, mut signal: oneshot::Receiver<()>) {

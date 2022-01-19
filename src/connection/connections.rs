@@ -21,13 +21,14 @@ pub struct ConnectionRecord {
     #[allow(unused)]
     stop_read_signal: StopSignal,
     outgoing: mpsc::UnboundedSender<String>,
+    outgoing_results: std::sync::mpsc::Receiver<io::Result<()>>,
     connection: GameConnection,
 }
 
 impl ConnectionRecord {
     pub fn send(&mut self, message: String) -> io::Result<()> {
         match self.outgoing.send(message) {
-            Ok(_) => Ok(()),
+            Ok(_) => self.outgoing_results.recv().unwrap_or(Ok(())),
             Err(_) => Err(io::ErrorKind::NotConnected.into()),
         }
     }
@@ -149,10 +150,12 @@ impl Connections {
         let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
 
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
         let mut writable = connection.clone();
         tokio::spawn(async move {
             while let Some(to_send) = rx.recv().await {
-                writable.send(&to_send); // TODO send result... somewhere
+                let result = writable.send(&to_send);
+                result_tx.send(result).ok();
             }
         });
 
@@ -160,6 +163,7 @@ impl Connections {
             id,
             stop_read_signal,
             outgoing: tx,
+            outgoing_results: result_rx,
             connection,
         }
     }

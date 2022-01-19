@@ -13,7 +13,7 @@ use super::{
     game::GameConnection,
     reader::{StopSignal, TransportReader},
     transport::Transport,
-    ConnectionFactories,
+    TransportFactories,
 };
 
 pub struct ConnectionRecord {
@@ -55,7 +55,7 @@ pub struct Connections {
     // be associated with ONLY ONE Buffer above (IE: the buffer it
     // writes to)
     buffer_to_connection: HashMap<Id, Id>,
-    factories: ConnectionFactories,
+    factories: TransportFactories,
 
     buffer_engines: HashMap<Id, GameEngine>,
 }
@@ -124,7 +124,7 @@ impl Connections {
         let factory = self.factories.clone();
 
         jobs.start(move |ctx| async move {
-            let connection = Mutex::new(factory.create(id, uri)?);
+            let connection = Mutex::new(factory.create(uri)?);
             let transport_context = Mutex::new(ctx.clone());
 
             ctx.run(move |state| {

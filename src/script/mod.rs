@@ -20,9 +20,8 @@ use crate::{
     editing::Id,
     input::{commands::CommandHandlerContext, BoxableKeymap, KeymapContext},
 };
-pub use api::ApiManagerRpc;
 
-use self::{api::ApiManagerDelegate, args::FnArgs, fns::ScriptingFnRef};
+use self::{api::ApiDelegate, args::FnArgs, fns::ScriptingFnRef};
 
 pub trait ScriptingRuntime {
     fn load(&mut self, path: &Path) -> JobResult;
@@ -32,7 +31,7 @@ pub trait ScriptingRuntime {
 pub trait ScriptingRuntimeFactory {
     fn handles_file(&self, path: &Path) -> bool;
 
-    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send>;
+    fn create(&self, id: Id, app: ApiDelegate) -> Box<dyn ScriptingRuntime + Send>;
 }
 
 pub struct ScriptingManager {
@@ -85,7 +84,7 @@ impl ScriptingManager {
         scripts: Vec<PathBuf>,
     ) {
         let scripting = context.state().scripting.clone();
-        let delegate = context.state().api.as_ref().unwrap().delegate();
+        let delegate = ApiDelegate::from(context.state());
         let jobs = &mut context.state_mut().jobs;
 
         let result = jobs
@@ -107,7 +106,7 @@ impl ScriptingManager {
         }
     }
 
-    pub fn load(&self, api: ApiManagerDelegate, path: &Path) -> JobResult<Id> {
+    pub fn load(&self, api: ApiDelegate, path: &Path) -> JobResult<Id> {
         if !path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, path.to_string_lossy()).into());
         }
@@ -156,25 +155,6 @@ impl ScriptingManager {
         } else {
             // maybe panic?
             Err(JobError::Script("No such runtime".to_string()))
-        }
-    }
-
-    pub fn process(context: &mut CommandHandlerContext) -> io::Result<bool> {
-        if let Some(mut api) = context.state_mut().api.take() {
-            let dirty = api.process(context)?;
-            context.state_mut().api = Some(api);
-            Ok(dirty)
-        } else {
-            // FIXME: I'm not 100% we shouldn't keep the panic!(), but in order
-            // to block on jobs (eg: connect()) from within a script, we
-            // have to be able to skip processing other script events....
-            // Alternatively, perhaps we can adjust how we handle this, so
-            // instead of removing the entire API we can just remove the
-            // receiver, but more granularly—only when receiving, then return
-            // before processing? That might properly allow for re-entrant
-            // script handling...
-            // panic!("Re-entrant script API access");
-            Ok(false)
         }
     }
 

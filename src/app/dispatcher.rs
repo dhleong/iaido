@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::app;
-use crate::input::{maps::KeyResult, Key, KeyError, KeySource};
+use crate::input::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
+use crate::{app, input::commands::CommandHandlerContext};
 
 const MAX_PER_FRAME_DURATION: Duration = Duration::from_millis(50);
 
@@ -47,16 +47,16 @@ impl<R> DispatchRecord<R> {
     }
 }
 
-struct PendingDispatch<R: Send, F: FnOnce(&mut app::State) -> R + Send> {
+struct PendingDispatch<R: Send, F: FnOnce(&mut CommandHandlerContext) -> R + Send> {
     f: Option<F>,
     to_caller: Sender<R>,
 }
 
-impl<R: Send, F: FnOnce(&mut app::State) -> R + Send> PendingDispatch<R, F> {
+impl<R: Send, F: FnOnce(&mut CommandHandlerContext) -> R + Send> PendingDispatch<R, F> {
     #[allow(unused)]
-    pub fn execute(&mut self, state: &mut app::State) {
+    pub fn execute(&mut self, ctx: &mut CommandHandlerContext) {
         if let Some(f) = self.f.take() {
-            let result = f(state);
+            let result = f(ctx);
 
             // NOTE: A SendError means that the receiver has been deallocated,
             // so we can just ignore it:
@@ -65,7 +65,7 @@ impl<R: Send, F: FnOnce(&mut app::State) -> R + Send> PendingDispatch<R, F> {
     }
 }
 
-type BoxedPendingDispatch = Box<dyn FnMut(&mut app::State) + Send>;
+type BoxedPendingDispatch = Box<dyn FnMut(&mut CommandHandlerContext) + Send>;
 
 /// Provides access to the main thread. The sender side may be trivially
 /// cloned
@@ -88,12 +88,12 @@ impl Default for Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn process(state: &mut app::State) -> io::Result<bool> {
+    pub fn process(ctx: &mut CommandHandlerContext) -> io::Result<bool> {
         let mut any_tasks = false;
         let start = Instant::now();
         loop {
-            if let Some(mut action) = state.dispatcher.next_action()? {
-                action(state);
+            if let Some(mut action) = ctx.state_mut().dispatcher.next_action()? {
+                action(ctx);
                 any_tasks = true;
             } else {
                 break;
@@ -114,14 +114,6 @@ impl Dispatcher {
             Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
         }
     }
-
-    pub fn spawn<R, F>(&self, f: F) -> DispatchRecord<R>
-    where
-        R: Send + 'static,
-        F: FnOnce(&mut app::State) -> R + Send + 'static,
-    {
-        self.sender.spawn(f)
-    }
 }
 
 impl DispatchSender {
@@ -130,13 +122,21 @@ impl DispatchSender {
         R: Send + 'static,
         F: FnOnce(&mut app::State) -> R + Send + 'static,
     {
+        self.spawn_command(move |ctx| f(ctx.state_mut()))
+    }
+
+    pub fn spawn_command<R, F>(&self, f: F) -> DispatchRecord<R>
+    where
+        R: Send + 'static,
+        F: FnOnce(&mut CommandHandlerContext) -> R + Send + 'static,
+    {
         let (tx, rx) = mpsc::channel();
         let mut pending = PendingDispatch {
             f: Some(f),
             to_caller: tx,
         };
 
-        let b: BoxedPendingDispatch = Box::new(move |state| pending.execute(state));
+        let b: BoxedPendingDispatch = Box::new(move |ctx| pending.execute(ctx));
 
         self.to_main.send(b).unwrap();
 

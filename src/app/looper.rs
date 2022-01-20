@@ -32,20 +32,13 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
         &mut self,
         keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<bool, KeyError> {
-        let mut dirty = false;
-
-        // New main loop processor:
-        dirty |= Dispatcher::process(&mut self.app.state)?;
-
         if let Some(ref mut keymap) = keymap {
-            // ... and from scripts
             let mut context = CommandHandlerContext::new_blank(self, keymap);
-            dirty |= ScriptingManager::process(&mut context)?;
+            // New main loop processor:
+            Ok(Dispatcher::process(&mut context)?)
         } else {
             panic!("No keymap provided");
         }
-
-        Ok(dirty)
     }
 }
 

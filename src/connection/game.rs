@@ -25,21 +25,24 @@ impl GameConnection {
 
 impl Transport for GameConnection {
     fn read_timeout(&mut self, duration: Duration) -> io::Result<Option<ReadValue>> {
-        if let Some(value) = self.conn.lock().unwrap().read_timeout(duration)? {
-            let mut game = self.game.lock().unwrap();
-            Ok(game.process_received(value))
+        // NOTE: The explicit scoping here and in send() are to ensure this
+        // lock gets released before we attempt to access the next lock
+        let read = { self.conn.lock().unwrap().read_timeout(duration) };
+        if let Some(value) = read? {
+            Ok(self.game.lock().unwrap().process_received(value))
         } else {
             Ok(None)
         }
     }
 
     fn send(&mut self, text: &str) -> io::Result<()> {
-        if let Some(processed) = self
-            .game
-            .lock()
-            .unwrap()
-            .process_to_send(text.to_string())?
-        {
+        let processed = {
+            self.game
+                .lock()
+                .unwrap()
+                .process_to_send(text.to_string())?
+        };
+        if let Some(processed) = processed {
             self.conn.lock().unwrap().send(&processed)
         } else {
             Ok(())

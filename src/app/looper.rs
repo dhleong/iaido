@@ -32,13 +32,9 @@ impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
         &mut self,
         keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<bool, KeyError> {
-        if let Some(ref mut keymap) = keymap {
-            let mut context = CommandHandlerContext::new_blank(self, keymap);
-            // New main loop processor:
-            Ok(Dispatcher::process(&mut context)?)
-        } else {
-            panic!("No keymap provided");
-        }
+        let keymap = keymap.as_mut().expect("No keymap provided");
+        let mut context = CommandHandlerContext::new_blank(self, keymap);
+        Ok(Dispatcher::process(&mut context)?)
     }
 }
 

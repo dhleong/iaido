@@ -59,34 +59,29 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         &mut self,
         mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<Option<Key>, KeyError> {
-        let mut dirty = true;
         loop {
-            loop {
-                if dirty {
-                    self.app.render();
-                }
+            self.app.render();
 
-                dirty = self.process_async(&mut keymap)?;
+            let keymap = keymap.as_mut().expect("No keymap provided");
+            let mut context = CommandHandlerContext::new_blank(self, keymap);
+            if !Dispatcher::process_one(&mut context) {
+                return Ok(None);
+            }
 
-                // Finally, check for input:
-                match self.events.poll_event(Duration::from_millis(100))? {
-                    Some(_) => break,
-                    None => {}
-                }
+            match self.events.poll_event(Duration::from_millis(0)) {
+                Err(_) => return Ok(None),
+                Ok(None) => continue,
+                _ => {} // Fall through to consume a pending event
             }
 
             match self.events.next_event()? {
                 UiEvent::Key(key) => {
                     // If dirty, render one more time before returning the key
-                    if dirty {
-                        self.app.render();
-                    }
+                    self.app.render();
                     return Ok(Some(key));
                 }
                 _ => {}
             }
-
-            dirty = true;
         }
     }
 }

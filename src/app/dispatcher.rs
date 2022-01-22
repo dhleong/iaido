@@ -106,6 +106,16 @@ impl Dispatcher {
         Ok(any_tasks)
     }
 
+    pub fn process_one(ctx: &mut CommandHandlerContext) -> bool {
+        match ctx.state_mut().dispatcher.rx.recv() {
+            Ok(mut action) => {
+                action(ctx);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
     fn next_action(&mut self) -> io::Result<Option<BoxedPendingDispatch>> {
         // TODO Probably, do a hard recv or recv with a long timeout
         match self.rx.try_recv() {

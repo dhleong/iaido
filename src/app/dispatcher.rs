@@ -7,7 +7,7 @@ use std::{
 use crate::input::{maps::KeyResult, Key, KeyError, KeySource, KeymapContext};
 use crate::{app, input::commands::CommandHandlerContext};
 
-const MAX_PER_FRAME_DURATION: Duration = Duration::from_millis(50);
+const MAX_PER_FRAME_DURATION: Duration = Duration::from_millis(11);
 
 #[must_use = "Use background to ignore the launch and any result"]
 pub struct DispatchRecord<R> {
@@ -88,13 +88,15 @@ impl Default for Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn process(ctx: &mut CommandHandlerContext) -> io::Result<bool> {
-        let mut any_tasks = false;
+    /// Process any pending events (IE: does not block waiting for events), stopping early if
+    /// MAX_PER_FRAME_DURATION has elapsed
+    pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
+        let mut tasks_processed = 0;
         let start = Instant::now();
         loop {
             if let Some(mut action) = ctx.state_mut().dispatcher.next_action()? {
                 action(ctx);
-                any_tasks = true;
+                tasks_processed += 1;
             } else {
                 break;
             }
@@ -103,25 +105,30 @@ impl Dispatcher {
                 break;
             }
         }
-        Ok(any_tasks)
+        Ok(tasks_processed)
     }
 
-    pub fn process_one(ctx: &mut CommandHandlerContext) -> bool {
+    /// Process a "chunk" of events; waits until *some* event is received, then continues to
+    /// process any events that come in within the subsequent "frame" duration
+    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
         match ctx.state_mut().dispatcher.rx.recv() {
             Ok(mut action) => {
                 action(ctx);
-                true
+
+                // If we processed *any*, continue processing any pending
+                let pending_processed = Dispatcher::process_pending(ctx)?;
+
+                Ok(1 + pending_processed)
             }
-            Err(_) => false,
+            Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
         }
     }
 
     fn next_action(&mut self) -> io::Result<Option<BoxedPendingDispatch>> {
-        // TODO Probably, do a hard recv or recv with a long timeout
         match self.rx.try_recv() {
             Ok(action) => Ok(Some(action)),
             Err(mpsc::TryRecvError::Empty) => Ok(None),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+            Err(e) => Err(io::Error::new(io::ErrorKind::UnexpectedEof, e)),
         }
     }
 }

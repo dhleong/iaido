@@ -27,24 +27,16 @@ struct AppKeySource<U: UI, UE: UiEvents> {
     events: UE,
 }
 
-impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
-    fn process_async(
-        &mut self,
-        keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
-    ) -> Result<bool, KeyError> {
-        let keymap = keymap.as_mut().expect("No keymap provided");
-        let mut context = CommandHandlerContext::new_blank(self, keymap);
-        Ok(Dispatcher::process(&mut context)?)
-    }
-}
-
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
     fn poll_key_with_map(
         &mut self,
         duration: Duration,
         mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<bool, KeyError> {
-        if self.process_async(&mut keymap)? {
+        let keymap = keymap.as_mut().expect("No keymap provided");
+        let mut context = CommandHandlerContext::new_blank(self, keymap);
+        let processed_events = Dispatcher::process_pending(&mut context)?;
+        if processed_events > 0 {
             self.app.render();
         }
 
@@ -62,22 +54,30 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         loop {
             self.app.render();
 
+            // NOTE: The Dispatcher will be notified when a key is pressed,
+            // so this is effectively a sleep until there *might* be a
+            // pending key
             let keymap = keymap.as_mut().expect("No keymap provided");
             let mut context = CommandHandlerContext::new_blank(self, keymap);
-            if !Dispatcher::process_one(&mut context) {
-                return Ok(None);
-            }
+            let processed_events = Dispatcher::process_chunk(&mut context)?;
 
+            // Check if there's a pending key
             match self.events.poll_event(Duration::from_millis(0)) {
                 Err(_) => return Ok(None),
-                Ok(None) => continue,
-                _ => {} // Fall through to consume a pending event
+                Ok(None) => continue, // No pending key; go back to sleep
+                _ => {}               // Pending key! Fall through to consume
             }
+
+            // If there was just one event and there's a pending key, that
+            // event was just from the key---nothing else happened
+            let dirty = processed_events > 1;
 
             match self.events.next_event()? {
                 UiEvent::Key(key) => {
                     // If dirty, render one more time before returning the key
-                    self.app.render();
+                    if dirty {
+                        self.app.render();
+                    }
                     return Ok(Some(key));
                 }
                 _ => {}

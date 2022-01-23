@@ -67,8 +67,7 @@ impl<R: Send, F: FnOnce(&mut CommandHandlerContext) -> R + Send> PendingDispatch
 
 type BoxedPendingDispatch = Box<dyn FnMut(&mut CommandHandlerContext) + Send>;
 
-/// Provides access to the main thread. The sender side may be trivially
-/// cloned
+/// Provides access to the main thread. The sender side may be trivially cloned
 pub struct Dispatcher {
     pub sender: DispatchSender,
     rx: Receiver<BoxedPendingDispatch>,

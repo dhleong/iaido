@@ -56,8 +56,8 @@ impl From<crossterm::event::KeyEvent> for Key {
 
 pub struct TuiEvents {
     running: Arc<Mutex<bool>>,
-    events: Receiver<UiEvent>,
-    pending_events: VecDeque<UiEvent>,
+    events: Receiver<io::Result<UiEvent>>,
+    pending_events: VecDeque<io::Result<UiEvent>>,
 }
 
 impl TuiEvents {
@@ -69,18 +69,22 @@ impl TuiEvents {
         tokio::runtime::Handle::current().spawn_blocking(move || {
             while *running_ref.lock().unwrap() {
                 let event = match crossterm::event::read() {
-                    Ok(Event::Resize(_, _)) => UiEvent::Redraw,
-                    Ok(Event::Key(key)) => UiEvent::Key(key.into()),
-                    Ok(Event::Mouse(_)) => UiEvent::Redraw,
-                    // TODO dispatch error?
-                    _ => break,
+                    Ok(Event::Resize(_, _)) => Ok(UiEvent::Redraw),
+                    Ok(Event::Key(key)) => Ok(UiEvent::Key(key.into())),
+                    Ok(Event::Mouse(_)) => Ok(UiEvent::Redraw),
+                    Err(err) => Err(err),
                 };
 
+                let is_err = event.is_err();
                 tx.send(event).ok();
 
                 // Dispatch a nop to the main thread to ensure we stop
                 // waiting and check for events
                 dispatcher.spawn(|_| ()).background();
+
+                if is_err {
+                    break;
+                }
             }
         });
 
@@ -103,13 +107,14 @@ impl Drop for TuiEvents {
 impl UiEvents for TuiEvents {
     fn poll_event(&mut self, timeout: Duration) -> io::Result<Option<UiEvent>> {
         if let Some(pending) = self.pending_events.front() {
-            return Ok(Some(pending.clone()));
+            return clone_io_error(pending);
         }
 
         match self.events.recv_timeout(timeout) {
             Ok(received) => {
+                let clone = clone_io_error(&received);
                 self.pending_events.push_front(received);
-                Ok(Some(received))
+                clone
             }
             _ => Ok(None),
         }
@@ -117,9 +122,24 @@ impl UiEvents for TuiEvents {
 
     fn next_event(&mut self) -> io::Result<UiEvent> {
         if let Some(pending) = self.pending_events.pop_front() {
-            return Ok(pending);
+            return pending;
         }
 
-        Ok(self.events.recv().unwrap())
+        self.events.recv().unwrap()
+    }
+}
+
+fn clone_io_error(result: &io::Result<UiEvent>) -> io::Result<Option<UiEvent>> {
+    match result {
+        Ok(ev) => Ok(Some(ev.clone())),
+        Err(e) => {
+            if let Some(code) = e.raw_os_error() {
+                Err(io::Error::from_raw_os_error(code))
+            } else if e.get_ref().is_some() {
+                Err(io::Error::new(e.kind(), e.to_string()))
+            } else {
+                Err(e.kind().into())
+            }
+        }
     }
 }

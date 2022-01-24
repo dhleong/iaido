@@ -5,14 +5,11 @@ use std::net::TcpStream;
 use telnet::Telnet;
 use url::Url;
 
-use crate::editing::Id;
-
-use super::{ansi::AnsiPipeline, tls, Connection, ConnectionFactory, ReadValue};
+use super::{ansi::AnsiPipeline, tls, transport::Transport, ReadValue, TransportFactory};
 
 const BUFFER_SIZE: usize = 2048;
 
 pub struct TelnetConnection {
-    id: Id,
     telnet: Telnet,
     pipeline: AnsiPipeline,
 }
@@ -24,13 +21,9 @@ pub struct TelnetConnection {
 /// has try_clone so... *should be* fine.
 unsafe impl Send for TelnetConnection {}
 
-impl Connection for TelnetConnection {
-    fn id(&self) -> Id {
-        self.id
-    }
-
-    fn read(&mut self) -> io::Result<Option<ReadValue>> {
-        match self.telnet.read_nonblocking()? {
+impl TelnetConnection {
+    fn process_event(&mut self, event: telnet::Event) -> io::Result<Option<ReadValue>> {
+        match event {
             telnet::Event::Data(data) => {
                 self.pipeline.feed(&data, data.len());
             }
@@ -46,9 +39,21 @@ impl Connection for TelnetConnection {
         // always attempt to pull ReadValues out of the pipeline
         return Ok(self.pipeline.next());
     }
+}
 
-    fn write(&mut self, bytes: &[u8]) -> io::Result<()> {
-        self.telnet.write(bytes)?;
+impl Transport for TelnetConnection {
+    fn read_timeout(&mut self, duration: std::time::Duration) -> io::Result<Option<ReadValue>> {
+        if let Some(pending) = self.pipeline.next() {
+            return Ok(Some(pending));
+        }
+
+        let event = self.telnet.read_timeout(duration)?;
+        self.process_event(event)
+    }
+
+    fn send(&mut self, text: &str) -> io::Result<()> {
+        self.telnet.write(text.as_bytes())?;
+        self.telnet.write(b"\r\n")?;
         Ok(())
     }
 }
@@ -67,12 +72,12 @@ fn connect(host: &str, port: u16, secure: bool, buffer_size: usize) -> io::Resul
 }
 
 pub struct TelnetConnectionFactory;
-impl ConnectionFactory for TelnetConnectionFactory {
-    fn clone_boxed(&self) -> Box<dyn ConnectionFactory> {
+impl TransportFactory for TelnetConnectionFactory {
+    fn clone_boxed(&self) -> Box<dyn TransportFactory> {
         Box::new(TelnetConnectionFactory)
     }
 
-    fn create(&self, id: Id, uri: &Url) -> Option<std::io::Result<Box<dyn Connection + Send>>> {
+    fn create(&self, uri: &Url) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
         let secure = match uri.scheme() {
             "telnet" => false,
             "ssl" => true,
@@ -82,7 +87,6 @@ impl ConnectionFactory for TelnetConnectionFactory {
         match (uri.host_str(), uri.port()) {
             (Some(host), Some(port)) => match connect(host, port, secure, BUFFER_SIZE) {
                 Ok(conn) => Some(Ok(Box::new(TelnetConnection {
-                    id,
                     telnet: conn,
                     pipeline: AnsiPipeline::new(),
                 }))),

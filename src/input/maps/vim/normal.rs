@@ -82,9 +82,12 @@ fn cmd_mode_access() -> KeyTreeNode {
 
             let mut conns = ctx.state_mut().connections.take().expect("Connections obj missing");
             let result = if let Some(conn) = conns.by_buffer_id(buffer_id) {
-                let history = &conn.game.history;
+                conn.with_engine(|engine| {
+                    let history = &engine.history;
 
-                cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(conn_buffer_id))
+                    cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(conn_buffer_id))
+                })
+
             } else {
                 Err(KeyError::IO(std::io::ErrorKind::NotConnected.into()))
             };

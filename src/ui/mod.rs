@@ -8,7 +8,6 @@ use crate::{editing::text::TextLine, input::Key};
 pub enum UiEvent {
     Redraw,
     Key(Key),
-    // UiThreadFn(Box<dyn Fn() + Send>), // ?
 }
 
 pub trait UI {

@@ -12,7 +12,7 @@ use super::{
     ProcessedText, ProcessedTextFlags, TextInput, TextProcessor,
 };
 
-type Processor = dyn Fn(Match) -> KeyResult<Option<TextLine>>;
+type Processor = dyn Fn(Match) -> KeyResult<Option<TextLine>> + Send;
 
 pub struct Alias {
     matcher: Matcher,
@@ -99,7 +99,7 @@ impl TextProcessorManager<Alias> {
     pub fn insert_fn(
         &mut self,
         pattern: String,
-        replacement: Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>>>,
+        replacement: Box<dyn Fn(HashMap<String, String>) -> KeyResult<Option<String>> + Send>,
     ) -> KeyResult {
         let alias = Alias::compile_fn(
             pattern.to_string(),

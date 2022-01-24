@@ -19,7 +19,7 @@ use crate::{
 use self::{modules::ModuleContained, util::unwrap_error};
 
 use super::{
-    api::{core::IaidoCore, ApiManagerDelegate},
+    api::{core::IaidoCore, Api},
     args::FnArgs,
     bindings::ScriptFile,
     fns::{FnManager, NativeFn, ScriptingFnRef},
@@ -46,7 +46,7 @@ fn declare_module(vm: &vm::VirtualMachine, name: &str, module: vm::pyobject::PyO
 }
 
 impl PythonScriptingRuntime {
-    fn new(id: Id, api: ApiManagerDelegate) -> Self {
+    fn new(id: Id, api: Api) -> Self {
         let mut runtime = PythonScriptingRuntime {
             fns: Arc::new(Mutex::new(FnManager::new(id))),
             vm: Default::default(),
@@ -140,7 +140,7 @@ impl ScriptingRuntime for PythonScriptingRuntime {
 
 pub struct PythonScriptingRuntimeFactory;
 impl ScriptingRuntimeFactory for PythonScriptingRuntimeFactory {
-    fn create(&self, id: Id, app: ApiManagerDelegate) -> Box<dyn ScriptingRuntime + Send> {
+    fn create(&self, id: Id, app: Api) -> Box<dyn ScriptingRuntime + Send> {
         Box::new(PythonScriptingRuntime::new(id, app))
     }
 

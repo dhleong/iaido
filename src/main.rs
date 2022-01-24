@@ -32,9 +32,10 @@ fn main_loop() -> io::Result<()> {
         demo::perform_demo(&mut app);
     }
 
+    let dispatcher = app.state.dispatcher.sender.clone();
     app_loop(
         app,
-        tui::events::TuiEvents::default(),
+        tui::events::TuiEvents::start_with_dispatcher(dispatcher),
         VimKeymap::default(),
         args,
     );

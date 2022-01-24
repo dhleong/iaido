@@ -19,17 +19,17 @@ pub trait MultiplexSelector {
 }
 
 pub trait MultiplexSelectorFactory {
-    fn create(&self, context: CompletionContext) -> Box<dyn MultiplexSelector>;
+    fn create(&self, context: CompletionContext) -> Box<dyn MultiplexSelector + Send>;
 }
 
 pub struct MultiplexCompletionSource<T: Completer> {
     pub sources: Vec<T>,
-    pub selector_factory: Box<dyn MultiplexSelectorFactory>,
+    pub selector_factory: Box<dyn MultiplexSelectorFactory + Send>,
 }
 
 fn produce_next(
     sources: &mut Vec<Peekable<BoxedSuggestions>>,
-    selector: &mut Box<dyn MultiplexSelector>,
+    selector: &mut Box<dyn MultiplexSelector + Send>,
 ) -> Option<Completion> {
     let candidates: Vec<Option<&Completion>> =
         sources.iter_mut().map(|source| source.peek()).collect();
@@ -116,7 +116,7 @@ mod tests {
         fn create(
             &self,
             _: crate::input::completion::CompletionContext,
-        ) -> Box<(dyn MultiplexSelector + 'static)> {
+        ) -> Box<(dyn MultiplexSelector + Send + 'static)> {
             Box::new(self.clone())
         }
     }

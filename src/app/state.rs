@@ -19,11 +19,12 @@ use crate::{
         completion::CompletableContext,
         KeyError,
     },
-    script::{ApiManagerRpc, ScriptingManager},
+    script::ScriptingManager,
 };
 
 use super::{
     bufwin::BufWin,
+    dispatcher::Dispatcher,
     jobs::{JobError, Jobs},
     popup::PopupMenu,
     prompt::Prompt,
@@ -52,9 +53,9 @@ pub struct AppState {
     pub connections: Option<Connections>,
 
     pub scripting: Arc<Mutex<ScriptingManager>>,
-    pub api: Option<ApiManagerRpc>,
 
     pub jobs: Jobs,
+    pub dispatcher: Dispatcher,
 }
 
 impl AppState {
@@ -303,6 +304,7 @@ impl Default for AppState {
     fn default() -> Self {
         let buffers = Buffers::new();
         let tabpages = Tabpages::new(Size { w: 0, h: 0 });
+        let dispatcher = Dispatcher::default();
         let mut app = Self {
             running: true,
             showing_splash: true,
@@ -317,8 +319,8 @@ impl Default for AppState {
             keymap_widget: None,
             connections: Some(Connections::default()),
             scripting: Arc::new(Mutex::new(ScriptingManager::default())),
-            api: Some(ApiManagerRpc::default()),
-            jobs: Jobs::new(),
+            jobs: Jobs::new(dispatcher.sender.clone()),
+            dispatcher,
         };
 
         // create the default tabpage

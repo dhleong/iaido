@@ -1,24 +1,53 @@
 use std::{collections::HashMap, io, sync::Mutex};
 
+use tokio::sync::mpsc;
 use url::Url;
 
 use crate::{
-    app::{
-        self,
-        jobs::{JobRecord, Jobs},
-    },
-    editing::{ids::Ids, text::TextLines, Id},
+    app::jobs::{JobContext, JobRecord, Jobs},
+    editing::{ids::Ids, Id},
     game::engine::GameEngine,
 };
 
-use super::{game::GameConnection, Connection, ConnectionFactories};
+use super::{
+    game::GameConnection,
+    reader::{StopSignal, TransportReader},
+    transport::Transport,
+    TransportFactories,
+};
 
-const DEFAULT_LINES_PER_REDRAW: u16 = 10;
+pub struct ConnectionRecord {
+    pub id: Id,
+    #[allow(unused)]
+    stop_read_signal: StopSignal,
+    outgoing: mpsc::UnboundedSender<String>,
+    outgoing_results: std::sync::mpsc::Receiver<io::Result<()>>,
+    connection: GameConnection,
+}
+
+impl ConnectionRecord {
+    pub fn send(&mut self, message: String) -> io::Result<()> {
+        match self.outgoing.send(message) {
+            Ok(_) => self.outgoing_results.recv().unwrap_or(Ok(())),
+            Err(_) => Err(io::ErrorKind::NotConnected.into()),
+        }
+    }
+
+    pub fn with_engine<R, F: FnOnce(&GameEngine) -> R>(&self, f: F) -> R {
+        let game = self.connection.game.lock().unwrap();
+        f(&game)
+    }
+
+    pub fn with_engine_mut<R, F: FnOnce(&mut GameEngine) -> R>(&mut self, f: F) -> R {
+        let mut game = self.connection.game.lock().unwrap();
+        f(&mut game)
+    }
+}
 
 #[derive(Default)]
 pub struct Connections {
     ids: Ids,
-    all: Vec<GameConnection>,
+    by_id: HashMap<Id, ConnectionRecord>,
     connection_to_buffer: HashMap<Id, Id>,
 
     // NOTE: More than one Buffer may be associated with a Connection
@@ -26,18 +55,18 @@ pub struct Connections {
     // be associated with ONLY ONE Buffer above (IE: the buffer it
     // writes to)
     buffer_to_connection: HashMap<Id, Id>,
-    factories: ConnectionFactories,
+    factories: TransportFactories,
 
     buffer_engines: HashMap<Id, GameEngine>,
 }
 
 impl Connections {
-    pub fn by_id(&self, id: Id) -> Option<&GameConnection> {
-        self.all.iter().find(|conn| conn.id() == id)
+    pub fn by_id(&self, id: Id) -> Option<&ConnectionRecord> {
+        self.by_id.get(&id)
     }
 
-    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut GameConnection> {
-        self.all.iter_mut().find(|conn| conn.id() == id)
+    pub fn by_id_mut(&mut self, id: Id) -> Option<&mut ConnectionRecord> {
+        self.by_id.get_mut(&id)
     }
 
     pub fn buffer_to_id(&self, buffer_id: Id) -> Option<Id> {
@@ -61,7 +90,7 @@ impl Connections {
             .collect()
     }
 
-    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut GameConnection> {
+    pub fn by_buffer_id(&mut self, buffer_id: Id) -> Option<&mut ConnectionRecord> {
         if let Some(conn_id) = self.buffer_to_id(buffer_id) {
             self.by_id_mut(conn_id)
         } else {
@@ -75,7 +104,7 @@ impl Connections {
         callback: impl FnOnce(&mut GameEngine) -> R,
     ) -> R {
         if let Some(conn) = self.by_buffer_id(buffer_id) {
-            callback(&mut conn.game)
+            conn.with_engine_mut(callback)
         } else {
             let game = self.buffer_engines.entry(buffer_id).or_default();
             callback(game)
@@ -93,28 +122,65 @@ impl Connections {
     ) -> JobRecord {
         let id = self.ids.next();
         let factory = self.factories.clone();
+
         jobs.start(move |ctx| async move {
-            let connection = Mutex::new(factory.create(id, uri)?);
+            let connection = Mutex::new(factory.create(uri)?);
+            let transport_context = Mutex::new(ctx.clone());
 
             ctx.run(move |state| {
-                state.connections.as_mut().unwrap().add(
+                state.connections.as_mut().unwrap().add_transport(
+                    transport_context.into_inner().unwrap(),
+                    id,
                     buffer_id,
                     input_buffer_id,
                     connection.into_inner().unwrap(),
                 );
-                Ok(())
-            })
+            });
+
+            Ok(())
         })
+    }
+
+    fn launch(
+        id: Id,
+        ctx: JobContext,
+        buffer_id: Id,
+        connection: GameConnection,
+    ) -> ConnectionRecord {
+        let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
+
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (result_tx, result_rx) = std::sync::mpsc::channel();
+        let mut writable = connection.clone();
+        tokio::spawn(async move {
+            while let Some(to_send) = rx.recv().await {
+                let result = writable.send(&to_send);
+                result_tx.send(result).ok();
+            }
+        });
+
+        ConnectionRecord {
+            id,
+            stop_read_signal,
+            outgoing: tx,
+            outgoing_results: result_rx,
+            connection,
+        }
     }
 
     /// Returns the associated buffer ID
     pub fn disconnect(&mut self, connection_id: Id) -> io::Result<Id> {
-        if let Some(index) = self.all.iter().position(|conn| conn.id() == connection_id) {
-            self.all.swap_remove(index);
-            return Ok(self
+        if self.by_id.remove(&connection_id).is_some() {
+            let buffer = self
                 .connection_to_buffer
                 .remove(&connection_id)
-                .expect("No buffer associated with connection"));
+                .expect("No buffer associated with connection");
+
+            // Clean up all buffer->conn mappings
+            self.buffer_to_connection
+                .retain(|_buf_id, conn_id| *conn_id != connection_id);
+
+            return Ok(buffer);
         }
 
         Err(io::Error::new(
@@ -135,148 +201,49 @@ impl Connections {
         ))
     }
 
-    pub fn process(&mut self, app: &mut app::State) -> bool {
-        let to_buffer = &mut self.connection_to_buffer;
-        let mut any_updated = false;
-        retain(&mut self.all, |conn| {
-            let buffer_id = to_buffer[&conn.id()];
-            let mut winsbuf = app
-                .winsbuf_by_id(buffer_id)
-                .expect("Could not find buffer for connection");
-            let lines_per_redraw = winsbuf
-                .windows
-                .iter()
-                .map(|win| win.size.h)
-                .max()
-                .unwrap_or(DEFAULT_LINES_PER_REDRAW);
+    fn add_transport(
+        &mut self,
+        ctx: JobContext,
+        id: Id,
+        buffer_id: Id,
+        input_buffer_id: Id,
+        transport: Box<dyn Transport + Send>,
+    ) {
+        let engine = self
+            .buffer_engines
+            .remove(&buffer_id)
+            .unwrap_or_else(|| GameEngine::default());
 
-            for _ in 0..lines_per_redraw {
-                match conn.read() {
-                    Ok(None) => break, // nop
-                    Ok(Some(value)) => {
-                        any_updated = true;
+        let transport = GameConnection::with_engine(transport, engine);
 
-                        if let Some(processed) = conn.game.process_received(value) {
-                            winsbuf.append_value(processed);
-                        }
-                    }
-                    Err(e) => {
-                        any_updated = true;
-                        winsbuf.append(TextLines::from(format!("Disconnected: {}", e)));
-                        to_buffer.remove(&conn.id());
-                        return RetainAction::Remove;
-                    }
-                }
-            }
+        let record = Connections::launch(id, ctx.clone(), buffer_id, transport);
 
-            // keep the conn, by default
-            return RetainAction::Keep;
-        });
-        any_updated
+        self.add_record(id, buffer_id, input_buffer_id, record);
     }
 
-    fn add(&mut self, buffer_id: Id, input_buffer_id: Id, connection: Box<dyn Connection>) {
-        self.connection_to_buffer.insert(connection.id(), buffer_id);
-        self.buffer_to_connection.insert(buffer_id, connection.id());
-        self.buffer_to_connection
-            .insert(input_buffer_id, connection.id());
-
-        let with_game = if let Some(engine) = self.buffer_engines.remove(&buffer_id) {
-            GameConnection::with_engine(connection, engine)
-        } else {
-            connection.into()
-        };
-        self.all.push(with_game);
+    fn add_record(&mut self, id: Id, buffer_id: Id, input_buffer_id: Id, record: ConnectionRecord) {
+        self.connection_to_buffer.insert(id, buffer_id);
+        self.buffer_to_connection.insert(buffer_id, id);
+        self.buffer_to_connection.insert(input_buffer_id, id);
+        self.by_id.insert(id, record);
     }
 
     #[cfg(test)]
-    pub fn add_for_test(&mut self, buffer_id: Id, connection: Box<dyn Connection>) {
-        self.add(buffer_id, buffer_id, connection);
-    }
-}
-
-#[derive(PartialEq)]
-enum RetainAction {
-    Remove,
-    Keep,
-}
-
-// mutating, partitioning iteration. order is not preserved
-fn retain<T, F>(v: &mut Vec<T>, mut pred: F)
-where
-    F: FnMut(&mut T) -> RetainAction,
-{
-    if v.is_empty() {
-        // nop
-        return;
-    }
-
-    let mut i = 0;
-    let mut end = v.len();
-    loop {
-        // invariants:
-        // items v[0..end] will be kept
-        // items v[j..i] will be removed
-
-        if pred(&mut v[i]) == RetainAction::Remove {
-            v.swap(i, end - 1);
-            end -= 1;
-        } else {
-            i += 1;
-        }
-
-        if i >= end {
-            break;
-        }
-    }
-    v.truncate(end);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(test)]
-    mod retain {
-        use super::*;
-
-        #[test]
-        fn touches_all_items() {
-            let mut v = vec![1, 2, 3, 4];
-            let mut sum = 0;
-            retain(&mut v, |val| {
-                sum += *val;
-                RetainAction::Keep
-            });
-            assert_eq!(sum, 10);
-        }
-
-        #[test]
-        fn visits_all_after_remove() {
-            let mut v = vec![1, 2, 3, 4];
-            let mut sum = 0;
-            retain(&mut v, |val| {
-                sum += val.to_owned();
-                if *val == 2 {
-                    RetainAction::Remove
-                } else {
-                    RetainAction::Keep
-                }
-            });
-            assert_eq!(sum, 10);
-            assert_eq!(v.len(), 3);
-        }
-
-        #[test]
-        fn remove_all_safely() {
-            let mut v = vec![1, 2, 3, 4];
-            let mut sum = 0;
-            retain(&mut v, |val| {
-                sum += val.to_owned();
-                RetainAction::Remove
-            });
-            assert_eq!(sum, 10);
-            assert_eq!(v.len(), 0);
-        }
+    pub fn add_for_test(&mut self, buffer_id: Id, transport: Box<dyn Transport + Send>) {
+        let (stop_read_signal, _) = StopSignal::new();
+        let (outgoing, _) = mpsc::unbounded_channel();
+        let (_, outgoing_results) = std::sync::mpsc::channel();
+        self.add_record(
+            0,
+            buffer_id,
+            0,
+            ConnectionRecord {
+                id: 0,
+                stop_read_signal,
+                outgoing,
+                outgoing_results,
+                connection: GameConnection::with_engine(transport, Default::default()),
+            },
+        );
     }
 }

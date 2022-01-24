@@ -1,7 +1,7 @@
 // Allow dead code in this module, in case all languages are disabled:
 #![allow(dead_code)]
 
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 
 mod buffer;
 mod connection;
@@ -9,29 +9,35 @@ pub mod core;
 mod current;
 mod window;
 
-use crate::input::{commands::CommandHandlerContext, maps::KeyResult, KeyError};
+use crate::{
+    app::{self, dispatcher::DispatchSender},
+    input::{commands::CommandHandlerContext, maps::KeyResult},
+};
 
 use super::fns::FnManager;
 
-const MAX_TASKS_PER_TICK: u16 = 10;
-
-pub trait ApiHandler<Payload: Clone + Send + Sync, Response: Send + Sync> {
+pub trait ApiHandler<Payload: Send + Sync, Response: Send + Sync> {
     fn handle(&self, context: &mut CommandHandlerContext, p: Payload) -> KeyResult<Response>;
 }
 
 trait ApiRpcCall: Send {
-    fn handle(&self, context: &mut CommandHandlerContext);
+    fn handle(&mut self, context: &mut CommandHandlerContext);
 }
 
 struct ApiMessage<Payload, Response, Handler>
 where
-    Payload: Clone + Send + Sync,
+    Payload: Send + Sync,
     Response: Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
     handler: Handler,
-    payload: Payload,
-    response: mpsc::Sender<KeyResult<Response>>,
+
+    /// The Payload is Option because it will be consumed when handled
+    payload: Option<Payload>,
+
+    /// The Response is also Option; it will be filled once handle is
+    /// successfully called
+    response: Option<KeyResult<Response>>,
 }
 
 // NOTE: the goal here is that each Module can declare its messages and
@@ -39,64 +45,32 @@ where
 // a closure that operates on the CommandHandlerContext
 impl<Payload, Response, Handler> ApiRpcCall for ApiMessage<Payload, Response, Handler>
 where
-    Payload: Clone + Send + Sync,
+    Payload: Send + Sync,
     Response: 'static + Send + Sync,
     Handler: ApiHandler<Payload, Response> + Send + Sync,
 {
-    fn handle(&self, context: &mut CommandHandlerContext) {
-        // TODO: can we just pass a reference instead of cloning?
-        let result = self.handler.handle(context, self.payload.clone());
-        if let Err(e) = self.response.send(result) {
-            std::panic::panic_any(e);
-        }
-    }
-}
-
-pub struct ApiManagerRpc {
-    to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
-    from_script: mpsc::Receiver<Box<dyn ApiRpcCall>>,
-}
-
-impl Default for ApiManagerRpc {
-    fn default() -> Self {
-        let (to_app, from_script) = mpsc::channel();
-        Self {
-            to_app: Arc::new(Mutex::new(to_app)),
-            from_script,
-        }
-    }
-}
-
-impl ApiManagerRpc {
-    pub fn delegate(&self) -> ApiManagerDelegate {
-        ApiManagerDelegate {
-            to_app: self.to_app.clone(),
-        }
-    }
-
-    pub fn process(&mut self, context: &mut CommandHandlerContext) -> Result<bool, KeyError> {
-        let mut dirty = false;
-        for _ in 0..MAX_TASKS_PER_TICK {
-            match self.from_script.try_recv() {
-                Ok(msg) => {
-                    msg.handle(context);
-                    dirty = true;
-                }
-                Err(mpsc::TryRecvError::Empty) => return Ok(dirty),
-                Err(e) => std::panic::panic_any(e),
-            }
-        }
-
-        Ok(dirty)
+    fn handle(&mut self, context: &mut CommandHandlerContext) {
+        let result = self
+            .handler
+            .handle(context, self.payload.take().expect("No payload provided"));
+        self.response = Some(result);
     }
 }
 
 #[derive(Clone)]
-pub struct ApiManagerDelegate {
-    to_app: Arc<Mutex<mpsc::Sender<Box<dyn ApiRpcCall>>>>,
+pub struct ApiDelegate {
+    dispatcher: Arc<Mutex<DispatchSender>>,
 }
 
-impl ApiManagerDelegate {
+impl From<&app::State> for ApiDelegate {
+    fn from(state: &app::State) -> Self {
+        Self {
+            dispatcher: Arc::new(Mutex::new(state.dispatcher.sender.clone())),
+        }
+    }
+}
+
+impl ApiDelegate {
     pub fn perform<Payload, Response, Handler>(
         &self,
         handler: Handler,
@@ -107,29 +81,28 @@ impl ApiManagerDelegate {
         Response: 'static + Send + Sync,
         Handler: 'static + ApiHandler<Payload, Response> + Send + Sync,
     {
-        let (tx, rx) = mpsc::channel();
-        let message = Box::new(ApiMessage {
+        let mut message = ApiMessage {
             handler,
-            payload,
-            response: tx,
-        });
+            payload: Some(payload),
+            response: None,
+        };
 
-        if let Ok(tx) = self.to_app.lock() {
-            if let Err(_) = tx.send(message) {
-                return Err(KeyError::Interrupted);
-            }
-        } else {
-            panic!("Failed to lock to_app RPC sender");
-        }
+        let mut message_result = self
+            .dispatcher
+            .lock()
+            .expect("Could not lock dispatcher")
+            .spawn_command(move |ctx| {
+                message.handle(ctx);
+                message
+            })
+            .join()?; // TODO join_interruptably?
 
-        match rx.recv() {
-            Ok(response) => response,
-            Err(_) => {
-                return Err(KeyError::Interrupted);
-            }
-        }
+        message_result
+            .response
+            .take()
+            .expect("Did not receive response")
     }
 }
 
-pub type Api = ApiManagerDelegate;
+pub type Api = ApiDelegate;
 pub type Fns = Arc<Mutex<FnManager>>;

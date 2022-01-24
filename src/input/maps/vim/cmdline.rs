@@ -4,7 +4,6 @@ use tui::{
 };
 
 use crate::{
-    connection::Connection,
     editing::{buffer::BufHidden, gutter::Gutter, source::BufferSource},
     input::{
         keys::KeysParsable,
@@ -62,7 +61,7 @@ fn cmdline_to_prompt(
                 .connections
                 .as_mut()
                 .and_then(|conns| conns.by_buffer_id(conn_buffer_id))
-                .map(|conn| conn.id())
+                .map(|conn| conn.id)
                 .and_then(|conn_id| ctx.state().conn_input_buffer_id(conn_id))
             {
                 let found_window = ctx

@@ -5,7 +5,6 @@ use std::{sync::Mutex, time::Duration};
 use crate::{
     app::{self, App},
     cli::{self, CliInit},
-    editing::text::TextLines,
     input::{
         commands::{connection::connect, CommandHandlerContext},
         maps::KeyResult,
@@ -21,39 +20,11 @@ use crate::{
     script::ScriptingManager,
 };
 
-use super::jobs::Jobs;
+use super::dispatcher::Dispatcher;
 
 struct AppKeySource<U: UI, UE: UiEvents> {
     app: App<U>,
     events: UE,
-}
-
-impl<U: UI, UE: UiEvents> AppKeySource<U, UE> {
-    fn process_async(
-        &mut self,
-        keymap: &mut Option<Box<&mut dyn BoxableKeymap>>,
-    ) -> Result<bool, KeyError> {
-        let mut dirty = false;
-
-        // process incoming data from connections
-        if let Some(mut connections) = self.app.state.connections.take() {
-            dirty |= connections.process(&mut self.app.state);
-            self.app.state.connections = Some(connections);
-        }
-
-        // process messages from jobs
-        dirty |= Jobs::process(&mut self.app.state)?;
-
-        if let Some(ref mut keymap) = keymap {
-            // ... and from scripts
-            let mut context = CommandHandlerContext::new_blank(self, keymap);
-            dirty |= ScriptingManager::process(&mut context)?;
-        } else {
-            panic!("No keymap provided");
-        }
-
-        Ok(dirty)
-    }
 }
 
 impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
@@ -62,7 +33,10 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         duration: Duration,
         mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<bool, KeyError> {
-        if self.process_async(&mut keymap)? {
+        let keymap = keymap.as_mut().expect("No keymap provided");
+        let mut context = CommandHandlerContext::new_blank(self, keymap);
+        let processed_events = Dispatcher::process_pending(&mut context)?;
+        if processed_events > 0 {
             self.app.render();
         }
 
@@ -77,21 +51,26 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
         &mut self,
         mut keymap: Option<Box<&mut dyn BoxableKeymap>>,
     ) -> Result<Option<Key>, KeyError> {
-        let mut dirty = true;
         loop {
-            loop {
-                if dirty {
-                    self.app.render();
-                }
+            self.app.render();
 
-                dirty = self.process_async(&mut keymap)?;
+            // NOTE: The Dispatcher will be notified when a key is pressed,
+            // so this is effectively a sleep until there *might* be a
+            // pending key
+            let keymap = keymap.as_mut().expect("No keymap provided");
+            let mut context = CommandHandlerContext::new_blank(self, keymap);
+            let processed_events = Dispatcher::process_chunk(&mut context)?;
 
-                // Finally, check for input:
-                match self.events.poll_event(Duration::from_millis(100))? {
-                    Some(_) => break,
-                    None => {}
-                }
+            // Check if there's a pending key
+            match self.events.poll_event(Duration::from_millis(0)) {
+                Err(_) => return Ok(None),
+                Ok(None) => continue, // No pending key; go back to sleep
+                _ => {}               // Pending key! Fall through to consume
             }
+
+            // If there was just one event and there's a pending key, that
+            // event was just from the key---nothing else happened
+            let dirty = processed_events > 1;
 
             match self.events.next_event()? {
                 UiEvent::Key(key) => {
@@ -103,8 +82,6 @@ impl<U: UI, UE: UiEvents> KeySource for AppKeySource<U, UE> {
                 }
                 _ => {}
             }
-
-            dirty = true;
         }
     }
 }
@@ -198,8 +175,5 @@ where
     U: UI,
     UE: UiEvents,
 {
-    let error = format!("ERR: {:?}", e);
-    for line in error.split("\n") {
-        app_keys.state_mut().echom(TextLines::raw(line.to_string()));
-    }
+    app_keys.state_mut().echom_error(e);
 }

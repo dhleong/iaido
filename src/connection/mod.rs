@@ -2,15 +2,17 @@ use std::io;
 
 use url::Url;
 
-use crate::editing::{text::TextLine, Id};
+use crate::editing::text::TextLine;
 
-use self::telnet::TelnetConnectionFactory;
+use self::{telnet::TelnetConnectionFactory, transport::Transport};
 
 mod ansi;
 pub mod connections;
 pub mod game;
+mod reader;
 mod telnet;
 mod tls;
+pub mod transport;
 
 #[derive(Debug, PartialEq)]
 pub enum ReadValue {
@@ -18,43 +20,33 @@ pub enum ReadValue {
     Text(TextLine),
 }
 
-pub trait Connection {
-    fn id(&self) -> Id;
-    fn read(&mut self) -> io::Result<Option<ReadValue>>;
-    fn write(&mut self, bytes: &[u8]) -> io::Result<()>;
-    fn send(&mut self, text: String) -> io::Result<()> {
-        self.write(text.as_bytes())?;
-        self.write(&vec!['\n' as u8])
-    }
+pub trait TransportFactory: Send + Sync {
+    fn clone_boxed(&self) -> Box<dyn TransportFactory>;
+    fn create(&self, uri: &Url) -> Option<io::Result<Box<dyn Transport + Send>>>;
 }
 
-pub trait ConnectionFactory: Send + Sync {
-    fn clone_boxed(&self) -> Box<dyn ConnectionFactory>;
-    fn create(&self, id: Id, uri: &Url) -> Option<io::Result<Box<dyn Connection + Send>>>;
+pub struct TransportFactories {
+    factories: Vec<Box<dyn TransportFactory>>,
 }
 
-pub struct ConnectionFactories {
-    factories: Vec<Box<dyn ConnectionFactory>>,
-}
-
-impl Default for ConnectionFactories {
+impl Default for TransportFactories {
     fn default() -> Self {
-        ConnectionFactories {
+        TransportFactories {
             factories: vec![Box::new(TelnetConnectionFactory)],
         }
     }
 }
 
-impl ConnectionFactories {
+impl TransportFactories {
     pub fn clone(&self) -> Self {
         Self {
             factories: self.factories.iter().map(|f| f.clone_boxed()).collect(),
         }
     }
 
-    pub fn create(&self, id: Id, uri: Url) -> io::Result<Box<dyn Connection + Send>> {
+    pub fn create(&self, uri: Url) -> io::Result<Box<dyn Transport + Send>> {
         for f in &self.factories {
-            match f.create(id, &uri) {
+            match f.create(&uri) {
                 None => {} // unsupported
                 Some(Ok(conn)) => return Ok(conn),
                 Some(Err(e)) => return Err(e),

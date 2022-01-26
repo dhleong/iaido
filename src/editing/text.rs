@@ -128,8 +128,7 @@ impl EditableLine for TextLine {
             if start < offset + width && end > offset {
                 let from = start.checked_sub(offset).unwrap_or(0);
                 let to = min(end - offset, width);
-                let content = &span.content[from..to];
-                let s = String::from(content);
+                let s: String = span.content.chars().skip(from).take(to - from).collect();
                 spans.push(Span::styled(s, span.style));
             }
             offset += span.width();
@@ -194,6 +193,13 @@ mod tests {
             span.append(&mut part2);
             span.append(&mut part3);
             assert_eq!(span.subs(3, 10).to_string(), "e my lo");
+        }
+
+        #[test]
+        fn multibyte() {
+            let text: TextLine = "言葉".into();
+            assert_eq!(text.subs(0, 1).to_string(), "言");
+            assert_eq!(text.subs(1, 2).to_string(), "葉");
         }
     }
 

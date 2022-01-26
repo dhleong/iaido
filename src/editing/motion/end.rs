@@ -10,7 +10,7 @@ use super::{
 
 pub struct EndOfWordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     step: LineCrossing<CharMotion>,
     is_word_boundary: T,
@@ -18,7 +18,7 @@ where
 
 impl<T> EndOfWordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     pub fn backward_until(predicate: T) -> Self {
         Self {
@@ -45,7 +45,7 @@ where
 
 impl<T> Motion for EndOfWordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     fn destination<C: super::MotionContext>(&self, context: &C) -> CursorPosition {
         if context.buffer().lines_count() == 0 {

@@ -3,21 +3,21 @@ use crate::editing::CursorPosition;
 use super::util::find;
 use super::{char::CharMotion, linewise::LineCrossing, Motion, MotionFlags};
 
-pub fn is_big_word_boundary(ch: &str) -> bool {
-    ch == " "
+pub fn is_big_word_boundary(ch: char) -> bool {
+    ch == ' '
 }
 
-pub fn is_small_word_boundary(ch: &str) -> bool {
-    ch.find(char::is_alphanumeric).is_none()
+pub fn is_small_word_boundary(ch: char) -> bool {
+    !ch.is_alphanumeric()
 }
 
-pub fn is_not_whitespace(ch: &str) -> bool {
-    ch.find(char::is_whitespace).is_none()
+pub fn is_not_whitespace(ch: char) -> bool {
+    !ch.is_whitespace()
 }
 
 pub struct WordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     step: LineCrossing<CharMotion>,
     is_word_boundary: T,
@@ -25,7 +25,7 @@ where
 
 impl<T> WordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     pub fn backward_until(predicate: T) -> Self {
         WordMotion {
@@ -52,7 +52,7 @@ where
 
 impl<T> Motion for WordMotion<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     fn flags(&self) -> MotionFlags {
         MotionFlags::EXCLUSIVE

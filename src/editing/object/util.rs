@@ -3,9 +3,9 @@ use crate::editing::{
     CursorPosition,
 };
 
-fn is_whitespace(end: Option<&str>) -> bool {
+fn is_whitespace(end: Option<char>) -> bool {
     if let Some(s) = end {
-        s.find(char::is_whitespace).is_some()
+        s.is_whitespace()
     } else {
         false
     }

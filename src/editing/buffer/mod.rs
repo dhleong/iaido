@@ -253,21 +253,21 @@ pub trait Buffer: HasId + Send + Sync {
         self.source().is_read_only()
     }
 
-    fn get_char(&self, pos: CursorPosition) -> Option<&str> {
+    fn get_char(&self, pos: CursorPosition) -> Option<char> {
         let line = self.get(pos.line);
         let mut col_offset = pos.col;
 
         let mut current_span = 0;
         loop {
             if current_span >= line.0.len() {
-                // no more spans in this line
+                // No more spans in this line
                 break;
             }
 
             let span = &line.0[current_span];
             let w = span.width();
             if w > col_offset {
-                return Some(&span.content[col_offset..col_offset + 1]);
+                return span.content.chars().nth(col_offset);
             }
 
             current_span += 1;
@@ -275,7 +275,7 @@ pub trait Buffer: HasId + Send + Sync {
         }
 
         if col_offset == 0 {
-            return Some("\n");
+            return Some('\n');
         }
 
         None
@@ -404,6 +404,20 @@ mod tests {
                     CursorPosition { line: 2, col: 7 }
                 );
             }
+        }
+    }
+
+    #[cfg(test)]
+    mod get_char {
+        use crate::editing::buffer::undoable::tests::buffer;
+
+        #[test]
+        fn multibyte() {
+            let b = buffer("a言葉kotoba");
+            assert_eq!(b.get_char((0, 0).into()), Some('a'));
+            assert_eq!(b.get_char((0, 1).into()), Some('言'));
+            assert_eq!(b.get_char((0, 2).into()), Some('葉'));
+            assert_eq!(b.get_char((0, 3).into()), Some('k'));
         }
     }
 }

@@ -6,7 +6,7 @@ use super::{util::follow_whitespace, TextObject};
 
 pub struct WordObject<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     inner: bool,
     is_word_boundary: T,
@@ -14,7 +14,7 @@ where
 
 impl<T> WordObject<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     pub fn inner(predicate: T) -> Self {
         WordObject {
@@ -33,7 +33,7 @@ where
 
 impl<T> TextObject for WordObject<T>
 where
-    T: Fn(&str) -> bool,
+    T: Fn(char) -> bool,
 {
     fn object_range<C: MotionContext>(&self, context: &C) -> MotionRange {
         if context.buffer().lines_count() == 0 {

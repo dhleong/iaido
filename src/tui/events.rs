@@ -11,7 +11,7 @@ use std::{
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 
 use crate::{
-    app::dispatcher::DispatchSender,
+    app::dispatcher::{DispatchSender, Dispatchable},
     input::Key,
     ui::{UiEvent, UiEvents},
 };
@@ -78,9 +78,8 @@ impl TuiEvents {
                 let is_err = event.is_err();
                 tx.send(event).ok();
 
-                // Dispatch a nop to the main thread to ensure we stop
-                // waiting and check for events
-                dispatcher.spawn(|_| ()).background();
+                // Let the Dispatcher know there's a pending key
+                dispatcher.dispatch(Dispatchable::PendingKey);
 
                 if is_err {
                     break;

@@ -67,15 +67,43 @@ impl<R: Send, F: FnOnce(&mut CommandHandlerContext) -> R + Send> PendingDispatch
 
 type BoxedPendingDispatch = Box<dyn FnMut(&mut CommandHandlerContext) + Send>;
 
+pub enum Dispatchable {
+    Executable(BoxedPendingDispatch),
+    PendingKey,
+}
+
+pub struct Processed {
+    executables: usize,
+    pub has_key: bool,
+}
+
+impl Processed {
+    fn key_only() -> Self {
+        Self {
+            executables: 0,
+            has_key: true,
+        }
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.executables > 0
+    }
+
+    fn adding_executables(mut self, count: usize) -> Processed {
+        self.executables += count;
+        self
+    }
+}
+
 /// Provides access to the main thread. The sender side may be trivially cloned
 pub struct Dispatcher {
     pub sender: DispatchSender,
-    rx: Receiver<BoxedPendingDispatch>,
+    rx: Receiver<Dispatchable>,
 }
 
 #[derive(Clone)]
 pub struct DispatchSender {
-    to_main: Sender<BoxedPendingDispatch>,
+    to_main: Sender<Dispatchable>,
 }
 
 impl Default for Dispatcher {
@@ -89,13 +117,23 @@ impl Default for Dispatcher {
 impl Dispatcher {
     /// Process any pending events (IE: does not block waiting for events), stopping early if
     /// MAX_PER_FRAME_DURATION has elapsed
-    pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
-        let mut tasks_processed = 0;
+    pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        let mut executables = 0;
+        let mut has_key = false;
+
         let start = Instant::now();
         loop {
-            if let Some(mut action) = ctx.state_mut().dispatcher.next_action()? {
-                action(ctx);
-                tasks_processed += 1;
+            if let Some(dispatchable) = ctx.state_mut().dispatcher.next_dispatchable()? {
+                match dispatchable {
+                    Dispatchable::Executable(mut action) => {
+                        executables += 1;
+                        action(ctx);
+                    }
+                    Dispatchable::PendingKey => {
+                        has_key = true;
+                        break;
+                    }
+                }
             } else {
                 break;
             }
@@ -104,28 +142,35 @@ impl Dispatcher {
                 break;
             }
         }
-        Ok(tasks_processed)
+
+        Ok(Processed {
+            executables,
+            has_key,
+        })
     }
 
     /// Process a "chunk" of events; waits until *some* event is received, then continues to
     /// process any events that come in within the subsequent "frame" duration
-    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
+    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
         match ctx.state_mut().dispatcher.rx.recv() {
-            Ok(mut action) => {
-                action(ctx);
+            Ok(dispatchable) => {
+                match dispatchable {
+                    Dispatchable::PendingKey => return Ok(Processed::key_only()),
+                    Dispatchable::Executable(mut action) => action(ctx),
+                }
 
                 // If we processed *any*, continue processing any pending
                 let pending_processed = Dispatcher::process_pending(ctx)?;
 
-                Ok(1 + pending_processed)
+                Ok(pending_processed.adding_executables(1))
             }
             Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
         }
     }
 
-    fn next_action(&mut self) -> io::Result<Option<BoxedPendingDispatch>> {
+    fn next_dispatchable(&mut self) -> io::Result<Option<Dispatchable>> {
         match self.rx.try_recv() {
-            Ok(action) => Ok(Some(action)),
+            Ok(dispatchable) => Ok(Some(dispatchable)),
             Err(mpsc::TryRecvError::Empty) => Ok(None),
             Err(e) => Err(io::Error::new(io::ErrorKind::UnexpectedEof, e)),
         }
@@ -154,8 +199,12 @@ impl DispatchSender {
 
         let b: BoxedPendingDispatch = Box::new(move |ctx| pending.execute(ctx));
 
-        self.to_main.send(b).unwrap();
+        self.dispatch(Dispatchable::Executable(b));
 
         DispatchRecord { from_main: rx }
+    }
+
+    pub fn dispatch(&self, dispatchable: Dispatchable) {
+        self.to_main.send(dispatchable).unwrap();
     }
 }

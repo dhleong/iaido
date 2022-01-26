@@ -99,6 +99,7 @@ impl Processed {
 pub struct Dispatcher {
     pub sender: DispatchSender,
     rx: Receiver<Dispatchable>,
+    has_pending_key: bool,
 }
 
 #[derive(Clone)]
@@ -110,7 +111,11 @@ impl Default for Dispatcher {
     fn default() -> Self {
         let (tx, rx) = mpsc::channel();
         let sender = DispatchSender { to_main: tx };
-        Dispatcher { sender, rx }
+        Dispatcher {
+            sender,
+            rx,
+            has_pending_key: false,
+        }
     }
 }
 
@@ -118,8 +123,53 @@ impl Dispatcher {
     /// Process any pending events (IE: does not block waiting for events), stopping early if
     /// MAX_PER_FRAME_DURATION has elapsed
     pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        let result = Dispatcher::process_nonblocking(ctx);
+
+        // Persist the has_key flag until the next process_chunk
+        if let Ok(processed) = &result {
+            ctx.state_mut().dispatcher.has_pending_key = processed.has_key;
+        }
+
+        result
+    }
+
+    /// Process a "chunk" of events; waits until *some* event is received, then continues to
+    /// process any events that come in within the subsequent "frame" duration
+    /// If a key was previously received in a call to [process_pending], we will instead act in a
+    /// non-blocking way, as with [process_pending].
+    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        if ctx.state().dispatcher.has_pending_key {
+            // Don't block if there's an unconsumed key!
+            let processed = Dispatcher::process_nonblocking(ctx);
+
+            // Clear the flag
+            ctx.state_mut().dispatcher.has_pending_key = false;
+            return processed;
+        }
+
+        match ctx.state_mut().dispatcher.rx.recv() {
+            Ok(dispatchable) => {
+                match dispatchable {
+                    Dispatchable::PendingKey => return Ok(Processed::key_only()),
+                    Dispatchable::Executable(mut action) => action(ctx),
+                }
+
+                // If we processed *any*, continue processing any pending
+                let pending_processed = Dispatcher::process_nonblocking(ctx)?;
+
+                Ok(pending_processed.adding_executables(1))
+            }
+            Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
+        }
+    }
+
+    pub fn mark_key_consumed(&mut self) {
+        self.has_pending_key = false;
+    }
+
+    fn process_nonblocking(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
         let mut executables = 0;
-        let mut has_key = false;
+        let mut received_key = false;
 
         let start = Instant::now();
         loop {
@@ -130,7 +180,7 @@ impl Dispatcher {
                         action(ctx);
                     }
                     Dispatchable::PendingKey => {
-                        has_key = true;
+                        received_key = true;
                         break;
                     }
                 }
@@ -143,29 +193,12 @@ impl Dispatcher {
             }
         }
 
+        let has_key = received_key || ctx.state().dispatcher.has_pending_key;
+
         Ok(Processed {
             executables,
             has_key,
         })
-    }
-
-    /// Process a "chunk" of events; waits until *some* event is received, then continues to
-    /// process any events that come in within the subsequent "frame" duration
-    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
-        match ctx.state_mut().dispatcher.rx.recv() {
-            Ok(dispatchable) => {
-                match dispatchable {
-                    Dispatchable::PendingKey => return Ok(Processed::key_only()),
-                    Dispatchable::Executable(mut action) => action(ctx),
-                }
-
-                // If we processed *any*, continue processing any pending
-                let pending_processed = Dispatcher::process_pending(ctx)?;
-
-                Ok(pending_processed.adding_executables(1))
-            }
-            Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
-        }
     }
 
     fn next_dispatchable(&mut self) -> io::Result<Option<Dispatchable>> {

@@ -3,6 +3,8 @@ use bitflags::bitflags;
 use std::cmp::{max, min};
 
 use crate::editing::gutter::Gutter;
+use crate::input::maps::KeyResult;
+use crate::input::KeyError;
 use crate::{
     input::completion::{state::CompletionState, Completion},
     tui::measure::Measurable,
@@ -19,6 +21,9 @@ bitflags! {
         /// "main" window of a Connection is PROTECTED but may be closed
         /// if the connection is not active
         const PROTECTED = 0b01;
+
+        /// A LOCKED_BUFFER window may not have its buffer changed
+        const LOCKED_BUFFER = 0b10;
     }
 }
 
@@ -240,6 +245,16 @@ impl Window {
             }
         } else {
             CursorPosition::default()
+        }
+    }
+
+    pub fn check_buffer_change(&self) -> KeyResult {
+        if self.flags.contains(WindowFlags::LOCKED_BUFFER) {
+            Err(KeyError::NotPermitted(
+                "Cannot change buffer for window".to_string(),
+            ))
+        } else {
+            Ok(())
         }
     }
 }

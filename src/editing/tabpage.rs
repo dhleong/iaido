@@ -47,7 +47,7 @@ impl Tabpage {
         output.flags = WindowFlags::PROTECTED;
 
         let mut input = Box::new(Window::new(self.ids.next(), input_buffer.id()));
-        input.flags = WindowFlags::PROTECTED;
+        input.flags = WindowFlags::PROTECTED | WindowFlags::LOCKED_BUFFER;
 
         ConnLayout { output, input }
     }

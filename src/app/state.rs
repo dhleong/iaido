@@ -17,6 +17,7 @@ use crate::{
     input::{
         commands::{create_builtin_commands, registry::CommandRegistry},
         completion::CompletableContext,
+        maps::KeyResult,
         KeyError,
     },
     script::ScriptingManager,
@@ -264,7 +265,9 @@ impl AppState {
 
     // ======= buf/win cross-modification =====================
 
-    pub fn set_current_window_buffer(&mut self, new_id: Id) {
+    pub fn set_current_window_buffer(&mut self, new_id: Id) -> KeyResult {
+        self.current_window().check_buffer_change()?;
+
         self.current_window_mut().buffer = new_id;
         let buffer = self
             .buffers
@@ -277,6 +280,8 @@ impl AppState {
         window.cursor = clamped_cursor;
         window.scrolled_lines = 0;
         window.scroll_offset = 0;
+
+        Ok(())
     }
 
     pub fn conn_input_buffer_id(&self, conn_id: Id) -> Option<Id> {

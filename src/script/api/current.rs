@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     editing::Id,
-    input::{commands::CommandHandlerContext, KeymapContext},
+    input::{commands::CommandHandlerContext, maps::KeyResult, KeymapContext},
 };
 
 use super::{
@@ -32,12 +32,12 @@ impl CurrentObjects {
     }
 
     #[rpc]
-    fn set_buffer_id(context: &mut CommandHandlerContext, buffer_id: Id) {
-        context.state_mut().current_window_mut().buffer = buffer_id;
+    fn set_buffer_id(context: &mut CommandHandlerContext, buffer_id: Id) -> KeyResult {
+        context.state_mut().set_current_window_buffer(buffer_id)
     }
 
     #[property(setter)]
-    pub fn set_buffer(&self, buffer: &BufferApiObject) {
+    pub fn set_buffer(&self, buffer: &BufferApiObject) -> KeyResult {
         self.set_buffer_id(buffer.id)
     }
 

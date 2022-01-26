@@ -47,7 +47,7 @@ declare_commands!(declare_file {
             buf.id()
         };
 
-        context.state_mut().set_current_window_buffer(buffer_id);
+        context.state_mut().set_current_window_buffer(buffer_id)?;
 
         Ok(())
     }

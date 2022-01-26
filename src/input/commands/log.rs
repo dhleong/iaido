@@ -6,7 +6,7 @@ use command_decl::declare_commands;
 declare_commands!(declare_log {
     pub fn messages(context) {
         context.state_mut().current_tab_mut().split_bottom();
-        context.state_mut().set_current_window_buffer(BUFFER_ID_LOG);
+        context.state_mut().set_current_window_buffer(BUFFER_ID_LOG)?;
 
         let buf = context.state_mut().current_buffer_mut();
         buf.clear();

@@ -61,7 +61,7 @@ impl SearchMotion {
         }
 
         let mut cursor = self.step.destination(&context.with_cursor(origin));
-        let first_char = &self.query[0..1];
+        let first_char = self.query.chars().next().unwrap_or('\0');
 
         loop {
             let (next_cursor, found) = search(context, cursor, &self.step, |c| c == first_char);

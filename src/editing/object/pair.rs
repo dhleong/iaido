@@ -54,12 +54,8 @@ fn char_at<C: MotionContext>(context: &C, cursor: CursorPosition) -> char {
         return '\0';
     }
 
-    if let Some(s) = context.buffer().get_char(cursor) {
-        if let Some(ch) = s.chars().next() {
-            ch
-        } else {
-            '\0'
-        }
+    if let Some(ch) = context.buffer().get_char(cursor) {
+        ch
     } else {
         '\0'
     }

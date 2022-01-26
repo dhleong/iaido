@@ -2,7 +2,7 @@ use crate::editing::CursorPosition;
 
 use super::Motion;
 
-pub fn search<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
+pub fn search<C: super::MotionContext, M: Motion, P: Fn(char) -> bool>(
     context: &C,
     start: CursorPosition,
     step: &M,
@@ -33,7 +33,7 @@ pub fn search<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
     (cursor, found)
 }
 
-pub fn find<C: super::MotionContext, M: Motion, P: Fn(&str) -> bool>(
+pub fn find<C: super::MotionContext, M: Motion, P: Fn(char) -> bool>(
     context: &C,
     start: CursorPosition,
     step: &M,

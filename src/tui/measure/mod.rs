@@ -47,7 +47,15 @@ pub fn render_into(line: &Spans, width: u16, mut buffer: &mut Buffer) -> Rect {
         // replace trailing whitespace with nbsp so the wrapping
         // doesn't eat it
         let last_non_space = old.rfind(|c| c != ' ');
-        let first_whitespace = last_non_space.and_then(|off| Some(off + 1)).unwrap_or(0);
+        let first_whitespace = last_non_space
+            .map(|off| {
+                old.char_indices()
+                    .map(|(i, _)| i)
+                    .skip_while(|i| *i <= off)
+                    .next()
+                    .unwrap_or(old.len() + 1)
+            })
+            .unwrap_or(0);
         if first_whitespace < old.len() {
             let spaces: String = vec!['\u{00A0}'; old.len() - first_whitespace]
                 .into_iter()
@@ -142,5 +150,11 @@ mod tests {
             TextLine::from("take my land"),
         ]);
         assert_eq!(text.measure_height(4), 7, "Tight wrap");
+    }
+
+    #[test]
+    fn measure_python_syntax_error() {
+        let text = TextLines::from(vec![TextLine::from("foo"), TextLine::from("↑↑↑")]);
+        assert_eq!(text.measure_height(20), 2, "Syntax error wrap");
     }
 }

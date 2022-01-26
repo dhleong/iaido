@@ -263,8 +263,8 @@ pub mod tests {
             buf.append("Take my love land".into());
             buf.delete_range(((0, 7), (0, 12)).into());
             assert_visual_match(&buf, "Take my land");
-            assert_eq!(Some(" "), buf.get_char((0, 7).into()));
-            assert_eq!(Some("l"), buf.get_char((0, 8).into()));
+            assert_eq!(Some(' '), buf.get_char((0, 7).into()));
+            assert_eq!(Some('l'), buf.get_char((0, 8).into()));
         }
     }
 

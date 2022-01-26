@@ -35,7 +35,7 @@ impl Motion for FindMotion {
 
     fn destination<T: super::MotionContext>(&self, context: &T) -> CursorPosition {
         let (cursor, found) = search(context, self.step.destination(context), &self.step, |c| {
-            c.chars().next().unwrap() == self.ch
+            c == self.ch
         });
         if found {
             cursor

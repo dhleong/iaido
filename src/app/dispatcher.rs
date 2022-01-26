@@ -67,35 +67,123 @@ impl<R: Send, F: FnOnce(&mut CommandHandlerContext) -> R + Send> PendingDispatch
 
 type BoxedPendingDispatch = Box<dyn FnMut(&mut CommandHandlerContext) + Send>;
 
+pub enum Dispatchable {
+    Executable(BoxedPendingDispatch),
+    PendingKey,
+}
+
+pub struct Processed {
+    executables: usize,
+    pub has_key: bool,
+}
+
+impl Processed {
+    fn key_only() -> Self {
+        Self {
+            executables: 0,
+            has_key: true,
+        }
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.executables > 0
+    }
+
+    fn adding_executables(mut self, count: usize) -> Processed {
+        self.executables += count;
+        self
+    }
+}
+
 /// Provides access to the main thread. The sender side may be trivially cloned
 pub struct Dispatcher {
     pub sender: DispatchSender,
-    rx: Receiver<BoxedPendingDispatch>,
+    rx: Receiver<Dispatchable>,
+    has_pending_key: bool,
 }
 
 #[derive(Clone)]
 pub struct DispatchSender {
-    to_main: Sender<BoxedPendingDispatch>,
+    to_main: Sender<Dispatchable>,
 }
 
 impl Default for Dispatcher {
     fn default() -> Self {
         let (tx, rx) = mpsc::channel();
         let sender = DispatchSender { to_main: tx };
-        Dispatcher { sender, rx }
+        Dispatcher {
+            sender,
+            rx,
+            has_pending_key: false,
+        }
     }
 }
 
 impl Dispatcher {
     /// Process any pending events (IE: does not block waiting for events), stopping early if
     /// MAX_PER_FRAME_DURATION has elapsed
-    pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
-        let mut tasks_processed = 0;
+    pub fn process_pending(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        let result = Dispatcher::process_nonblocking(ctx);
+
+        // Persist the has_key flag until the next process_chunk
+        if let Ok(processed) = &result {
+            ctx.state_mut().dispatcher.has_pending_key = processed.has_key;
+        }
+
+        result
+    }
+
+    /// Process a "chunk" of events; waits until *some* event is received, then continues to
+    /// process any events that come in within the subsequent "frame" duration
+    /// If a key was previously received in a call to [process_pending], we will instead act in a
+    /// non-blocking way, as with [process_pending].
+    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        if ctx.state().dispatcher.has_pending_key {
+            // Don't block if there's an unconsumed key!
+            let processed = Dispatcher::process_nonblocking(ctx);
+
+            // Clear the flag
+            ctx.state_mut().dispatcher.has_pending_key = false;
+            return processed;
+        }
+
+        match ctx.state_mut().dispatcher.rx.recv() {
+            Ok(dispatchable) => {
+                match dispatchable {
+                    Dispatchable::PendingKey => return Ok(Processed::key_only()),
+                    Dispatchable::Executable(mut action) => action(ctx),
+                }
+
+                // If we processed *any*, continue processing any pending
+                let pending_processed = Dispatcher::process_nonblocking(ctx)?;
+
+                Ok(pending_processed.adding_executables(1))
+            }
+            Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
+        }
+    }
+
+    pub fn mark_key_consumed(&mut self) {
+        self.has_pending_key = false;
+    }
+
+    fn process_nonblocking(ctx: &mut CommandHandlerContext) -> io::Result<Processed> {
+        let mut executables = 0;
+        let mut received_key = false;
+
         let start = Instant::now();
         loop {
-            if let Some(mut action) = ctx.state_mut().dispatcher.next_action()? {
-                action(ctx);
-                tasks_processed += 1;
+            if let Some(dispatchable) = ctx.state_mut().dispatcher.next_dispatchable()? {
+                match dispatchable {
+                    Dispatchable::Executable(mut action) => {
+                        executables += 1;
+                        action(ctx);
+                    }
+                    Dispatchable::PendingKey => {
+                        received_key = true;
+                        break;
+                    }
+                }
             } else {
                 break;
             }
@@ -104,28 +192,18 @@ impl Dispatcher {
                 break;
             }
         }
-        Ok(tasks_processed)
+
+        let has_key = received_key || ctx.state().dispatcher.has_pending_key;
+
+        Ok(Processed {
+            executables,
+            has_key,
+        })
     }
 
-    /// Process a "chunk" of events; waits until *some* event is received, then continues to
-    /// process any events that come in within the subsequent "frame" duration
-    pub fn process_chunk(ctx: &mut CommandHandlerContext) -> io::Result<usize> {
-        match ctx.state_mut().dispatcher.rx.recv() {
-            Ok(mut action) => {
-                action(ctx);
-
-                // If we processed *any*, continue processing any pending
-                let pending_processed = Dispatcher::process_pending(ctx)?;
-
-                Ok(1 + pending_processed)
-            }
-            Err(_) => Err(io::ErrorKind::UnexpectedEof.into()),
-        }
-    }
-
-    fn next_action(&mut self) -> io::Result<Option<BoxedPendingDispatch>> {
+    fn next_dispatchable(&mut self) -> io::Result<Option<Dispatchable>> {
         match self.rx.try_recv() {
-            Ok(action) => Ok(Some(action)),
+            Ok(dispatchable) => Ok(Some(dispatchable)),
             Err(mpsc::TryRecvError::Empty) => Ok(None),
             Err(e) => Err(io::Error::new(io::ErrorKind::UnexpectedEof, e)),
         }
@@ -154,8 +232,12 @@ impl DispatchSender {
 
         let b: BoxedPendingDispatch = Box::new(move |ctx| pending.execute(ctx));
 
-        self.to_main.send(b).unwrap();
+        self.dispatch(Dispatchable::Executable(b));
 
         DispatchRecord { from_main: rx }
+    }
+
+    pub fn dispatch(&self, dispatchable: Dispatchable) {
+        self.to_main.send(dispatchable).unwrap();
     }
 }

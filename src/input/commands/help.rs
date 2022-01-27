@@ -48,18 +48,20 @@ fn ensure_help_window(context: &mut CommandHandlerContext) -> Id {
     return context.state_mut().current_tab_mut().split_top();
 }
 
-fn show_help_window(context: &mut CommandHandlerContext, help: String) {
+fn show_help_window(context: &mut CommandHandlerContext, help: String) -> KeyResult {
     let help_win_id = ensure_help_window(context);
     context.state_mut().current_tab_mut().set_focus(help_win_id);
 
     // TODO We don't always need to create a new buffer
     let buf_id = context.state_mut().buffers.create().id();
-    context.state_mut().set_current_window_buffer(buf_id);
+    context.state_mut().set_current_window_buffer(buf_id)?;
 
     let buffer = context.state_mut().current_buffer_mut();
     buffer.set_source(BufferSource::Help);
     buffer.clear();
     buffer.append(help::format(help));
+
+    Ok(())
 }
 
 fn generate_help_entry(help: &HelpTopic) -> String {
@@ -149,11 +151,11 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyR
                 // TODO Get a whole page on which topic appears, and jump to
                 // where the topic is
                 let help = generate_help_entry(help);
-                show_help_window(context, help);
+                show_help_window(context, help)?;
             } else if context.state().builtin_commands.help.has_filename(&query) {
                 // Generate full help file
                 let help = generate_help_file(context, &query);
-                show_help_window(context, help);
+                show_help_window(context, help)?;
             } else {
                 context
                     .state_mut()
@@ -166,7 +168,7 @@ fn help(context: &mut CommandHandlerContext, subject: Option<HelpQuery>) -> KeyR
 
         _ => {
             let help = generate_help_index(context);
-            show_help_window(context, help);
+            show_help_window(context, help)?;
         }
     };
     Ok(())

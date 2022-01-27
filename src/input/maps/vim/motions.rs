@@ -52,6 +52,19 @@ pub fn vim_standard_motions() -> KeyTreeNode {
                 _ => return Ok(()),
             }
         },
+
+        "t" => motion |ctx| {
+            match ctx.next_key()? {
+                Some(Key { code: KeyCode::Char(ch), .. }) => FindMotion::forward_until(ch),
+                _ => return Ok(()),
+            }
+        },
+        "T" => motion |ctx| {
+            match ctx.next_key()? {
+                Some(Key { code: KeyCode::Char(ch), .. }) => FindMotion::backward_until(ch),
+                _ => return Ok(()),
+            }
+        },
     }
 }
 

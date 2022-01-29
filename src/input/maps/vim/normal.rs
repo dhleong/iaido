@@ -80,21 +80,30 @@ fn cmd_mode_access() -> KeyTreeNode {
                 _ => buffer_id,
             };
 
-            let mut conns = ctx.state_mut().connections.take().expect("Connections obj missing");
-            let result = if let Some(conn) = conns.by_buffer_id(buffer_id) {
-                conn.with_engine(|engine| {
-                    let history = &engine.history;
+            if let Some(conn) = ctx.state_mut().connections.by_buffer_id(buffer_id) {
 
-                    cmdline::open_from_history(&mut ctx, history, "!".to_string(), CmdlineSink::ConnectionBuffer(conn_buffer_id))
-                })
+                if let Some(history) = conn.with_engine_mut(|engine| {
+                    engine.history.take()
+                }) {
 
+                    cmdline::open_from_history(
+                        &mut ctx,
+                        &history,
+                        "!".to_string(),
+                        CmdlineSink::ConnectionBuffer(conn_buffer_id),
+                    )?;
+
+                    if let Some(conn) = ctx.state_mut().connections.by_buffer_id(buffer_id) {
+                        conn.with_engine_mut(|engine| {
+                            engine.history = Some(history);
+                        });
+                    }
+                }
+
+                Ok(())
             } else {
                 Err(KeyError::IO(std::io::ErrorKind::NotConnected.into()))
-            };
-
-            ctx.state_mut().connections = Some(conns);
-
-            result
+            }
         },
     }
 }

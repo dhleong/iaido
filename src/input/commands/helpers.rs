@@ -23,13 +23,7 @@ pub fn buffer_connection_name(context: &CommandHandlerContext, id: Id) -> String
             format!("{:?}", buf.source())
         }
     } else {
-        let conn_id = context
-            .state()
-            .connections
-            .as_ref()
-            .unwrap()
-            .buffer_to_id(id)
-            .unwrap_or(id);
+        let conn_id = context.state().connections.buffer_to_id(id).unwrap_or(id);
         format!("Connection#{}", conn_id)
     }
 }
@@ -59,13 +53,7 @@ pub fn check_hide_buffer(context: &mut CommandHandlerContext, args: HideBufArgs)
     }
 
     if let Some(id) = connection_buffer_id {
-        let is_connected = context
-            .state_mut()
-            .connections
-            .as_mut()
-            .unwrap()
-            .by_buffer_id(id)
-            .is_some();
+        let is_connected = context.state_mut().connections.by_buffer_id(id).is_some();
 
         // disallow closing the main window
         let name = buffer_connection_name(context, id);
@@ -133,8 +121,6 @@ mod tests {
 
             state
                 .connections
-                .as_mut()
-                .unwrap()
                 .add_for_test(buf_id, Box::new(TestTransport));
 
             // we should not be able to hide a single, connected window

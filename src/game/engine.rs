@@ -17,7 +17,7 @@ use super::processing::{ProcessedText, TextInput, TextProcessor};
 pub struct GameEngine {
     pub aliases: TextProcessorManager<Alias>,
     pub completer: Option<Arc<Mutex<dyn CompletionSource + Send>>>,
-    pub history: History<String>,
+    pub history: Option<History<String>>,
 }
 
 impl Completer for Rc<Mutex<dyn CompletionSource>> {
@@ -47,7 +47,7 @@ impl Default for GameEngine {
         Self {
             aliases: TextProcessorManager::new(),
             completer: Some(Arc::new(Mutex::new(GameCompletionsFactory::create()))),
-            history: Default::default(),
+            history: Some(Default::default()),
         }
     }
 }
@@ -72,7 +72,9 @@ impl GameEngine {
             guard.process(text, ProcessFlags::SENT);
         }
 
-        self.history.insert(value.to_string());
+        if let Some(history) = &mut self.history {
+            history.insert(value.to_string());
+        }
 
         match self.aliases.process(TextInput::Line(value.into())) {
             Ok(ProcessedText::Removed(_)) => Ok(None),

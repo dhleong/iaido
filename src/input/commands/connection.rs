@@ -30,7 +30,7 @@ declare_commands!(declare_connection {
     /// the current buffer.
     pub fn reconnect(context) {
         let current_buffer_id = context.state().current_buffer().id();
-        if context.state_mut().connections.as_mut().and_then(|conns| conns.by_buffer_id(current_buffer_id)).is_some() {
+        if context.state_mut().connections.by_buffer_id(current_buffer_id).is_some() {
             return Err(KeyError::InvalidInput("Current buffer is still connected!".to_string()));
         }
 
@@ -88,14 +88,13 @@ pub fn connect(context: &mut CommandHandlerContext, url: String) -> KeyResult {
         .unwrap()
         .append_line(format!("Connecting to {}...", uri));
 
-    let mut connections = context.state_mut().connections.take().unwrap();
-    let job = connections.create_async(
-        &mut context.state_mut().jobs,
-        buffer_id,
-        input_buffer_id,
-        uri,
-    );
-    context.state_mut().connections = Some(connections);
+    let job = {
+        let state = context.state_mut();
+        let jobs = &mut state.jobs;
+        state
+            .connections
+            .create_async(jobs, buffer_id, input_buffer_id, uri)
+    };
 
     match job.join_interruptably(context) {
         Ok(_) => Ok(()),
@@ -124,8 +123,6 @@ fn disconnect(context: &mut CommandHandlerContext) -> KeyResult {
         context
             .state_mut()
             .connections
-            .as_mut()
-            .unwrap()
             .disconnect_buffer(buffer_id)?;
 
         on_disconnect(context, buffer_id);

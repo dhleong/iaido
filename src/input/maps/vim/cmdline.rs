@@ -59,8 +59,7 @@ fn cmdline_to_prompt(
             if let Some(input_buffer_id) = ctx
                 .state_mut()
                 .connections
-                .as_mut()
-                .and_then(|conns| conns.by_buffer_id(conn_buffer_id))
+                .by_buffer_id(conn_buffer_id)
                 .map(|conn| conn.id)
                 .and_then(|conn_id| ctx.state().conn_input_buffer_id(conn_id))
             {

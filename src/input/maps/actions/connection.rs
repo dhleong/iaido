@@ -43,11 +43,9 @@ pub fn send_string_to_buffer<K: KeymapContext>(
 ) -> KeyResult {
     let mut sent = false;
 
-    if let Some(ref mut conns) = ctx.state_mut().connections {
-        if let Some(conn) = conns.by_buffer_id(conn_buffer_id) {
-            conn.send(to_send.clone())?;
-            sent = true;
-        }
+    if let Some(conn) = ctx.state_mut().connections.by_buffer_id(conn_buffer_id) {
+        conn.send(to_send.clone())?;
+        sent = true;
     }
 
     if sent {

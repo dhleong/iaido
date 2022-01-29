@@ -44,12 +44,7 @@ fn reload_buffer_source(context: &mut CommandHandlerContext) -> KeyResult {
 
 fn source_path(context: &mut CommandHandlerContext, file_path: PathBuf) -> KeyResult {
     let buffer_id = context.state().current_buffer().id();
-    if let Some(conn) = context
-        .state_mut()
-        .connections
-        .as_mut()
-        .and_then(|conns| conns.by_buffer_id(buffer_id))
-    {
+    if let Some(conn) = context.state_mut().connections.by_buffer_id(buffer_id) {
         // Clear config on any associated connection
         conn.with_engine_mut(|engine| engine.reset());
     }

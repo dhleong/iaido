@@ -50,7 +50,7 @@ impl<T: Transport + Send + 'static> TransportReader<T> {
             reader
                 .ctx
                 .spawn(move |ctx| {
-                    ctx.connections.as_mut().unwrap().disconnect(id).ok();
+                    ctx.connections.disconnect(id).ok();
                 })
                 .join()
                 .ok();

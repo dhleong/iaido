@@ -46,8 +46,7 @@ impl CurrentObjects {
         context
             .state()
             .connections
-            .as_ref()
-            .and_then(|conns| conns.buffer_to_id(context.state().current_buffer().id()))
+            .buffer_to_id(context.state().current_buffer().id())
     }
 
     #[property]

@@ -51,7 +51,7 @@ pub struct AppState {
 
     // Connections should generally be available, but is an
     // Option so callers may temporarily take ownership of it
-    pub connections: Option<Connections>,
+    pub connections: Connections,
 
     pub scripting: Arc<Mutex<ScriptingManager>>,
 
@@ -285,16 +285,13 @@ impl AppState {
     }
 
     pub fn conn_input_buffer_id(&self, conn_id: Id) -> Option<Id> {
-        if let Some((Some(output_buffer_id), buffer_ids)) = self
-            .connections
-            .as_ref()
-            .map(|conns| (conns.id_to_buffer(conn_id), conns.id_to_buffers(conn_id)))
-        {
+        if let Some(output_buffer_id) = self.connections.id_to_buffer(conn_id) {
             // NOTE: There should be two buffer IDs per connection: the input
             // and the output. We have a direct mapping to the output buffer,
             // but don't frequently need to find the input buffer (yet) so
             // this is a somewhat straightforward way to look it up
-            buffer_ids
+            self.connections
+                .id_to_buffers(conn_id)
                 .into_iter()
                 .filter(|id| id != &output_buffer_id)
                 .next()
@@ -322,7 +319,7 @@ impl Default for AppState {
             prompt: Prompt::default(),
             builtin_commands: create_builtin_commands(),
             keymap_widget: None,
-            connections: Some(Connections::default()),
+            connections: Connections::default(),
             scripting: Arc::new(Mutex::new(ScriptingManager::default())),
             jobs: Jobs::new(dispatcher.sender.clone()),
             dispatcher,

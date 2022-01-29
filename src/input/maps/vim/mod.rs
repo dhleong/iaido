@@ -256,8 +256,7 @@ fn pick_completer<K: KeymapContext>(mode: &VimMode, context: &mut K) -> Option<R
     } else if let Some(completer) = context
         .state_mut()
         .connections
-        .as_mut()
-        .and_then(|conns| conns.with_buffer_engine(buf_id, |eng| eng.completer.clone()))
+        .with_buffer_engine(buf_id, |eng| eng.completer.clone())
     {
         Some(Rc::new(completer))
     } else {

@@ -128,7 +128,7 @@ impl Connections {
             let transport_context = Mutex::new(ctx.clone());
 
             ctx.run(move |state| {
-                state.connections.as_mut().unwrap().add_transport(
+                state.connections.add_transport(
                     transport_context.into_inner().unwrap(),
                     id,
                     buffer_id,

@@ -33,11 +33,7 @@ impl BufferApiObject {
 
     #[rpc(passing(self.id))]
     fn connection_id(context: &mut CommandHandlerContext, buffer_id: Id) -> Option<Id> {
-        context
-            .state()
-            .connections
-            .as_ref()
-            .and_then(|conns| conns.buffer_to_id(buffer_id))
+        context.state().connections.buffer_to_id(buffer_id)
     }
 
     #[property]
@@ -67,14 +63,15 @@ impl BufferApiObject {
         replacement: Either<String, ScriptingFnRef>,
     ) -> KeyResult {
         let scripting = context.state().scripting.clone();
-        if let Some(ref mut conns) = context.state_mut().connections {
-            conns.with_buffer_engine(id, move |engine| match replacement {
+        context.state_mut().connections.with_buffer_engine(
+            id,
+            move |engine| match replacement {
                 Either::A(text) => engine.aliases.insert_text(pattern, text),
                 Either::B(f) => engine
                     .aliases
                     .insert_fn(pattern, create_user_processor(scripting, f)),
-            })?;
-        }
+            },
+        )?;
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use url::Url;
 
 use crate::{
     app::jobs::{JobContext, JobRecord, Jobs},
-    editing::{ids::Ids, Id},
+    editing::{ids::Ids, Id, Resizable, Size},
     game::engine::GameEngine,
 };
 
@@ -58,6 +58,12 @@ pub struct Connections {
     factories: TransportFactories,
 
     buffer_engines: HashMap<Id, GameEngine>,
+}
+
+impl Resizable for Connections {
+    fn resize(&mut self, _new_size: Size) {
+        // TODO notify connections
+    }
 }
 
 impl Connections {

@@ -122,7 +122,7 @@ impl TransportFactory for TelnetConnectionFactory {
             (Some(host), Some(port)) => match connect(host, port, secure, BUFFER_SIZE) {
                 Ok(conn) => Some(Ok(Box::new(TelnetConnection {
                     telnet: TelnetWrapper(conn),
-                    handlers: create_handlers(),
+                    handlers: Default::default(),
                     pipeline: AnsiPipeline::new(),
                 }))),
                 Err(e) => Some(Err(e)),
@@ -134,12 +134,4 @@ impl TransportFactory for TelnetConnectionFactory {
             ))),
         }
     }
-}
-
-fn create_handlers() -> TelnetHandlers {
-    let mut handlers: TelnetHandlers = Default::default();
-
-    handlers.register(ttype::create());
-
-    handlers
 }

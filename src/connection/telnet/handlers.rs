@@ -2,11 +2,28 @@ use std::collections::HashMap;
 
 use telnet::TelnetOption;
 
-use super::handler::TelnetOptionHandler;
+use super::{handler::TelnetOptionHandler, ttype};
 
-#[derive(Default)]
 pub struct TelnetHandlers {
     handlers: HashMap<u8, TelnetOptionHandler>,
+}
+
+impl TelnetHandlers {
+    pub fn empty() -> Self {
+        Self {
+            handlers: Default::default(),
+        }
+    }
+}
+
+impl Default for TelnetHandlers {
+    fn default() -> Self {
+        let mut handlers = Self::empty();
+
+        handlers.register(ttype::create());
+
+        handlers
+    }
 }
 
 impl TelnetHandlers {

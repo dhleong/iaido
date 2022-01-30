@@ -1,14 +1,16 @@
 use native_tls::TlsConnector;
+use std::io;
 use std::net::TcpStream;
-use std::{collections::HashMap, io};
 
 mod handler;
+mod handlers;
 mod ttype;
 
-use telnet::{Telnet, TelnetOption};
+use telnet::Telnet;
 use url::Url;
 
-use self::handler::TelnetHandler;
+use self::handler::{TelnetHandler, TelnetOptionInteractor};
+use self::handlers::TelnetHandlers;
 
 use super::{ansi::AnsiPipeline, tls, transport::Transport, ReadValue, TransportFactory};
 
@@ -18,7 +20,7 @@ struct TelnetWrapper(Telnet);
 
 pub struct TelnetConnection {
     telnet: TelnetWrapper,
-    handlers: HashMap<u8, Box<dyn TelnetHandler + Send>>,
+    handlers: TelnetHandlers,
     pipeline: AnsiPipeline,
 }
 
@@ -36,22 +38,16 @@ impl TelnetConnection {
                 self.pipeline.feed(&data, data.len());
             }
             telnet::Event::UnknownIAC(_) => {}
+
             telnet::Event::Negotiation(action, option) => {
-                if let Some(handler) = self.handlers.get_mut(&option.as_byte()) {
-                    crate::info!("## TELNET < {:?} {:?}", &action, &option);
-
-                    let result = match action {
-                        telnet::Action::Do => handler.on_remote_do(&mut self.telnet.0),
-                        telnet::Action::Dont => handler.on_remote_dont(&mut self.telnet.0),
-                        telnet::Action::Will => handler.on_remote_will(&mut self.telnet.0),
-                        telnet::Action::Wont => handler.on_remote_wont(&mut self.telnet.0),
-                    };
-
-                    if let Err(e) = result {
-                        return Err(io::Error::new(io::ErrorKind::Other, e));
-                    }
-                }
+                crate::info!("## TELNET < {:?} {:?}", &action, &option);
+                if let Some(handler) = self.handlers.get_mut(&option) {
+                    handler.negotiate(&action, &mut self.telnet.0)
+                } else {
+                    TelnetOptionInteractor::default(option).negotiate(&action, &mut self.telnet.0)
+                }?;
             }
+
             telnet::Event::Subnegotiation(option, bytes) => {
                 crate::info!(
                     "## TELNET < IAC SB {:?} (... {} bytes)",
@@ -59,7 +55,7 @@ impl TelnetConnection {
                     bytes.len()
                 );
 
-                if let Some(handler) = self.handlers.get_mut(&option.as_byte()) {
+                if let Some(handler) = self.handlers.get_mut(&option) {
                     let result = handler.on_subnegotiate(&mut self.telnet.0, &bytes);
 
                     if let Err(e) = result {
@@ -67,6 +63,7 @@ impl TelnetConnection {
                     }
                 }
             }
+
             telnet::Event::TimedOut => {}
             telnet::Event::NoData => {}
             telnet::Event::Error(e) => {
@@ -139,13 +136,10 @@ impl TransportFactory for TelnetConnectionFactory {
     }
 }
 
-fn create_handlers() -> HashMap<u8, Box<dyn TelnetHandler + Send>> {
-    let mut handlers: HashMap<u8, Box<dyn TelnetHandler + Send>> = Default::default();
+fn create_handlers() -> TelnetHandlers {
+    let mut handlers: TelnetHandlers = Default::default();
 
-    handlers.insert(
-        TelnetOption::TTYPE.as_byte(),
-        Box::new(ttype::TTypeHandler::default()),
-    );
+    handlers.register(ttype::create());
 
     handlers
 }

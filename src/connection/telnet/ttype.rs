@@ -1,7 +1,7 @@
 use clap::crate_version;
 use telnet::{self, TelnetError, TelnetOption};
 
-use super::handler::TelnetHandler;
+use super::handler::{TelnetHandler, TelnetOptionHandler, TelnetOptionInteractor};
 
 const MTTS_ANSI: u16 = 1;
 const MTTS_UTF8: u16 = 4;
@@ -77,5 +77,12 @@ impl TelnetHandler for TTypeHandler {
         };
 
         self.send_state(telnet, state)
+    }
+}
+
+pub fn create() -> TelnetOptionHandler {
+    TelnetOptionHandler {
+        interactor: TelnetOptionInteractor::accept_will(TelnetOption::TTYPE),
+        handler: Box::new(TTypeHandler::default()),
     }
 }

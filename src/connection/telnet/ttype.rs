@@ -55,11 +55,6 @@ impl TTypeHandler {
 }
 
 impl TelnetHandler for TTypeHandler {
-    fn on_remote_do(&mut self, telnet: &mut telnet::Telnet) -> Result<(), TelnetError> {
-        crate::info!("## TELNET > Will TTYPE");
-        telnet.negotiate(&telnet::Action::Will, TelnetOption::TTYPE)
-    }
-
     fn on_remote_dont(&mut self, _telnet: &mut telnet::Telnet) -> Result<(), TelnetError> {
         self.state = TTypeRequestState::ClientName;
         Ok(())
@@ -82,7 +77,7 @@ impl TelnetHandler for TTypeHandler {
 
 pub fn create() -> TelnetOptionHandler {
     TelnetOptionHandler {
-        interactor: TelnetOptionInteractor::accept_will(TelnetOption::TTYPE),
+        interactor: TelnetOptionInteractor::accept_do(TelnetOption::TTYPE),
         handler: Box::new(TTypeHandler::default()),
     }
 }

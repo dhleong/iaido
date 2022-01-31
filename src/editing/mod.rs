@@ -16,7 +16,7 @@ use std::ops;
 
 pub use buffer::Buffer;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Size {
     pub w: u16,
     pub h: u16,

@@ -47,6 +47,7 @@ impl ConnectionRecord {
 #[derive(Default)]
 pub struct Connections {
     ids: Ids,
+    app_size: Size,
     by_id: HashMap<Id, ConnectionRecord>,
     connection_to_buffer: HashMap<Id, Id>,
 
@@ -61,8 +62,9 @@ pub struct Connections {
 }
 
 impl Resizable for Connections {
-    fn resize(&mut self, _new_size: Size) {
-        // TODO notify connections
+    fn resize(&mut self, new_size: Size) {
+        let changed = self.app_size != new_size;
+        self.app_size = new_size;
     }
 }
 

@@ -112,7 +112,7 @@ where
     // Main app loop:
     run_loop(&mut app_keys, map);
 
-    // kill any still-running jobs when the user wants to quit:
+    // Kill any still-running jobs when the user wants to quit:
     app_keys.state_mut().jobs.cancel_all();
 }
 

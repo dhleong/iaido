@@ -4,10 +4,13 @@ use std::net::TcpStream;
 
 mod handler;
 mod handlers;
+mod naws;
 mod ttype;
 
 use telnet::Telnet;
 use url::Url;
+
+use crate::editing::Size;
 
 use self::handler::{TelnetHandler, TelnetOptionInteractor};
 use self::handlers::TelnetHandlers;
@@ -111,7 +114,7 @@ impl TransportFactory for TelnetConnectionFactory {
         Box::new(TelnetConnectionFactory)
     }
 
-    fn create(&self, uri: &Url) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
+    fn create(&self, uri: &Url, size: Size) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
         let secure = match uri.scheme() {
             "telnet" => false,
             "ssl" => true,
@@ -122,7 +125,7 @@ impl TransportFactory for TelnetConnectionFactory {
             (Some(host), Some(port)) => match connect(host, port, secure, BUFFER_SIZE) {
                 Ok(conn) => Some(Ok(Box::new(TelnetConnection {
                     telnet: TelnetWrapper(conn),
-                    handlers: Default::default(),
+                    handlers: TelnetHandlers::with_size(size),
                     pipeline: AnsiPipeline::new(),
                 }))),
                 Err(e) => Some(Err(e)),

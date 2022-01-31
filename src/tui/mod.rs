@@ -45,7 +45,15 @@ pub struct Tui {
 }
 
 impl Tui {
-    pub fn close(&mut self) -> Result<(), io::Error> {
+    pub fn size(&self) -> io::Result<Size> {
+        let size = self.terminal.size()?;
+        Ok(Size {
+            w: size.width,
+            h: size.height,
+        })
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
         // move the cursor to the bottom of the screen before leaving
         // so the terminal perserves output (hopefully)
         let size = self.terminal.size()?;

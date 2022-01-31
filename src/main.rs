@@ -14,6 +14,7 @@ pub mod log;
 use crate::ui::backtrace::PanicData;
 use app::looper::app_loop;
 use backtrace::Backtrace;
+use editing::Resizable;
 use input::maps::vim::VimKeymap;
 use std::{
     io, panic,
@@ -27,6 +28,9 @@ fn main_loop() -> io::Result<()> {
     let ui = tui::create_ui()?;
     let state = app::State::default();
     let mut app = app::App::new(state, ui);
+
+    // Ensure app state has the initial size
+    app.state.resize(app.ui.size()?);
 
     if args.demo {
         demo::perform_demo(&mut app);

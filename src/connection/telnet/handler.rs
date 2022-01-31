@@ -2,6 +2,8 @@ use std::io;
 
 use telnet::{self, Telnet, TelnetError, TelnetOption};
 
+use crate::editing::Size;
+
 pub trait TelnetHandler {
     fn negotiate(&mut self, action: &telnet::Action, telnet: &mut Telnet) -> io::Result<()> {
         let result = match action {
@@ -15,6 +17,10 @@ pub trait TelnetHandler {
             return Err(io::Error::new(io::ErrorKind::Other, e));
         }
 
+        Ok(())
+    }
+
+    fn on_resize(&mut self, _telnet: &mut Telnet, _size: Size) -> Result<(), TelnetError> {
         Ok(())
     }
 

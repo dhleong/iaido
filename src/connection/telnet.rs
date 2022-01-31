@@ -7,7 +7,7 @@ mod handlers;
 mod naws;
 mod ttype;
 
-use telnet::Telnet;
+use telnet::{Telnet, TelnetOption};
 use url::Url;
 
 use crate::editing::Size;
@@ -79,6 +79,15 @@ impl TelnetConnection {
 }
 
 impl Transport for TelnetConnection {
+    fn resize(&mut self, new_size: crate::editing::Size) -> io::Result<()> {
+        if let Some(naws) = self.handlers.get_mut(&TelnetOption::NAWS) {
+            if let Err(e) = naws.on_resize(&mut self.telnet.0, new_size) {
+                return Err(io::Error::new(io::ErrorKind::Other, e));
+            }
+        }
+        Ok(())
+    }
+
     fn read_timeout(&mut self, duration: std::time::Duration) -> io::Result<Option<ReadValue>> {
         if let Some(pending) = self.pipeline.next() {
             return Ok(Some(pending));

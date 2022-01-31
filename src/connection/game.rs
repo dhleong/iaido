@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use crate::game::engine::GameEngine;
+use crate::{editing::Size, game::engine::GameEngine};
 
 use super::{transport::Transport, ReadValue};
 
@@ -24,6 +24,10 @@ impl GameConnection {
 }
 
 impl Transport for GameConnection {
+    fn resize(&mut self, new_size: Size) -> io::Result<()> {
+        self.conn.lock().unwrap().resize(new_size)
+    }
+
     fn read_timeout(&mut self, duration: Duration) -> io::Result<Option<ReadValue>> {
         // NOTE: The explicit scoping here and in send() are to ensure this
         // lock gets released before we attempt to access the next lock

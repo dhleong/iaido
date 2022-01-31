@@ -24,6 +24,15 @@ impl TelnetHandler for NawsHandler {
     fn on_remote_do(&mut self, telnet: &mut telnet::Telnet) -> Result<(), telnet::TelnetError> {
         self.send_size(telnet)
     }
+
+    fn on_resize(
+        &mut self,
+        telnet: &mut telnet::Telnet,
+        size: Size,
+    ) -> Result<(), telnet::TelnetError> {
+        self.size = size;
+        self.send_size(telnet)
+    }
 }
 
 pub fn create(size: Size) -> TelnetOptionHandler {

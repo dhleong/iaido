@@ -16,21 +16,23 @@ use super::{
     TransportFactories,
 };
 
+enum OutgoingEvent {
+    Message(String),
+    Resize(Size),
+}
+
 pub struct ConnectionRecord {
     pub id: Id,
     #[allow(unused)]
     stop_read_signal: StopSignal,
-    outgoing: mpsc::UnboundedSender<String>,
+    outgoing: mpsc::UnboundedSender<OutgoingEvent>,
     outgoing_results: std::sync::mpsc::Receiver<io::Result<()>>,
     connection: GameConnection,
 }
 
 impl ConnectionRecord {
     pub fn send(&mut self, message: String) -> io::Result<()> {
-        match self.outgoing.send(message) {
-            Ok(_) => self.outgoing_results.recv().unwrap_or(Ok(())),
-            Err(_) => Err(io::ErrorKind::NotConnected.into()),
-        }
+        self.send_event(OutgoingEvent::Message(message))
     }
 
     pub fn with_engine<R, F: FnOnce(&GameEngine) -> R>(&self, f: F) -> R {
@@ -41,6 +43,13 @@ impl ConnectionRecord {
     pub fn with_engine_mut<R, F: FnOnce(&mut GameEngine) -> R>(&mut self, f: F) -> R {
         let mut game = self.connection.game.lock().unwrap();
         f(&mut game)
+    }
+
+    fn send_event(&mut self, event: OutgoingEvent) -> io::Result<()> {
+        match self.outgoing.send(event) {
+            Ok(_) => self.outgoing_results.recv().unwrap_or(Ok(())),
+            Err(_) => Err(io::ErrorKind::NotConnected.into()),
+        }
     }
 }
 
@@ -65,6 +74,17 @@ impl Resizable for Connections {
     fn resize(&mut self, new_size: Size) {
         let changed = self.app_size != new_size;
         self.app_size = new_size;
+
+        // NOTE: We currently do NOT base the NAWS-reported "size" on the
+        // actual output window's size, since there *could* be another
+        // window with a different size. Perhaps in the future we could come
+        // up with some heuristic based on the actual windows for the output
+        // buffer, but for now it's simpler to just use the terminal size
+        if changed {
+            for record in self.by_id.values_mut() {
+                record.send_event(OutgoingEvent::Resize(new_size)).ok();
+            }
+        }
     }
 }
 
@@ -130,9 +150,10 @@ impl Connections {
     ) -> JobRecord {
         let id = self.ids.next();
         let factory = self.factories.clone();
+        let size = self.app_size;
 
         jobs.start(move |ctx| async move {
-            let connection = Mutex::new(factory.create(uri)?);
+            let connection = Mutex::new(factory.create(uri, size)?);
             let transport_context = Mutex::new(ctx.clone());
 
             ctx.run(move |state| {
@@ -157,13 +178,22 @@ impl Connections {
     ) -> ConnectionRecord {
         let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
 
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<OutgoingEvent>();
         let (result_tx, result_rx) = std::sync::mpsc::channel();
         let mut writable = connection.clone();
         tokio::spawn(async move {
             while let Some(to_send) = rx.recv().await {
-                let result = writable.send(&to_send);
-                result_tx.send(result).ok();
+                match to_send {
+                    OutgoingEvent::Message(message) => {
+                        let result = writable.send(&message);
+                        result_tx.send(result).ok();
+                    }
+
+                    OutgoingEvent::Resize(size) => {
+                        let result = writable.resize(size);
+                        result_tx.send(result).ok();
+                    }
+                }
             }
         });
 

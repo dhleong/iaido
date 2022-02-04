@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use telnet::TelnetOption;
 
-use crate::editing::Size;
+use crate::connection::ConnectParams;
 
-use super::{handler::TelnetOptionHandler, naws, ttype};
+use super::{echo, handler::TelnetOptionHandler, naws, ttype};
 
 pub struct TelnetHandlers {
     handlers: HashMap<u8, TelnetOptionHandler>,
@@ -17,10 +17,11 @@ impl TelnetHandlers {
         }
     }
 
-    pub fn with_size(size: Size) -> Self {
+    pub fn with_params(params: &ConnectParams) -> Self {
         let mut handlers = Self::empty();
 
-        handlers.register(naws::create(size));
+        handlers.register(echo::create(params.flags.clone()));
+        handlers.register(naws::create(params.size));
         handlers.register(ttype::create());
 
         handlers

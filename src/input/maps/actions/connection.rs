@@ -41,14 +41,14 @@ pub fn send_string_to_buffer<K: KeymapContext>(
     conn_buffer_id: Id,
     to_send: String,
 ) -> KeyResult {
-    let mut sent = false;
+    let mut should_echo = true;
 
     if let Some(conn) = ctx.state_mut().connections.by_buffer_id(conn_buffer_id) {
         conn.send(to_send.clone())?;
-        sent = true;
+        should_echo = conn.flags.can_echo();
     }
 
-    if sent {
+    if should_echo {
         if let Some(mut output) = ctx.state_mut().winsbuf_by_id(conn_buffer_id) {
             output.append_value(ReadValue::Text(to_send.into()));
             output.append_value(ReadValue::Newline);

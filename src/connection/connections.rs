@@ -10,10 +10,11 @@ use crate::{
 };
 
 use super::{
+    flags::Flags,
     game::GameConnection,
     reader::{StopSignal, TransportReader},
     transport::Transport,
-    TransportFactories,
+    ConnectParams, TransportFactories,
 };
 
 enum OutgoingEvent {
@@ -28,6 +29,7 @@ pub struct ConnectionRecord {
     outgoing: mpsc::UnboundedSender<OutgoingEvent>,
     outgoing_results: std::sync::mpsc::Receiver<io::Result<()>>,
     connection: GameConnection,
+    pub flags: Flags,
 }
 
 impl ConnectionRecord {
@@ -153,7 +155,9 @@ impl Connections {
         let size = self.app_size;
 
         jobs.start(move |ctx| async move {
-            let connection = Mutex::new(factory.create(uri, size)?);
+            let params = ConnectParams::with_uri_and_size(uri, size);
+            let flags = params.flags.clone();
+            let connection = Mutex::new(factory.create(params)?);
             let transport_context = Mutex::new(ctx.clone());
 
             ctx.run(move |state| {
@@ -162,6 +166,7 @@ impl Connections {
                     id,
                     buffer_id,
                     input_buffer_id,
+                    flags,
                     connection.into_inner().unwrap(),
                 );
             });
@@ -175,6 +180,7 @@ impl Connections {
         ctx: JobContext,
         buffer_id: Id,
         connection: GameConnection,
+        flags: Flags,
     ) -> ConnectionRecord {
         let stop_read_signal = TransportReader::spawn(ctx, id, buffer_id, connection.clone());
 
@@ -203,6 +209,7 @@ impl Connections {
             outgoing: tx,
             outgoing_results: result_rx,
             connection,
+            flags,
         }
     }
 
@@ -245,6 +252,7 @@ impl Connections {
         id: Id,
         buffer_id: Id,
         input_buffer_id: Id,
+        flags: Flags,
         transport: Box<dyn Transport + Send>,
     ) {
         let engine = self
@@ -254,7 +262,7 @@ impl Connections {
 
         let transport = GameConnection::with_engine(transport, engine);
 
-        let record = Connections::launch(id, ctx.clone(), buffer_id, transport);
+        let record = Connections::launch(id, ctx.clone(), buffer_id, transport, flags);
 
         self.add_record(id, buffer_id, input_buffer_id, record);
     }
@@ -280,6 +288,7 @@ impl Connections {
                 stop_read_signal,
                 outgoing,
                 outgoing_results,
+                flags: Default::default(),
                 connection: GameConnection::with_engine(transport, Default::default()),
             },
         );

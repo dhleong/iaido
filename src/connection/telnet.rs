@@ -2,19 +2,18 @@ use native_tls::TlsConnector;
 use std::io;
 use std::net::TcpStream;
 
+mod echo;
 mod handler;
 mod handlers;
 mod naws;
 mod ttype;
 
 use telnet::{Telnet, TelnetOption};
-use url::Url;
-
-use crate::editing::Size;
 
 use self::handler::{TelnetHandler, TelnetOptionInteractor};
 use self::handlers::TelnetHandlers;
 
+use super::ConnectParams;
 use super::{ansi::AnsiPipeline, tls, transport::Transport, ReadValue, TransportFactory};
 
 const BUFFER_SIZE: usize = 2048;
@@ -123,18 +122,18 @@ impl TransportFactory for TelnetConnectionFactory {
         Box::new(TelnetConnectionFactory)
     }
 
-    fn create(&self, uri: &Url, size: Size) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
-        let secure = match uri.scheme() {
+    fn create(&self, params: &ConnectParams) -> Option<std::io::Result<Box<dyn Transport + Send>>> {
+        let secure = match params.uri.scheme() {
             "telnet" => false,
             "ssl" => true,
             _ => return None,
         };
 
-        match (uri.host_str(), uri.port()) {
+        match (params.uri.host_str(), params.uri.port()) {
             (Some(host), Some(port)) => match connect(host, port, secure, BUFFER_SIZE) {
                 Ok(conn) => Some(Ok(Box::new(TelnetConnection {
                     telnet: TelnetWrapper(conn),
-                    handlers: TelnetHandlers::with_size(size),
+                    handlers: TelnetHandlers::with_params(params),
                     pipeline: AnsiPipeline::new(),
                 }))),
                 Err(e) => Some(Err(e)),
@@ -142,7 +141,7 @@ impl TransportFactory for TelnetConnectionFactory {
 
             _ => Some(Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("{}: invalid telnet uri", uri),
+                format!("{}: invalid telnet uri", params.uri),
             ))),
         }
     }

@@ -41,14 +41,14 @@ pub fn send_string_to_buffer<K: KeymapContext>(
     conn_buffer_id: Id,
     to_send: String,
 ) -> KeyResult {
-    let mut sent = false;
-
-    if let Some(conn) = ctx.state_mut().connections.by_buffer_id(conn_buffer_id) {
+    let should_echo = if let Some(conn) = ctx.state_mut().connections.by_buffer_id(conn_buffer_id) {
         conn.send(to_send.clone())?;
-        sent = true;
-    }
+        conn.flags.can_echo()
+    } else {
+        return Err(KeyError::IO(io::ErrorKind::NotConnected.into()));
+    };
 
-    if sent {
+    if should_echo {
         if let Some(mut output) = ctx.state_mut().winsbuf_by_id(conn_buffer_id) {
             output.append_value(ReadValue::Text(to_send.into()));
             output.append_value(ReadValue::Newline);
@@ -64,8 +64,7 @@ pub fn send_string_to_buffer<K: KeymapContext>(
                 first.cursor = (last_line, 0).into();
             }
         }
-        return Ok(());
     }
 
-    Err(KeyError::IO(io::ErrorKind::NotConnected.into()))
+    Ok(())
 }

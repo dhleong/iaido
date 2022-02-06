@@ -337,6 +337,7 @@ impl Resizable for AppState {
     fn resize(&mut self, new_size: Size) {
         self.tabpages.resize(new_size);
         self.prompt.resize(new_size);
+        self.connections.resize(new_size);
     }
 }
 

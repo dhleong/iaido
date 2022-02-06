@@ -61,11 +61,6 @@ impl TelnetOptionInteractor {
         Self::new(option, false, true)
     }
 
-    #[allow(unused)] // TODO clean up
-    pub fn accept_will(option: TelnetOption) -> Self {
-        Self::new(option, true, false)
-    }
-
     fn new(option: TelnetOption, accept_will: bool, accept_do: bool) -> Self {
         Self {
             option,
